@@ -389,38 +389,21 @@
     </div>
   </div>
 
+  <!-- Customer Information - Only shown after WhatsApp selection -->
   <div id="customer-info" class="customer-info" style="display: none;">
     <h4>معلومات العميل</h4>
     <div id="customer-details"></div>
   </div>
 
+  <!-- Previous Orders - Only for EDIT mode -->
   <div id="previous-orders" class="previous-orders" style="display: none;">
-    <h4>الطلبات السابقة</h4>
-    <div id="orders-list"></div>
+    <h4>آخر طلب</h4>
+    <div id="latest-order"></div>
   </div>
 
+  <!-- Order Details Section -->
   <div id="order-details-section" class="section" style="display: none;">
     <h3>تفاصيل الطلب</h3>
-    
-    <div class="form-group">
-      <label for="customer-name">اسم العميل (اختياري)</label>
-      <input type="text" id="customer-name" placeholder="اسم العميل">
-    </div>
-    
-    <div class="form-group">
-      <label for="customer-area">المنطقة (اختياري)</label>
-      <input type="text" id="customer-area" placeholder="المنطقة">
-    </div>
-    
-    <div class="form-group">
-      <label for="customer-address">العنوان (اختياري)</label>
-      <input type="text" id="customer-address" placeholder="العنوان">
-    </div>
-    
-    <div class="form-group">
-      <label for="customer-location">رابط الموقع (اختياري)</label>
-      <input type="text" id="customer-location" placeholder="رابط الموقع">
-    </div>
     
     <div class="form-group">
       <label for="order-text">اكتب طلبك هنا *</label>
@@ -428,20 +411,6 @@
         id="order-text" 
         rows="5" 
         placeholder="اكتب تفاصيل طلبك هنا..."
-      ></textarea>
-    </div>
-    
-    <div class="form-group">
-      <label for="delivery-date">تاريخ التوصيل المطلوب (اختياري)</label>
-      <input type="date" id="delivery-date">
-    </div>
-    
-    <div class="form-group">
-      <label for="notes">ملاحظات إضافية (اختياري)</label>
-      <textarea 
-        id="notes" 
-        rows="3" 
-        placeholder="ملاحظات خاصة بالطلب..."
       ></textarea>
     </div>
     
@@ -460,13 +429,16 @@
 </div>
 
 <script>
-  // Google Apps Script Web App URL - MAKE SURE THIS IS CORRECT
+  // Google Apps Script Web App URL
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzcSajp3BbGk6XwTeZi1YpjvBanyqY2ZdqP7JS07C5X6eUbZbEq0v0p0zlybMqcCWFK-A/exec';
   
+  // Application State
   let selectedOrderType = null;
   let currentCustomer = null;
   let currentOrderStatus = 'checking';
   let currentRound = '';
+  let currentCustomerId = '';
+  let latestOrder = null;
   
   document.addEventListener('DOMContentLoaded', function() {
     checkOrderStatus();
@@ -476,7 +448,6 @@
     try {
       console.log('Checking order status...');
       
-      // ADD timeout to prevent hanging
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       
@@ -594,6 +565,11 @@
     
     const submitText = document.getElementById('submit-text');
     submitText.textContent = type === 'new' ? 'إرسال الطلب' : 'تحديث الطلب';
+    
+    // Reset customer data
+    currentCustomer = null;
+    currentCustomerId = '';
+    latestOrder = null;
   }
   
   async function validateMobileNumber() {
@@ -620,8 +596,10 @@
     
     successElement.textContent = '✓ رقم هاتف صحيح';
     
+    // Check if customer exists
     await checkCustomerExists(mobileNumber);
     
+    // Show WhatsApp options
     document.getElementById('whatsapp-section').style.display = 'block';
     
     return true;
@@ -659,25 +637,32 @@
       
       if (data.success && data.customer) {
         currentCustomer = data.customer;
-        showCustomerInfo(data.customer);
+        currentCustomerId = data.customer.id;
         
-        await loadPreviousOrders(phone);
+        // Store customer info but DON'T show it yet
+        // It will be shown only after WhatsApp selection
         
+        // Auto-select same WhatsApp if exists
         if (data.customer.whatsapp === phone || data.customer.whatsapp) {
           document.getElementById('same-whatsapp').checked = true;
-          handleWhatsAppSelection('same');
         }
+        
+        // For EDIT mode: Load the latest order
+        if (selectedOrderType === 'edit' && currentCustomerId) {
+          await loadLatestOrder(currentCustomerId);
+        }
+        
       } else {
+        // New customer
         currentCustomer = { phone: phone };
-        document.getElementById('customer-info').style.display = 'none';
-        document.getElementById('previous-orders').style.display = 'none';
+        currentCustomerId = '';
+        console.log('New customer, no CustomerID yet');
       }
       
     } catch (error) {
       console.error('Error checking customer:', error);
       currentCustomer = { phone: phone };
-      document.getElementById('customer-info').style.display = 'none';
-      document.getElementById('previous-orders').style.display = 'none';
+      currentCustomerId = '';
       
       if (error.name === 'AbortError') {
         showError('⚠️ انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.');
@@ -685,53 +670,16 @@
     }
   }
   
-  function showCustomerInfo(customer) {
-    const customerDetails = document.getElementById('customer-details');
-    const customerInfo = document.getElementById('customer-info');
-    
-    let html = '<div class="info-grid">';
-    
-    if (customer.name) {
-      html += `<div class="info-item"><strong>الاسم:</strong> ${customer.name}</div>`;
-      document.getElementById('customer-name').value = customer.name;
-    } else {
-      document.getElementById('customer-name').value = '';
-    }
-    
-    if (customer.area) {
-      html += `<div class="info-item"><strong>المنطقة:</strong> ${customer.area}</div>`;
-      document.getElementById('customer-area').value = customer.area;
-    } else {
-      document.getElementById('customer-area').value = '';
-    }
-    
-    if (customer.address) {
-      html += `<div class="info-item"><strong>العنوان:</strong> ${customer.address}</div>`;
-      document.getElementById('customer-address').value = customer.address;
-    } else {
-      document.getElementById('customer-address').value = '';
-    }
-    
-    if (customer.location) {
-      html += `<div class="info-item"><strong>الموقع:</strong> ${customer.location}</div>`;
-      document.getElementById('customer-location').value = customer.location;
-    } else {
-      document.getElementById('customer-location').value = '';
-    }
-    
-    html += '</div>';
-    customerDetails.innerHTML = html;
-    customerInfo.style.display = 'block';
-  }
-  
-  async function loadPreviousOrders(phone) {
+  async function loadLatestOrder(customerId) {
     try {
-      console.log('Loading orders for:', phone);
+      console.log('Loading latest order for customer:', customerId);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       
-      const response = await fetch(`${SCRIPT_URL}?action=getOrders&phone=${encodeURIComponent(phone)}&_=${Date.now()}`, {
+      // We need a new API endpoint to get orders by CustomerID
+      // For now, we'll use the existing getOrders endpoint
+      const response = await fetch(`${SCRIPT_URL}?action=getOrders&phone=${encodeURIComponent(currentCustomer.phone)}&_=${Date.now()}`, {
         signal: controller.signal
       });
       
@@ -754,28 +702,39 @@
       
       console.log('Orders response:', data);
       
-      const ordersList = document.getElementById('orders-list');
-      const previousOrders = document.getElementById('previous-orders');
-      
       if (data.success && data.orders && data.orders.length > 0) {
-        ordersList.innerHTML = '';
-        data.orders.forEach(order => {
-          const orderItem = document.createElement('div');
-          orderItem.className = 'order-item';
-          orderItem.innerHTML = `
-            <p><strong>التاريخ:</strong> ${order.date || order.timestamp || 'غير معروف'}</p>
-            <p><strong>الطلب:</strong> ${order.items || 'لا توجد تفاصيل'}</p>
-            <p><strong>الحالة:</strong> ${order.status || 'جديد'}</p>
+        // Filter orders by CustomerID (if available)
+        const customerOrders = data.orders.filter(order => 
+          order.customerId === customerId || order.customerId.includes(customerId)
+        );
+        
+        if (customerOrders.length > 0) {
+          // Get the latest order (assuming orders are in chronological order)
+          latestOrder = customerOrders[customerOrders.length - 1];
+          
+          // Show the latest order section
+          const latestOrderDiv = document.getElementById('latest-order');
+          const previousOrdersSection = document.getElementById('previous-orders');
+          
+          latestOrderDiv.innerHTML = `
+            <div class="order-item">
+              <p><strong>التاريخ:</strong> ${latestOrder.date || latestOrder.timestamp || 'غير معروف'}</p>
+              <p><strong>الطلب:</strong> ${latestOrder.items || 'لا توجد تفاصيل'}</p>
+              <p><strong>الحالة:</strong> ${latestOrder.status || 'جديد'}</p>
+            </div>
           `;
-          ordersList.appendChild(orderItem);
-        });
-        previousOrders.style.display = 'block';
-      } else {
-        previousOrders.style.display = 'none';
+          
+          // Pre-fill the order text for editing
+          if (latestOrder.items) {
+            document.getElementById('order-text').value = latestOrder.items;
+          }
+          
+          previousOrdersSection.style.display = 'block';
+        }
       }
       
     } catch (error) {
-      console.error('Error loading orders:', error);
+      console.error('Error loading latest order:', error);
       document.getElementById('previous-orders').style.display = 'none';
     }
   }
@@ -788,16 +747,52 @@
       document.getElementById('diff-whatsapp').checked = false;
       whatsappNumberSection.style.display = 'none';
       
+      // Show customer info AFTER WhatsApp selection
+      if (currentCustomer) {
+        showCustomerInfo(currentCustomer);
+      }
+      
+      // Show order details
       setTimeout(() => {
         document.getElementById('order-details-section').style.display = 'block';
       }, 300);
+      
     } else {
       document.getElementById('same-whatsapp').checked = false;
       document.getElementById('diff-whatsapp').checked = true;
       whatsappNumberSection.style.display = 'block';
       
+      // Hide customer info and order details until WhatsApp number is entered
+      document.getElementById('customer-info').style.display = 'none';
       document.getElementById('order-details-section').style.display = 'none';
     }
+  }
+  
+  function showCustomerInfo(customer) {
+    const customerDetails = document.getElementById('customer-details');
+    const customerInfo = document.getElementById('customer-info');
+    
+    let html = '<div class="info-grid">';
+    
+    if (customer.name) {
+      html += `<div class="info-item"><strong>الاسم:</strong> ${customer.name}</div>`;
+    }
+    
+    if (customer.area) {
+      html += `<div class="info-item"><strong>المنطقة:</strong> ${customer.area}</div>`;
+    }
+    
+    if (customer.address) {
+      html += `<div class="info-item"><strong>العنوان:</strong> ${customer.address}</div>`;
+    }
+    
+    if (customer.location) {
+      html += `<div class="info-item"><strong>الموقع:</strong> ${customer.location}</div>`;
+    }
+    
+    html += '</div>';
+    customerDetails.innerHTML = html;
+    customerInfo.style.display = 'block';
   }
   
   async function submitOrder() {
@@ -857,62 +852,109 @@
         orderType: selectedOrderType,
         phone: mobileNumber,
         whatsapp: whatsappNumber,
-        name: document.getElementById('customer-name').value.trim(),
-        area: document.getElementById('customer-area').value.trim(),
-        address: document.getElementById('customer-address').value.trim(),
-        location: document.getElementById('customer-location').value.trim(),
+        name: currentCustomer ? currentCustomer.name || '' : '',
+        area: currentCustomer ? currentCustomer.area || '' : '',
+        address: currentCustomer ? currentCustomer.address || '' : '',
+        location: currentCustomer ? currentCustomer.location || '' : '',
         orderText: orderText,
-        notes: document.getElementById('notes').value.trim(),
-        deliveryDate: document.getElementById('delivery-date').value,
+        // Removed: deliveryDate and notes as requested
         round: currentRound,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        // For edit mode, include the order ID if available
+        orderId: (selectedOrderType === 'edit' && latestOrder) ? latestOrder.id : null,
+        customerId: currentCustomerId || ''
       };
       
       console.log('Submitting order:', orderData);
       
-      // IMPORTANT FIX: Add timeout and proper error handling
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
       
-      const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(orderData),
-        signal: controller.signal,
-        mode: 'no-cors' // Try this if CORS is blocking
-      });
-      
-      clearTimeout(timeoutId);
-      
-      // If using no-cors mode, we can't read the response
-      // So we'll assume success and check Google Sheet manually
-      console.log('Response received (no-cors mode)');
-      
-      // Show success message (we can't get response in no-cors mode)
-      const successMessage = document.getElementById('success-message');
-      successMessage.innerHTML = `
-        <h3>✅ تم إرسال الطلب بنجاح!</h3>
-        <p>${orderData.name ? 'عزيزي/عزيزتي ' + orderData.name + '، ' : ''}سيتم التواصل معك على واتساب للتأكيد.</p>
-        <p><strong>يرجى التحقق من Google Sheet للتأكد من حفظ البيانات</strong></p>
-        <p>شكراً لاستخدامك HomiCart! 💙</p>
-      `;
-      successMessage.style.display = 'block';
-      
-      // Reset form after delay
-      setTimeout(() => {
-        resetForm();
-        successMessage.style.display = 'none';
-      }, 10000);
+      // Try with mode: 'cors' first
+      try {
+        const response = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(orderData),
+          signal: controller.signal,
+          mode: 'cors'
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const text = await response.text();
+        console.log('Response received:', text);
+        
+        let result;
+        try {
+          result = JSON.parse(text);
+        } catch (parseError) {
+          console.error('Failed to parse JSON:', parseError);
+          throw new Error('Invalid server response');
+        }
+        
+        console.log('Submit result:', result);
+        
+        if (result.success) {
+          const successMessage = document.getElementById('success-message');
+          successMessage.innerHTML = `
+            <h3>✅ ${selectedOrderType === 'new' ? 'تم إرسال الطلب بنجاح!' : 'تم تحديث الطلب بنجاح!'}</h3>
+            <p>${result.orderId ? `رقم الطلب: ${result.orderId}` : ''}</p>
+            <p>${result.customerId ? `رقم العميل: ${result.customerId}` : ''}</p>
+            <p>${orderData.name ? 'عزيزي/عزيزتي ' + orderData.name + '، ' : ''}سيتم التواصل معك على واتساب للتأكيد.</p>
+            <p>شكراً لاستخدامك HomiCart! 💙</p>
+          `;
+          successMessage.style.display = 'block';
+          
+          setTimeout(() => {
+            resetForm();
+            successMessage.style.display = 'none';
+          }, 10000);
+        } else {
+          throw new Error(result.message || 'فشل إرسال الطلب');
+        }
+        
+      } catch (corsError) {
+        console.log('CORS error, trying no-cors mode:', corsError);
+        
+        // Fallback to no-cors mode
+        await fetch(SCRIPT_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(orderData),
+          mode: 'no-cors'
+        });
+        
+        const successMessage = document.getElementById('success-message');
+        successMessage.innerHTML = `
+          <h3>✅ ${selectedOrderType === 'new' ? 'تم إرسال الطلب بنجاح!' : 'تم تحديث الطلب بنجاح!'}</h3>
+          <p>${orderData.name ? 'عزيزي/عزيزتي ' + orderData.name + '، ' : ''}سيتم التواصل معك على واتساب للتأكيد.</p>
+          <p><strong>يرجى التحقق من Google Sheet للتأكد من حفظ البيانات</strong></p>
+          <p>شكراً لاستخدامك HomiCart! 💙</p>
+        `;
+        successMessage.style.display = 'block';
+        
+        setTimeout(() => {
+          resetForm();
+          successMessage.style.display = 'none';
+        }, 10000);
+      }
       
     } catch (error) {
       console.error('Error submitting order:', error);
       
       if (error.name === 'AbortError') {
-        showError('⚠️ انتهت مهلة الاتصال. يرجى التحقق من Google Sheet يدوياً.');
+        showError('⚠️ انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.');
       } else {
-        showError('حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى.');
+        showError('حدث خطأ أثناء إرسال الطلب: ' + error.message);
       }
     } finally {
       submitBtn.disabled = false;
@@ -967,6 +1009,8 @@
     document.getElementById('order-details-section').style.display = 'none';
     
     currentCustomer = null;
+    currentCustomerId = '';
+    latestOrder = null;
     
     const submitText = document.getElementById('submit-text');
     submitText.textContent = 'إرسال الطلب';
