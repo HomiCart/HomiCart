@@ -482,7 +482,7 @@
 </div>
 
 <script>
-  // Google Apps Script Web App URL
+  // Google Apps Script Web App URL - Replace with your actual URL
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxZfynEKvRzKPW4LGbQe59Efq49UIQXUBFew8qUwcAW4u021OnYla85xCf-5M1i6QsMBw/exec';
   
   // Application State
@@ -504,10 +504,22 @@
       console.log('Checking order status...');
       // Add cache-buster to prevent caching
       const response = await fetch(`${SCRIPT_URL}?action=getOrderStatus&_=${Date.now()}`);
-      const text = await response.text();
-      console.log('Raw response:', text);
       
-      const data = JSON.parse(text);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const text = await response.text();
+      console.log('Raw status response:', text);
+      
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Failed to parse JSON:', parseError);
+        throw new Error('Invalid server response');
+      }
+      
       console.log('Status response:', data);
       
       if (data.success) {
@@ -535,7 +547,7 @@
     const statusElement = document.getElementById('round-status');
     const statusText = document.getElementById('round-status-text');
     
-    if (currentOrderStatus === 'Active') {
+    if (currentOrderStatus.toLowerCase() === 'active') {
       statusElement.className = 'round-status';
       statusText.textContent = currentRound ? 
         `✅ الطلبات مفتوحة - ${currentRound}` : 
@@ -551,7 +563,9 @@
   function enableForm() {
     // Enable all form elements
     document.querySelectorAll('input, textarea, button').forEach(element => {
-      element.disabled = false;
+      if (element.id !== 'submit-btn' || currentOrderStatus.toLowerCase() === 'active') {
+        element.disabled = false;
+      }
     });
   }
   
@@ -574,7 +588,7 @@
   // ========== FORM FUNCTIONS ==========
   
   function selectOrderType(type) {
-    if (currentOrderStatus !== 'Active') {
+    if (currentOrderStatus.toLowerCase() !== 'active') {
       alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
       return;
     }
@@ -648,11 +662,23 @@
   async function checkCustomerExists(phone) {
     try {
       console.log('Checking customer:', phone);
-      const response = await fetch(`${SCRIPT_URL}?action=getCustomer&phone=${phone}&_=${Date.now()}`);
+      const response = await fetch(`${SCRIPT_URL}?action=getCustomer&phone=${encodeURIComponent(phone)}&_=${Date.now()}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const text = await response.text();
       console.log('Raw customer response:', text);
       
-      const data = JSON.parse(text);
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Failed to parse JSON:', parseError);
+        throw new Error('Invalid server response');
+      }
+      
       console.log('Customer response:', data);
       
       if (data.success && data.customer) {
@@ -725,11 +751,23 @@
   async function loadPreviousOrders(phone) {
     try {
       console.log('Loading orders for:', phone);
-      const response = await fetch(`${SCRIPT_URL}?action=getOrders&phone=${phone}&_=${Date.now()}`);
+      const response = await fetch(`${SCRIPT_URL}?action=getOrders&phone=${encodeURIComponent(phone)}&_=${Date.now()}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const text = await response.text();
       console.log('Raw orders response:', text);
       
-      const data = JSON.parse(text);
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Failed to parse JSON:', parseError);
+        throw new Error('Invalid server response');
+      }
+      
       console.log('Orders response:', data);
       
       const ordersList = document.getElementById('orders-list');
@@ -791,7 +829,7 @@
       return;
     }
     
-    if (currentOrderStatus !== 'Active') {
+    if (currentOrderStatus.toLowerCase() !== 'active') {
       alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
       return;
     }
@@ -871,7 +909,14 @@
       const text = await response.text();
       console.log('Raw submit response:', text);
       
-      const result = JSON.parse(text);
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Failed to parse JSON:', parseError);
+        throw new Error('Invalid server response');
+      }
+      
       console.log('Submit response:', result);
       
       if (result.success) {
