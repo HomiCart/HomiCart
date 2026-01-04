@@ -153,17 +153,18 @@
     font-size: 16px;
   }
   
-  .customer-info {
+  .customer-info-form {
     background: #f8f9ff;
     border-radius: 10px;
-    padding: 15px;
+    padding: 20px;
     margin: 15px 0;
     border-right: 4px solid #2e5cff;
   }
   
-  .customer-info h4 {
+  .customer-info-form h4 {
     color: #2e5cff;
-    margin-bottom: 10px;
+    margin-bottom: 20px;
+    text-align: center;
   }
   
   .info-grid {
@@ -262,6 +263,16 @@
     text-align: center;
   }
   
+  .warning-message {
+    background: #fff3cd;
+    color: #856404;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    text-align: center;
+    border: 1px solid #ffeaa7;
+  }
+  
   .loading {
     display: inline-block;
     width: 18px;
@@ -282,20 +293,15 @@
     margin-bottom: 20px;
   }
   
-  .radio-group {
-    margin: 15px 0;
-  }
-  
-  .radio-option {
+  .form-row {
     display: flex;
-    align-items: center;
-    margin: 10px 0;
-    cursor: pointer;
+    gap: 15px;
+    margin-bottom: 15px;
   }
   
-  .radio-option input[type="radio"] {
-    width: auto;
-    margin-left: 10px;
+  .form-row .form-group {
+    flex: 1;
+    margin-bottom: 0;
   }
   
   @media (max-width: 768px) {
@@ -317,6 +323,11 @@
     .info-grid {
       grid-template-columns: 1fr;
     }
+    
+    .form-row {
+      flex-direction: column;
+      gap: 0;
+    }
   }
 </style>
 </head>
@@ -334,8 +345,36 @@
     <span id="round-status-text">جاري التحقق من حالة النظام...</span>
   </div>
 
-  <div class="section">
-    <h2 class="section-title">طلب</h2>
+  <!-- Account Verification Section -->
+  <div id="verification-section" class="section">
+    <h2 class="section-title">التحقق من الحساب</h2>
+    
+    <div class="form-group">
+      <label for="mobile-number">رقم الموبايل</label>
+      <input 
+        type="text" 
+        id="mobile-number" 
+        placeholder="05XXXXXXXX" 
+        maxlength="10"
+        oninput="formatMobileNumber(this)"
+      >
+      <div id="mobile-error" class="error"></div>
+      <div id="mobile-success" class="success"></div>
+    </div>
+    
+    <div style="text-align: center;">
+      <button class="btn" onclick="verifyAccount()" id="verify-btn">
+        <span id="verify-text">تحقق من الحساب</span>
+        <span id="verify-loading" class="loading" style="display: none;"></span>
+      </button>
+    </div>
+    
+    <div id="verification-message" style="display: none;"></div>
+  </div>
+
+  <!-- Order Type Selection (Shown after successful verification) -->
+  <div id="order-type-section" class="section" style="display: none;">
+    <h2 class="section-title">اختر نوع الطلب</h2>
     
     <div class="order-type-buttons">
       <button class="type-btn" onclick="selectOrderType('new')">
@@ -347,58 +386,103 @@
     </div>
   </div>
 
-  <div id="mobile-section" class="section" style="display: none;">
-    <h3>رقم الهاتف</h3>
-    <div class="form-group">
-      <label for="mobile-number">رقم الموبايل</label>
-      <input 
-        type="text" 
-        id="mobile-number" 
-        placeholder="05XXXXXXXX" 
-        maxlength="10"
-        oninput="validateMobileNumber()"
-      >
-      <div id="mobile-error" class="error"></div>
-      <div id="mobile-success" class="success"></div>
-    </div>
-  </div>
-
-  <div id="whatsapp-section" class="section" style="display: none;">
-    <h3>خيارات واتساب</h3>
-    <div class="radio-group">
-      <div class="radio-option">
-        <input type="radio" name="whatsapp-option" id="same-whatsapp" onclick="handleWhatsAppSelection('same')">
-        <label for="same-whatsapp">نفس رقم الواتساب</label>
+  <!-- Customer Information Form (Editable) -->
+  <div id="customer-info-form" class="customer-info-form" style="display: none;">
+    <h4>معلومات العميل (يمكن التعديل)</h4>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="customer-name">الاسم *</label>
+        <input 
+          type="text" 
+          id="customer-name" 
+          placeholder="الاسم الكامل"
+        >
       </div>
-      <div class="radio-option">
-        <input type="radio" name="whatsapp-option" id="diff-whatsapp" onclick="handleWhatsAppSelection('different')">
-        <label for="diff-whatsapp">مختلف عن رقم الواتساب</label>
+      
+      <div class="form-group">
+        <label for="customer-phone">رقم الموبايل *</label>
+        <input 
+          type="text" 
+          id="customer-phone" 
+          placeholder="05XXXXXXXX"
+          maxlength="10"
+          readonly
+        >
       </div>
     </div>
     
-    <div id="whatsapp-number-section" style="display: none;">
+    <div class="form-row">
       <div class="form-group">
-        <label for="whatsapp-number">من فضلك أدخل رقم الواتساب</label>
+        <label for="customer-whatsapp">رقم الواتساب *</label>
         <input 
           type="text" 
-          id="whatsapp-number" 
-          placeholder="+966XXXXXXXXX أو 05XXXXXXXX"
+          id="customer-whatsapp" 
+          placeholder="05XXXXXXXX"
+          maxlength="10"
         >
-        <div id="whatsapp-error" class="error"></div>
       </div>
+      
+      <div class="form-group">
+        <label for="customer-area">المنطقة *</label>
+        <input 
+          type="text" 
+          id="customer-area" 
+          placeholder="اسم المنطقة"
+        >
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="customer-address">العنوان *</label>
+      <input 
+        type="text" 
+        id="customer-address" 
+        placeholder="العنوان التفصيلي"
+      >
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="customer-location">الموقع</label>
+        <input 
+          type="text" 
+          id="customer-location" 
+          placeholder="رقم المبنى، الشارع، إلخ"
+        >
+      </div>
+      
+      <div class="form-group">
+        <label for="customer-round">الجولة</label>
+        <input 
+          type="text" 
+          id="customer-round" 
+          placeholder="رقم أو اسم الجولة"
+        >
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="customer-notes">ملاحظات</label>
+      <textarea 
+        id="customer-notes" 
+        rows="3" 
+        placeholder="أي ملاحظات إضافية..."
+      ></textarea>
+    </div>
+    
+    <div style="text-align: center;">
+      <button class="btn" onclick="updateCustomerInfo()" id="update-customer-btn">
+        <span id="update-customer-text">حفظ معلومات العميل</span>
+        <span id="update-customer-loading" class="loading" style="display: none;"></span>
+      </button>
     </div>
   </div>
 
-  <!-- Customer Information - Only shown after WhatsApp selection -->
-  <div id="customer-info" class="customer-info" style="display: none;">
-    <h4>معلومات العميل</h4>
-    <div id="customer-details"></div>
-  </div>
-
-  <!-- Previous Orders - Only for EDIT mode -->
-  <div id="previous-orders" class="previous-orders" style="display: none;">
-    <h4>آخر طلب</h4>
-    <div id="latest-order"></div>
+  <!-- Existing Order Details (For Edit Mode) -->
+  <div id="existing-order-section" class="previous-orders" style="display: none;">
+    <h4>الطلب الحالي</h4>
+    <div id="existing-order-details"></div>
   </div>
 
   <!-- Order Details Section -->
@@ -426,6 +510,8 @@
   <div id="success-message" class="info-message" style="display: none;"></div>
   
   <div id="error-message" class="error-message" style="display: none;"></div>
+  
+  <div id="warning-message" class="warning-message" style="display: none;"></div>
 </div>
 
 <script>
@@ -435,14 +521,34 @@
   // Application State
   let selectedOrderType = null;
   let currentCustomer = null;
+  let currentOrder = null;
   let currentOrderStatus = 'checking';
   let currentRound = '';
   let currentCustomerId = '';
-  let latestOrder = null;
+  let currentCustomerPhone = '';
+  let isAccountVerified = false;
+  let isAccountActive = false;
   
   document.addEventListener('DOMContentLoaded', function() {
     checkOrderStatus();
   });
+  
+  function formatMobileNumber(input) {
+    // Remove all non-numeric characters
+    let value = input.value.replace(/\D/g, '');
+    
+    // Ensure it starts with 05 and has 10 digits
+    if (value.length > 0 && !value.startsWith('05')) {
+      value = '05' + value;
+    }
+    
+    // Limit to 10 digits
+    if (value.length > 10) {
+      value = value.substring(0, 10);
+    }
+    
+    input.value = value;
+  }
   
   async function checkOrderStatus() {
     try {
@@ -537,50 +643,18 @@
     });
   }
   
-  function selectOrderType(type) {
-    if (currentOrderStatus.toLowerCase() !== 'active') {
-      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
-      return;
-    }
-    
-    selectedOrderType = type;
-    
-    document.querySelectorAll('.type-btn').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    event.target.classList.add('active');
-    
-    document.getElementById('mobile-section').style.display = 'block';
-    
-    document.getElementById('whatsapp-section').style.display = 'none';
-    document.getElementById('customer-info').style.display = 'none';
-    document.getElementById('previous-orders').style.display = 'none';
-    document.getElementById('order-details-section').style.display = 'none';
-    
-    document.getElementById('mobile-number').value = '';
-    document.getElementById('mobile-error').textContent = '';
-    document.getElementById('mobile-success').textContent = '';
-    
+  async function verifyAccount() {
     hideMessages();
     
-    const submitText = document.getElementById('submit-text');
-    submitText.textContent = type === 'new' ? 'إرسال الطلب' : 'تحديث الطلب';
-    
-    // Reset customer data
-    currentCustomer = null;
-    currentCustomerId = '';
-    latestOrder = null;
-  }
-  
-  async function validateMobileNumber() {
     const mobileInput = document.getElementById('mobile-number');
     const mobileNumber = mobileInput.value.trim();
     const errorElement = document.getElementById('mobile-error');
     const successElement = document.getElementById('mobile-success');
+    const verificationMessage = document.getElementById('verification-message');
     
     errorElement.textContent = '';
     successElement.textContent = '';
-    hideMessages();
+    verificationMessage.style.display = 'none';
     
     const mobileRegex = /^05\d{8}$/;
     
@@ -594,25 +668,21 @@
       return false;
     }
     
-    successElement.textContent = '✓ رقم هاتف صحيح';
+    // Show loading
+    const verifyBtn = document.getElementById('verify-btn');
+    const verifyLoading = document.getElementById('verify-loading');
+    const verifyText = document.getElementById('verify-text');
+    verifyBtn.disabled = true;
+    verifyLoading.style.display = 'inline-block';
+    verifyText.textContent = 'جاري التحقق...';
     
-    // Check if customer exists
-    await checkCustomerExists(mobileNumber);
-    
-    // Show WhatsApp options
-    document.getElementById('whatsapp-section').style.display = 'block';
-    
-    return true;
-  }
-  
-  async function checkCustomerExists(phone) {
     try {
-      console.log('Checking customer:', phone);
+      console.log('Verifying account for:', mobileNumber);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       
-      const response = await fetch(`${SCRIPT_URL}?action=getCustomer&phone=${encodeURIComponent(phone)}&_=${Date.now()}`, {
+      const response = await fetch(`${SCRIPT_URL}?action=verifyAccount&phone=${encodeURIComponent(mobileNumber)}&_=${Date.now()}`, {
         signal: controller.signal
       });
       
@@ -623,7 +693,7 @@
       }
       
       const text = await response.text();
-      console.log('Raw customer response:', text);
+      console.log('Raw verification response:', text);
       
       let data;
       try {
@@ -633,53 +703,143 @@
         throw new Error('Invalid server response');
       }
       
-      console.log('Customer response:', data);
+      console.log('Verification response:', data);
+      
+      if (data.success) {
+        if (data.accountStatus === 'Active') {
+          isAccountVerified = true;
+          isAccountActive = true;
+          currentCustomerPhone = mobileNumber;
+          currentCustomerId = data.customerId || '';
+          
+          successElement.textContent = '✓ حساب نشط - يمكنك المتابعة';
+          
+          // Show order type selection
+          document.getElementById('order-type-section').style.display = 'block';
+          
+          // Load customer data
+          await loadCustomerData();
+          
+        } else if (data.accountStatus === 'Inactive') {
+          isAccountVerified = true;
+          isAccountActive = false;
+          
+          verificationMessage.innerHTML = `
+            <div class="warning-message">
+              <h3>⚠️ الحساب غير نشط</h3>
+              <p>حسابك غير نشط حالياً. يرجى التواصل مع الإدارة لتفعيل الحساب.</p>
+              <p>لا يمكنك تقديم طلبات جديدة حتى يتم تفعيل حسابك.</p>
+            </div>
+          `;
+          verificationMessage.style.display = 'block';
+        } else if (data.accountStatus === 'not_found') {
+          verificationMessage.innerHTML = `
+            <div class="info-message">
+              <h3>🆕 حساب جديد</h3>
+              <p>لم يتم العثور على حساب بهذا الرقم.</p>
+              <p>سوف يتم إنشاء حساب جديد لك عند تقديم أول طلب.</p>
+            </div>
+          `;
+          verificationMessage.style.display = 'block';
+          
+          isAccountVerified = true;
+          isAccountActive = true; // Allow new account creation
+          currentCustomerPhone = mobileNumber;
+          
+          // Show order type selection (only new order for new customers)
+          document.getElementById('order-type-section').style.display = 'block';
+          document.querySelector('.type-btn[onclick*="edit"]').style.display = 'none';
+        }
+      } else {
+        throw new Error(data.message || 'فشل التحقق من الحساب');
+      }
+      
+    } catch (error) {
+      console.error('Error verifying account:', error);
+      
+      if (error.name === 'AbortError') {
+        errorElement.textContent = '⚠️ انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.';
+      } else {
+        errorElement.textContent = 'حدث خطأ أثناء التحقق: ' + error.message;
+      }
+    } finally {
+      verifyBtn.disabled = false;
+      verifyLoading.style.display = 'none';
+      verifyText.textContent = 'تحقق من الحساب';
+    }
+  }
+  
+  async function loadCustomerData() {
+    if (!currentCustomerId) {
+      console.log('No customer ID, new customer');
+      // Set phone number for new customer
+      document.getElementById('customer-phone').value = currentCustomerPhone;
+      document.getElementById('customer-whatsapp').value = currentCustomerPhone;
+      return;
+    }
+    
+    try {
+      console.log('Loading customer data for ID:', currentCustomerId);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch(`${SCRIPT_URL}?action=getCustomerById&customerId=${encodeURIComponent(currentCustomerId)}&_=${Date.now()}`, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const text = await response.text();
+      console.log('Raw customer data response:', text);
+      
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Failed to parse JSON:', parseError);
+        throw new Error('Invalid server response');
+      }
+      
+      console.log('Customer data response:', data);
       
       if (data.success && data.customer) {
         currentCustomer = data.customer;
-        currentCustomerId = data.customer.id;
         
-        // Store customer info but DON'T show it yet
-        // It will be shown only after WhatsApp selection
-        
-        // Auto-select same WhatsApp if exists
-        if (data.customer.whatsapp === phone || data.customer.whatsapp) {
-          document.getElementById('same-whatsapp').checked = true;
-        }
-        
-        // For EDIT mode: Load the latest order
-        if (selectedOrderType === 'edit' && currentCustomerId) {
-          await loadLatestOrder(currentCustomerId);
-        }
-        
-      } else {
-        // New customer
-        currentCustomer = { phone: phone };
-        currentCustomerId = '';
-        console.log('New customer, no CustomerID yet');
+        // Fill customer form
+        document.getElementById('customer-name').value = currentCustomer.name || '';
+        document.getElementById('customer-phone').value = currentCustomer.phone || currentCustomerPhone;
+        document.getElementById('customer-whatsapp').value = currentCustomer.whatsapp || currentCustomer.phone || currentCustomerPhone;
+        document.getElementById('customer-area').value = currentCustomer.area || '';
+        document.getElementById('customer-address').value = currentCustomer.address || '';
+        document.getElementById('customer-location').value = currentCustomer.location || '';
+        document.getElementById('customer-round').value = currentRound;
+        document.getElementById('customer-notes').value = currentCustomer.notes || '';
       }
       
     } catch (error) {
-      console.error('Error checking customer:', error);
-      currentCustomer = { phone: phone };
-      currentCustomerId = '';
-      
-      if (error.name === 'AbortError') {
-        showError('⚠️ انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.');
-      }
+      console.error('Error loading customer data:', error);
+      showError('⚠️ تعذر تحميل بيانات العميل. يمكنك المتابعة.');
     }
   }
   
-  async function loadLatestOrder(customerId) {
+  async function loadOrderData() {
+    if (!currentCustomerId) {
+      console.log('No customer ID, no existing order');
+      return;
+    }
+    
     try {
-      console.log('Loading latest order for customer:', customerId);
+      console.log('Loading order data for customer ID:', currentCustomerId);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       
-      // We need a new API endpoint to get orders by CustomerID
-      // For now, we'll use the existing getOrders endpoint
-      const response = await fetch(`${SCRIPT_URL}?action=getOrders&phone=${encodeURIComponent(currentCustomer.phone)}&_=${Date.now()}`, {
+      const response = await fetch(`${SCRIPT_URL}?action=getOrderByCustomer&customerId=${encodeURIComponent(currentCustomerId)}&_=${Date.now()}`, {
         signal: controller.signal
       });
       
@@ -690,7 +850,7 @@
       }
       
       const text = await response.text();
-      console.log('Raw orders response:', text);
+      console.log('Raw order data response:', text);
       
       let data;
       try {
@@ -700,99 +860,193 @@
         throw new Error('Invalid server response');
       }
       
-      console.log('Orders response:', data);
+      console.log('Order data response:', data);
       
-      if (data.success && data.orders && data.orders.length > 0) {
-        // Filter orders by CustomerID (if available)
-        const customerOrders = data.orders.filter(order => 
-          order.customerId === customerId || order.customerId.includes(customerId)
-        );
+      if (data.success && data.order) {
+        currentOrder = data.order;
         
-        if (customerOrders.length > 0) {
-          // Get the latest order (assuming orders are in chronological order)
-          latestOrder = customerOrders[customerOrders.length - 1];
-          
-          // Show the latest order section
-          const latestOrderDiv = document.getElementById('latest-order');
-          const previousOrdersSection = document.getElementById('previous-orders');
-          
-          latestOrderDiv.innerHTML = `
-            <div class="order-item">
-              <p><strong>التاريخ:</strong> ${latestOrder.date || latestOrder.timestamp || 'غير معروف'}</p>
-              <p><strong>الطلب:</strong> ${latestOrder.items || 'لا توجد تفاصيل'}</p>
-              <p><strong>الحالة:</strong> ${latestOrder.status || 'جديد'}</p>
-            </div>
-          `;
-          
-          // Pre-fill the order text for editing
-          if (latestOrder.items) {
-            document.getElementById('order-text').value = latestOrder.items;
-          }
-          
-          previousOrdersSection.style.display = 'block';
+        // Show existing order section
+        const existingOrderSection = document.getElementById('existing-order-section');
+        const existingOrderDetails = document.getElementById('existing-order-details');
+        
+        existingOrderDetails.innerHTML = `
+          <div class="order-item">
+            <p><strong>رقم الطلب:</strong> ${currentOrder.id || 'غير معروف'}</p>
+            <p><strong>التاريخ:</strong> ${currentOrder.date || currentOrder.timestamp || 'غير معروف'}</p>
+            <p><strong>الطلب الحالي:</strong> ${currentOrder.items || 'لا توجد تفاصيل'}</p>
+            <p><strong>الحالة:</strong> ${currentOrder.status || 'جديد'}</p>
+          </div>
+        `;
+        
+        // Pre-fill the order text for editing
+        if (currentOrder.items) {
+          document.getElementById('order-text').value = currentOrder.items;
         }
+        
+        existingOrderSection.style.display = 'block';
+      } else {
+        // No existing order
+        document.getElementById('existing-order-section').style.display = 'none';
       }
       
     } catch (error) {
-      console.error('Error loading latest order:', error);
-      document.getElementById('previous-orders').style.display = 'none';
+      console.error('Error loading order data:', error);
+      document.getElementById('existing-order-section').style.display = 'none';
     }
   }
   
-  function handleWhatsAppSelection(option) {
-    const whatsappNumberSection = document.getElementById('whatsapp-number-section');
+  function selectOrderType(type) {
+    if (currentOrderStatus.toLowerCase() !== 'active') {
+      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
+      return;
+    }
     
-    if (option === 'same') {
-      document.getElementById('same-whatsapp').checked = true;
-      document.getElementById('diff-whatsapp').checked = false;
-      whatsappNumberSection.style.display = 'none';
+    if (!isAccountVerified || !isAccountActive) {
+      alert('يجب التحقق من الحساب أولاً.');
+      return;
+    }
+    
+    selectedOrderType = type;
+    
+    document.querySelectorAll('.type-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Show customer info form
+    document.getElementById('customer-info-form').style.display = 'block';
+    
+    // For edit mode, load existing order
+    if (type === 'edit') {
+      loadOrderData();
+    } else {
+      document.getElementById('existing-order-section').style.display = 'none';
+    }
+    
+    // Show order details section
+    document.getElementById('order-details-section').style.display = 'block';
+    
+    hideMessages();
+  }
+  
+  async function updateCustomerInfo() {
+    hideMessages();
+    
+    // Validate required fields
+    const name = document.getElementById('customer-name').value.trim();
+    const phone = document.getElementById('customer-phone').value.trim();
+    const whatsapp = document.getElementById('customer-whatsapp').value.trim();
+    const area = document.getElementById('customer-area').value.trim();
+    const address = document.getElementById('customer-address').value.trim();
+    
+    if (!name) {
+      showError('الاسم مطلوب');
+      return;
+    }
+    
+    if (!phone) {
+      showError('رقم الموبايل مطلوب');
+      return;
+    }
+    
+    if (!whatsapp) {
+      showError('رقم الواتساب مطلوب');
+      return;
+    }
+    
+    if (!area) {
+      showError('المنطقة مطلوبة');
+      return;
+    }
+    
+    if (!address) {
+      showError('العنوان مطلوب');
+      return;
+    }
+    
+    const location = document.getElementById('customer-location').value.trim();
+    const round = document.getElementById('customer-round').value.trim();
+    const notes = document.getElementById('customer-notes').value.trim();
+    
+    // Show loading
+    const updateBtn = document.getElementById('update-customer-btn');
+    const updateLoading = document.getElementById('update-customer-loading');
+    const updateText = document.getElementById('update-customer-text');
+    updateBtn.disabled = true;
+    updateLoading.style.display = 'inline-block';
+    updateText.textContent = 'جاري الحفظ...';
+    
+    try {
+      const customerData = {
+        action: 'updateCustomer',
+        customerId: currentCustomerId || '',
+        name: name,
+        phone: phone,
+        whatsapp: whatsapp,
+        area: area,
+        address: address,
+        location: location,
+        notes: notes,
+        round: round || currentRound
+      };
       
-      // Show customer info AFTER WhatsApp selection
-      if (currentCustomer) {
-        showCustomerInfo(currentCustomer);
+      console.log('Updating customer:', customerData);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(customerData),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      // Show order details
-      setTimeout(() => {
-        document.getElementById('order-details-section').style.display = 'block';
-      }, 300);
+      const text = await response.text();
+      console.log('Update response:', text);
       
-    } else {
-      document.getElementById('same-whatsapp').checked = false;
-      document.getElementById('diff-whatsapp').checked = true;
-      whatsappNumberSection.style.display = 'block';
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Failed to parse JSON:', parseError);
+        throw new Error('Invalid server response');
+      }
       
-      // Hide customer info and order details until WhatsApp number is entered
-      document.getElementById('customer-info').style.display = 'none';
-      document.getElementById('order-details-section').style.display = 'none';
+      console.log('Update result:', result);
+      
+      if (result.success) {
+        // Update customer ID if this is a new customer
+        if (!currentCustomerId && result.customerId) {
+          currentCustomerId = result.customerId;
+        }
+        
+        showSuccess('✅ تم حفظ معلومات العميل بنجاح');
+      } else {
+        throw new Error(result.message || 'فشل حفظ معلومات العميل');
+      }
+      
+    } catch (error) {
+      console.error('Error updating customer:', error);
+      
+      if (error.name === 'AbortError') {
+        showError('⚠️ انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.');
+      } else {
+        showError('حدث خطأ أثناء حفظ معلومات العميل: ' + error.message);
+      }
+    } finally {
+      updateBtn.disabled = false;
+      updateLoading.style.display = 'none';
+      updateText.textContent = 'حفظ معلومات العميل';
     }
-  }
-  
-  function showCustomerInfo(customer) {
-    const customerDetails = document.getElementById('customer-details');
-    const customerInfo = document.getElementById('customer-info');
-    
-    let html = '<div class="info-grid">';
-    
-    if (customer.name) {
-      html += `<div class="info-item"><strong>الاسم:</strong> ${customer.name}</div>`;
-    }
-    
-    if (customer.area) {
-      html += `<div class="info-item"><strong>المنطقة:</strong> ${customer.area}</div>`;
-    }
-    
-    if (customer.address) {
-      html += `<div class="info-item"><strong>العنوان:</strong> ${customer.address}</div>`;
-    }
-    
-    if (customer.location) {
-      html += `<div class="info-item"><strong>الموقع:</strong> ${customer.location}</div>`;
-    }
-    
-    html += '</div>';
-    customerDetails.innerHTML = html;
-    customerInfo.style.display = 'block';
   }
   
   async function submitOrder() {
@@ -808,29 +1062,21 @@
       return;
     }
     
-    const mobileNumber = document.getElementById('mobile-number').value.trim();
-    if (!validateMobileFormat(mobileNumber)) {
-      alert('من فضلك أدخل رقم هاتف صحيح أولاً');
+    if (!isAccountVerified || !isAccountActive) {
+      alert('يجب التحقق من الحساب أولاً.');
       return;
     }
     
-    const sameWhatsApp = document.getElementById('same-whatsapp').checked;
-    const diffWhatsApp = document.getElementById('diff-whatsapp').checked;
+    // Validate customer info is saved first
+    const name = document.getElementById('customer-name').value.trim();
+    const phone = document.getElementById('customer-phone').value.trim();
+    const whatsapp = document.getElementById('customer-whatsapp').value.trim();
+    const area = document.getElementById('customer-area').value.trim();
+    const address = document.getElementById('customer-address').value.trim();
     
-    if (!sameWhatsApp && !diffWhatsApp) {
-      alert('من فضلك اختر خيار الواتساب أولاً');
+    if (!name || !phone || !whatsapp || !area || !address) {
+      alert('من فضلك أكمل معلومات العميل أولاً ثم اضغط على "حفظ معلومات العميل"');
       return;
-    }
-    
-    let whatsappNumber = '';
-    if (sameWhatsApp) {
-      whatsappNumber = mobileNumber;
-    } else {
-      whatsappNumber = document.getElementById('whatsapp-number').value.trim();
-      if (!whatsappNumber) {
-        alert('من فضلك أدخل رقم واتساب صحيح أولاً');
-        return;
-      }
     }
     
     const orderText = document.getElementById('order-text').value.trim();
@@ -847,39 +1093,29 @@
     submitText.textContent = 'جاري الإرسال...';
     
     try {
-      const orderData = {
-        action: 'submitOrder',
-        orderType: selectedOrderType,
-        phone: mobileNumber,
-        whatsapp: whatsappNumber,
-        name: currentCustomer ? currentCustomer.name || '' : '',
-        area: currentCustomer ? currentCustomer.area || '' : '',
-        address: currentCustomer ? currentCustomer.address || '' : '',
-        location: currentCustomer ? currentCustomer.location || '' : '',
-        orderText: orderText,
-        // Removed: deliveryDate and notes as requested
-        round: currentRound,
-        timestamp: new Date().toISOString(),
-        // For edit mode, include the order ID if available
-        orderId: (selectedOrderType === 'edit' && latestOrder) ? latestOrder.id : null,
-        customerId: currentCustomerId || ''
-      };
+      let result;
       
-      console.log('Submitting order:', orderData);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-      
-      // Try with mode: 'cors' first
-      try {
+      if (selectedOrderType === 'edit' && currentOrder) {
+        // Update existing order
+        const orderData = {
+          action: 'updateOrder',
+          orderId: currentOrder.id,
+          orderText: orderText,
+          status: 'تم التحديث'
+        };
+        
+        console.log('Updating order:', orderData);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
         const response = await fetch(SCRIPT_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(orderData),
-          signal: controller.signal,
-          mode: 'cors'
+          signal: controller.signal
         });
         
         clearTimeout(timeoutId);
@@ -889,9 +1125,8 @@
         }
         
         const text = await response.text();
-        console.log('Response received:', text);
+        console.log('Update order response:', text);
         
-        let result;
         try {
           result = JSON.parse(text);
         } catch (parseError) {
@@ -899,45 +1134,65 @@
           throw new Error('Invalid server response');
         }
         
-        console.log('Submit result:', result);
+      } else {
+        // Submit new order
+        const location = document.getElementById('customer-location').value.trim();
+        const round = document.getElementById('customer-round').value.trim();
+        const notes = document.getElementById('customer-notes').value.trim();
         
-        if (result.success) {
-          const successMessage = document.getElementById('success-message');
-          successMessage.innerHTML = `
-            <h3>✅ ${selectedOrderType === 'new' ? 'تم إرسال الطلب بنجاح!' : 'تم تحديث الطلب بنجاح!'}</h3>
-            <p>${result.orderId ? `رقم الطلب: ${result.orderId}` : ''}</p>
-            <p>${result.customerId ? `رقم العميل: ${result.customerId}` : ''}</p>
-            <p>${orderData.name ? 'عزيزي/عزيزتي ' + orderData.name + '، ' : ''}سيتم التواصل معك على واتساب للتأكيد.</p>
-            <p>شكراً لاستخدامك HomiCart! 💙</p>
-          `;
-          successMessage.style.display = 'block';
-          
-          setTimeout(() => {
-            resetForm();
-            successMessage.style.display = 'none';
-          }, 10000);
-        } else {
-          throw new Error(result.message || 'فشل إرسال الطلب');
-        }
+        const orderData = {
+          action: 'submitOrder',
+          phone: phone,
+          whatsapp: whatsapp,
+          name: name,
+          area: area,
+          address: address,
+          location: location,
+          orderText: orderText,
+          notes: notes,
+          round: round || currentRound
+        };
         
-      } catch (corsError) {
-        console.log('CORS error, trying no-cors mode:', corsError);
+        console.log('Submitting new order:', orderData);
         
-        // Fallback to no-cors mode
-        await fetch(SCRIPT_URL, {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        const response = await fetch(SCRIPT_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(orderData),
-          mode: 'no-cors'
+          signal: controller.signal
         });
         
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const text = await response.text();
+        console.log('Submit order response:', text);
+        
+        try {
+          result = JSON.parse(text);
+        } catch (parseError) {
+          console.error('Failed to parse JSON:', parseError);
+          throw new Error('Invalid server response');
+        }
+      }
+      
+      console.log('Submit/Update result:', result);
+      
+      if (result.success) {
         const successMessage = document.getElementById('success-message');
         successMessage.innerHTML = `
           <h3>✅ ${selectedOrderType === 'new' ? 'تم إرسال الطلب بنجاح!' : 'تم تحديث الطلب بنجاح!'}</h3>
-          <p>${orderData.name ? 'عزيزي/عزيزتي ' + orderData.name + '، ' : ''}سيتم التواصل معك على واتساب للتأكيد.</p>
-          <p><strong>يرجى التحقق من Google Sheet للتأكد من حفظ البيانات</strong></p>
+          <p>${result.orderId ? `رقم الطلب: ${result.orderId}` : ''}</p>
+          <p>${result.customerId ? `رقم العميل: ${result.customerId}` : ''}</p>
+          <p>عزيزي/عزيزتي ${name}، سيتم التواصل معك على واتساب للتأكيد.</p>
           <p>شكراً لاستخدامك HomiCart! 💙</p>
         `;
         successMessage.style.display = 'block';
@@ -946,6 +1201,8 @@
           resetForm();
           successMessage.style.display = 'none';
         }, 10000);
+      } else {
+        throw new Error(result.message || 'فشل إرسال الطلب');
       }
       
     } catch (error) {
@@ -963,11 +1220,6 @@
     }
   }
   
-  function validateMobileFormat(phone) {
-    const mobileRegex = /^05\d{8}$/;
-    return mobileRegex.test(phone);
-  }
-  
   function showError(message) {
     const errorMessage = document.getElementById('error-message');
     errorMessage.innerHTML = `<p>${message}</p>`;
@@ -978,21 +1230,24 @@
     }, 5000);
   }
   
+  function showSuccess(message) {
+    const successMessage = document.getElementById('success-message');
+    successMessage.innerHTML = `<p>${message}</p>`;
+    successMessage.style.display = 'block';
+    
+    setTimeout(() => {
+      successMessage.style.display = 'none';
+    }, 5000);
+  }
+  
   function hideMessages() {
     document.getElementById('success-message').style.display = 'none';
     document.getElementById('error-message').style.display = 'none';
+    document.getElementById('warning-message').style.display = 'none';
   }
   
   function resetForm() {
-    document.querySelectorAll('.type-btn').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    selectedOrderType = null;
-    
-    document.querySelectorAll('input[type="radio"]').forEach(radio => {
-      radio.checked = false;
-    });
-    
+    // Reset all form elements
     document.querySelectorAll('input, textarea').forEach(input => {
       input.value = '';
     });
@@ -1001,19 +1256,28 @@
       element.textContent = '';
     });
     
-    document.getElementById('mobile-section').style.display = 'none';
-    document.getElementById('whatsapp-section').style.display = 'none';
-    document.getElementById('whatsapp-number-section').style.display = 'none';
-    document.getElementById('customer-info').style.display = 'none';
-    document.getElementById('previous-orders').style.display = 'none';
+    // Hide all sections except verification
+    document.getElementById('order-type-section').style.display = 'none';
+    document.getElementById('customer-info-form').style.display = 'none';
+    document.getElementById('existing-order-section').style.display = 'none';
     document.getElementById('order-details-section').style.display = 'none';
     
-    currentCustomer = null;
-    currentCustomerId = '';
-    latestOrder = null;
+    // Reset customer form phone
+    document.getElementById('customer-phone').removeAttribute('readonly');
     
-    const submitText = document.getElementById('submit-text');
-    submitText.textContent = 'إرسال الطلب';
+    // Show edit button again
+    document.querySelector('.type-btn[onclick*="edit"]').style.display = 'block';
+    
+    // Reset state
+    selectedOrderType = null;
+    currentCustomer = null;
+    currentOrder = null;
+    currentCustomerId = '';
+    currentCustomerPhone = '';
+    isAccountVerified = false;
+    isAccountActive = false;
+    
+    hideMessages();
   }
 </script>
 </body>
