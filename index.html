@@ -502,18 +502,22 @@
   async function checkOrderStatus() {
     try {
       console.log('Checking order status...');
-      const response = await fetch(`${SCRIPT_URL}?action=getOrderStatus&timestamp=${Date.now()}`);
-      const data = await response.json();
+      // Add cache-buster to prevent caching
+      const response = await fetch(`${SCRIPT_URL}?action=getOrderStatus&_=${Date.now()}`);
+      const text = await response.text();
+      console.log('Raw response:', text);
       
+      const data = JSON.parse(text);
       console.log('Status response:', data);
       
       if (data.success) {
-        currentOrderStatus = data.status;
+        currentOrderStatus = data.status || 'Active';
         currentRound = data.round || '';
         updateOrderStatusDisplay();
       } else {
         // Show error but allow form (fail-open)
         currentOrderStatus = 'Active';
+        currentRound = '';
         updateOrderStatusDisplay();
         showError('⚠️ تعذر التحقق من حالة النظام. يمكنك المحاولة.');
       }
@@ -521,6 +525,7 @@
       console.error('Error checking order status:', error);
       // Default to active if there's an error (fail-open)
       currentOrderStatus = 'Active';
+      currentRound = '';
       updateOrderStatusDisplay();
       showError('⚠️ تعذر الاتصال بالخادم. يمكنك المحاولة.');
     }
@@ -643,9 +648,11 @@
   async function checkCustomerExists(phone) {
     try {
       console.log('Checking customer:', phone);
-      const response = await fetch(`${SCRIPT_URL}?action=getCustomer&phone=${phone}&timestamp=${Date.now()}`);
-      const data = await response.json();
+      const response = await fetch(`${SCRIPT_URL}?action=getCustomer&phone=${phone}&_=${Date.now()}`);
+      const text = await response.text();
+      console.log('Raw customer response:', text);
       
+      const data = JSON.parse(text);
       console.log('Customer response:', data);
       
       if (data.success && data.customer) {
@@ -718,9 +725,11 @@
   async function loadPreviousOrders(phone) {
     try {
       console.log('Loading orders for:', phone);
-      const response = await fetch(`${SCRIPT_URL}?action=getOrders&phone=${phone}&timestamp=${Date.now()}`);
-      const data = await response.json();
+      const response = await fetch(`${SCRIPT_URL}?action=getOrders&phone=${phone}&_=${Date.now()}`);
+      const text = await response.text();
+      console.log('Raw orders response:', text);
       
+      const data = JSON.parse(text);
       console.log('Orders response:', data);
       
       const ordersList = document.getElementById('orders-list');
@@ -850,17 +859,19 @@
       
       console.log('Submitting order:', orderData);
       
-      // Save to Google Sheets
+      // Save to Google Sheets using POST
       const response = await fetch(SCRIPT_URL, {
         method: 'POST',
-        mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(orderData)
       });
       
-      const result = await response.json();
+      const text = await response.text();
+      console.log('Raw submit response:', text);
+      
+      const result = JSON.parse(text);
       console.log('Submit response:', result);
       
       if (result.success) {
