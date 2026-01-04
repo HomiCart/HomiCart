@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HomiCart - نظام الطلبات</title>
-<!-- Google Sheets API -->
-<script src="https://apis.google.com/js/api.js"></script>
 <style>
   * {
     margin: 0;
@@ -36,7 +34,7 @@
   }
   
   .container { 
-    max-width: 1200px; 
+    max-width: 800px; 
     margin: 30px auto; 
     background: #fff; 
     border-radius: 16px; 
@@ -53,7 +51,7 @@
     margin: 20px 0;
     text-align: center;
     font-weight: bold;
-    display: none;
+    font-size: 18px;
   }
   
   .round-status.closed {
@@ -62,18 +60,18 @@
   
   /* Sections */
   .section { 
-    margin-bottom: 40px; 
-    padding-bottom: 25px;
+    margin-bottom: 30px; 
+    padding-bottom: 20px;
     border-bottom: 1px solid #eee;
   }
   
   .section-title {
     text-align: center;
     color: #2e5cff;
-    margin: 0 0 30px 0;
-    font-size: 28px;
+    margin: 0 0 20px 0;
+    font-size: 24px;
     position: relative;
-    padding-bottom: 15px;
+    padding-bottom: 10px;
   }
   
   .section-title::after {
@@ -82,7 +80,7 @@
     bottom: 0;
     right: 50%;
     transform: translateX(50%);
-    width: 100px;
+    width: 80px;
     height: 4px;
     background: linear-gradient(90deg, #2e5cff, #6c8eff);
     border-radius: 2px;
@@ -92,7 +90,7 @@
   .order-type-buttons {
     display: flex;
     justify-content: center;
-    gap: 20px;
+    gap: 15px;
     margin-top: 20px;
     flex-wrap: wrap;
   }
@@ -101,35 +99,42 @@
     background: #2e5cff;
     color: white;
     border: none;
-    border-radius: 12px;
-    padding: 16px 30px;
+    border-radius: 10px;
+    padding: 15px 25px;
     cursor: pointer;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     transition: all 0.3s ease;
-    min-width: 180px;
+    min-width: 160px;
     text-align: center;
   }
   
   .type-btn:hover {
     background: #1e4ae0;
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(46, 92, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(46, 92, 255, 0.2);
   }
   
   .type-btn.active {
     background: #1e4ae0;
-    box-shadow: 0 8px 20px rgba(46, 92, 255, 0.35);
+    box-shadow: 0 6px 15px rgba(46, 92, 255, 0.3);
+  }
+  
+  .type-btn:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
   }
   
   /* Form Elements */
   input, select, textarea { 
     width: 100%; 
-    padding: 14px; 
-    border-radius: 10px; 
+    padding: 12px; 
+    border-radius: 8px; 
     border: 1px solid #ddd; 
     margin-top: 8px; 
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     box-sizing: border-box; 
     font-size: 16px;
     transition: all 0.3s ease;
@@ -157,46 +162,45 @@
   .customer-info {
     background: #f8f9ff;
     border-radius: 10px;
-    padding: 20px;
-    margin: 20px 0;
+    padding: 15px;
+    margin: 15px 0;
     border-right: 4px solid #2e5cff;
   }
   
   .customer-info h4 {
     color: #2e5cff;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
   }
   
-  .customer-info p {
-    margin: 8px 0;
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 10px;
   }
   
-  .customer-info .info-row {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-  }
-  
-  .customer-info .info-item {
-    flex: 1;
-    min-width: 200px;
+  .info-item {
+    background: white;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
   }
   
   /* Previous Orders */
   .previous-orders {
     background: #fff8e1;
     border-radius: 10px;
-    padding: 20px;
-    margin: 20px 0;
+    padding: 15px;
+    margin: 15px 0;
     border-right: 4px solid #ff9800;
   }
   
   .order-item {
     background: white;
-    padding: 15px;
-    border-radius: 8px;
-    margin: 10px 0;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    padding: 12px;
+    border-radius: 6px;
+    margin: 8px 0;
+    border: 1px solid #eee;
   }
   
   /* Buttons */
@@ -204,20 +208,27 @@
     background: linear-gradient(135deg, #2e5cff, #6c8eff); 
     color: white; 
     border: none; 
-    border-radius: 10px; 
-    padding: 16px 32px; 
+    border-radius: 8px; 
+    padding: 14px 28px; 
     cursor: pointer; 
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 600;
     transition: all 0.3s ease;
     display: inline-block;
     text-align: center;
-    margin: 10px 5px;
+    margin: 8px 4px;
   }
   
   .btn:hover { 
-    transform: translateY(-3px);
-    box-shadow: 0 10px 25px rgba(46, 92, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(46, 92, 255, 0.25);
+  }
+  
+  .btn:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
   }
   
   .btn-secondary {
@@ -226,15 +237,7 @@
   
   .btn-secondary:hover {
     background: linear-gradient(135deg, #5a6268, #727b84);
-    box-shadow: 0 10px 25px rgba(108, 117, 125, 0.3);
-  }
-  
-  .btn-success {
-    background: linear-gradient(135deg, #4CAF50, #45a049);
-  }
-  
-  .btn-danger {
-    background: linear-gradient(135deg, #f44336, #d32f2f);
+    box-shadow: 0 6px 15px rgba(108, 117, 125, 0.25);
   }
   
   /* Messages */
@@ -242,7 +245,6 @@
     color: #dc3545; 
     margin-top: 5px; 
     font-size: 14px;
-    display: block;
   }
   
   .success { 
@@ -260,16 +262,25 @@
     text-align: center;
   }
   
+  .error-message {
+    background: #ffebee;
+    color: #c62828;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    text-align: center;
+  }
+  
   /* Loading */
   .loading {
     display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #2e5cff;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #2e5cff;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin-right: 10px;
+    margin-right: 8px;
   }
   
   @keyframes spin {
@@ -277,23 +288,25 @@
     100% { transform: rotate(360deg); }
   }
   
-  /* Admin Panel */
-  .admin-panel {
-    background: #f5f5f5;
-    border-radius: 10px;
-    padding: 20px;
-    margin: 20px 0;
-    display: none;
-  }
-  
-  .admin-panel h3 {
-    color: #333;
+  /* Form Groups */
+  .form-group {
     margin-bottom: 20px;
   }
   
-  .login-form {
-    max-width: 400px;
-    margin: 0 auto;
+  .radio-group {
+    margin: 15px 0;
+  }
+  
+  .radio-option {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+    cursor: pointer;
+  }
+  
+  .radio-option input[type="radio"] {
+    width: auto;
+    margin-left: 10px;
   }
   
   /* Responsive */
@@ -313,8 +326,8 @@
       max-width: 300px;
     }
     
-    .customer-info .info-row {
-      flex-direction: column;
+    .info-grid {
+      grid-template-columns: 1fr;
     }
   }
 </style>
@@ -331,27 +344,7 @@
 <div class="container">
   <!-- Round Status -->
   <div id="round-status" class="round-status">
-    <span id="round-status-text"></span>
-  </div>
-
-  <!-- Admin Panel (Hidden by default) -->
-  <div id="admin-panel" class="admin-panel">
-    <h3>لوحة التحكم</h3>
-    <div id="login-section" class="login-form">
-      <h4>تسجيل الدخول</h4>
-      <input type="password" id="admin-password" placeholder="كلمة المرور">
-      <button onclick="adminLogin()" class="btn">دخول</button>
-    </div>
-    <div id="admin-controls" style="display: none;">
-      <h4>إدارة الجولة</h4>
-      <p>الجولة الحالية: <span id="current-round-name"></span></p>
-      <p>الحالة: <span id="current-round-status"></span></p>
-      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-        <button onclick="openRound()" class="btn btn-success">فتح الجولة</button>
-        <button onclick="closeRound()" class="btn btn-danger">إغلاق الجولة</button>
-        <button onclick="createNewRound()" class="btn">جولة جديدة</button>
-      </div>
-    </div>
+    <span id="round-status-text">جاري التحقق من حالة النظام...</span>
   </div>
 
   <!-- Order Section -->
@@ -359,53 +352,56 @@
     <h2 class="section-title">طلب</h2>
     
     <div class="order-type-buttons">
-      <div class="type-btn" onclick="selectOrderType('new')">
+      <button class="type-btn" onclick="selectOrderType('new')">
         طلب جديد
-      </div>
-      <div class="type-btn" onclick="selectOrderType('edit')">
+      </button>
+      <button class="type-btn" onclick="selectOrderType('edit')">
         تعديل الطلب
-      </div>
+      </button>
     </div>
   </div>
 
   <!-- Mobile Number Section -->
   <div id="mobile-section" class="section" style="display: none;">
     <h3>رقم الهاتف</h3>
-    <label for="mobile-number">رقم الموبايل</label>
-    <input 
-      type="text" 
-      id="mobile-number" 
-      placeholder="05XXXXXXXX" 
-      maxlength="10"
-      oninput="validateMobileNumber()"
-    >
-    <div id="mobile-error" class="error"></div>
-    <div id="mobile-success" class="success"></div>
+    <div class="form-group">
+      <label for="mobile-number">رقم الموبايل</label>
+      <input 
+        type="text" 
+        id="mobile-number" 
+        placeholder="05XXXXXXXX" 
+        maxlength="10"
+        oninput="validateMobileNumber()"
+      >
+      <div id="mobile-error" class="error"></div>
+      <div id="mobile-success" class="success"></div>
+    </div>
   </div>
 
   <!-- WhatsApp Options -->
   <div id="whatsapp-section" class="section" style="display: none;">
     <h3>خيارات واتساب</h3>
-    <div style="margin: 20px 0;">
-      <label style="display: inline-flex; align-items: center; cursor: pointer; margin: 10px 0;">
-        <input type="radio" name="whatsapp-option" id="same-whatsapp" onclick="handleWhatsAppSelection('same')" style="width: auto; margin-left: 10px;">
-        <span>نفس رقم الواتساب</span>
-      </label>
-      <br>
-      <label style="display: inline-flex; align-items: center; cursor: pointer; margin: 10px 0;">
-        <input type="radio" name="whatsapp-option" id="diff-whatsapp" onclick="handleWhatsAppSelection('different')" style="width: auto; margin-left: 10px;">
-        <span>مختلف عن رقم الواتساب</span>
-      </label>
+    <div class="radio-group">
+      <div class="radio-option">
+        <input type="radio" name="whatsapp-option" id="same-whatsapp" onclick="handleWhatsAppSelection('same')">
+        <label for="same-whatsapp">نفس رقم الواتساب</label>
+      </div>
+      <div class="radio-option">
+        <input type="radio" name="whatsapp-option" id="diff-whatsapp" onclick="handleWhatsAppSelection('different')">
+        <label for="diff-whatsapp">مختلف عن رقم الواتساب</label>
+      </div>
     </div>
     
     <div id="whatsapp-number-section" style="display: none;">
-      <label for="whatsapp-number">من فضلك أدخل رقم الواتساب</label>
-      <input 
-        type="text" 
-        id="whatsapp-number" 
-        placeholder="+966XXXXXXXXX أو 05XXXXXXXX"
-      >
-      <div id="whatsapp-error" class="error"></div>
+      <div class="form-group">
+        <label for="whatsapp-number">من فضلك أدخل رقم الواتساب</label>
+        <input 
+          type="text" 
+          id="whatsapp-number" 
+          placeholder="+966XXXXXXXXX أو 05XXXXXXXX"
+        >
+        <div id="whatsapp-error" class="error"></div>
+      </div>
     </div>
   </div>
 
@@ -425,23 +421,48 @@
   <div id="order-details-section" class="section" style="display: none;">
     <h3>تفاصيل الطلب</h3>
     
-    <label for="order-text">اكتب طلبك هنا</label>
-    <textarea 
-      id="order-text" 
-      rows="6" 
-      placeholder="اكتب تفاصيل طلبك هنا..."
-    ></textarea>
+    <div class="form-group">
+      <label for="customer-name">اسم العميل (اختياري)</label>
+      <input type="text" id="customer-name" placeholder="اسم العميل">
+    </div>
     
-    <!-- Additional Fields -->
-    <label for="delivery-date">تاريخ التوصيل المطلوب</label>
-    <input type="date" id="delivery-date">
+    <div class="form-group">
+      <label for="customer-area">المنطقة (اختياري)</label>
+      <input type="text" id="customer-area" placeholder="المنطقة">
+    </div>
     
-    <label for="notes">ملاحظات إضافية</label>
-    <textarea 
-      id="notes" 
-      rows="2" 
-      placeholder="ملاحظات خاصة بالطلب..."
-    ></textarea>
+    <div class="form-group">
+      <label for="customer-address">العنوان (اختياري)</label>
+      <input type="text" id="customer-address" placeholder="العنوان">
+    </div>
+    
+    <div class="form-group">
+      <label for="customer-location">رابط الموقع (اختياري)</label>
+      <input type="text" id="customer-location" placeholder="رابط الموقع">
+    </div>
+    
+    <div class="form-group">
+      <label for="order-text">اكتب طلبك هنا *</label>
+      <textarea 
+        id="order-text" 
+        rows="5" 
+        placeholder="اكتب تفاصيل طلبك هنا..."
+      ></textarea>
+    </div>
+    
+    <div class="form-group">
+      <label for="delivery-date">تاريخ التوصيل المطلوب (اختياري)</label>
+      <input type="date" id="delivery-date">
+    </div>
+    
+    <div class="form-group">
+      <label for="notes">ملاحظات إضافية (اختياري)</label>
+      <textarea 
+        id="notes" 
+        rows="3" 
+        placeholder="ملاحظات خاصة بالطلب..."
+      ></textarea>
+    </div>
     
     <!-- Submit Buttons -->
     <div style="text-align: center;">
@@ -455,129 +476,101 @@
 
   <!-- Success Message -->
   <div id="success-message" class="info-message" style="display: none;"></div>
+  
+  <!-- Error Message -->
+  <div id="error-message" class="error-message" style="display: none;"></div>
 </div>
 
 <script>
-  // Google Sheets Configuration
-  const SPREADSHEET_ID = '1txQXRi-19VIDNHQej5vnqYku5-clPOj3QR_JqXKYQI0';
-  const API_KEY = 'YOUR_API_KEY'; // You need to get this from Google Cloud Console
-  
-  // Sheets Tab Names
-  const SHEETS = {
-    CUSTOMERS: 'DataBase',
-    ORDERS: 'Orders',
-    ROUNDS: 'Rounds'
-  };
+  // Google Apps Script Web App URL
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxZfynEKvRzKPW4LGbQe59Efq49UIQXUBFew8qUwcAW4u021OnYla85xCf-5M1i6QsMBw/exec';
   
   // Application State
   let selectedOrderType = null;
   let currentCustomer = null;
-  let currentRound = null;
-  let isAdmin = false;
-  const ADMIN_PASSWORD = 'admin123'; // Change this in production
+  let currentOrderStatus = 'checking';
+  let currentRound = '';
   
   // Initialize the application
   document.addEventListener('DOMContentLoaded', function() {
-    // Load current round status
-    loadCurrentRound();
-    
-    // Setup admin panel visibility (hidden by default)
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('admin') === 'true') {
-      document.getElementById('admin-panel').style.display = 'block';
-    }
+    // Load order status from Google Sheets
+    checkOrderStatus();
   });
   
-  // ========== GOOGLE SHEETS FUNCTIONS ==========
+  // ========== GOOGLE SHEETS INTEGRATION ==========
   
-  // Load current round from Google Sheets
-  async function loadCurrentRound() {
+  async function checkOrderStatus() {
     try {
-      // Try to get active round from Google Sheets
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEETS.ROUNDS}!A:F?key=${API_KEY}`;
-      
-      const response = await fetch(url);
+      console.log('Checking order status...');
+      const response = await fetch(`${SCRIPT_URL}?action=getOrderStatus&timestamp=${Date.now()}`);
       const data = await response.json();
       
-      if (data.values && data.values.length > 1) {
-        const rounds = data.values.slice(1); // Skip header row
-        const activeRound = rounds.find(round => round[4] === 'Open');
-        
-        if (activeRound) {
-          currentRound = {
-            id: activeRound[0],
-            name: activeRound[1],
-            openDate: activeRound[2],
-            closeDate: activeRound[3],
-            status: activeRound[4]
-          };
-          
-          updateRoundStatus();
-        } else {
-          showRoundClosed();
-        }
+      console.log('Status response:', data);
+      
+      if (data.success) {
+        currentOrderStatus = data.status;
+        currentRound = data.round || '';
+        updateOrderStatusDisplay();
+      } else {
+        // Show error but allow form (fail-open)
+        currentOrderStatus = 'Active';
+        updateOrderStatusDisplay();
+        showError('⚠️ تعذر التحقق من حالة النظام. يمكنك المحاولة.');
       }
     } catch (error) {
-      console.error('Error loading round:', error);
-      // Fallback to default round for demo
-      currentRound = {
-        id: 'R' + new Date().toISOString().split('T')[0].replace(/-/g, ''),
-        name: 'جولة التوصيل الحالية',
-        status: 'Open'
-      };
-      updateRoundStatus();
+      console.error('Error checking order status:', error);
+      // Default to active if there's an error (fail-open)
+      currentOrderStatus = 'Active';
+      updateOrderStatusDisplay();
+      showError('⚠️ تعذر الاتصال بالخادم. يمكنك المحاولة.');
     }
   }
   
-  function updateRoundStatus() {
+  function updateOrderStatusDisplay() {
     const statusElement = document.getElementById('round-status');
     const statusText = document.getElementById('round-status-text');
     
-    if (currentRound) {
-      statusElement.style.display = 'block';
-      
-      if (currentRound.status === 'Open') {
-        statusElement.className = 'round-status';
-        statusText.textContent = `✅ الجولة مفتوحة: ${currentRound.name}`;
-        enableForm();
-      } else {
-        statusElement.className = 'round-status closed';
-        statusText.textContent = `⛔ الجولة مغلقة: ${currentRound.name}`;
-        disableForm();
-      }
+    if (currentOrderStatus === 'Active') {
+      statusElement.className = 'round-status';
+      statusText.textContent = currentRound ? 
+        `✅ الطلبات مفتوحة - ${currentRound}` : 
+        '✅ الطلبات مفتوحة - يمكنك تقديم طلب جديد';
+      enableForm();
+    } else {
+      statusElement.className = 'round-status closed';
+      statusText.textContent = '⛔ الطلبات مغلقة حالياً - يرجى الانتظار حتى يتم فتح الطلبات';
+      disableForm();
     }
-  }
-  
-  function showRoundClosed() {
-    const statusElement = document.getElementById('round-status');
-    const statusText = document.getElementById('round-status-text');
-    
-    statusElement.style.display = 'block';
-    statusElement.className = 'round-status closed';
-    statusText.textContent = '⛔ لا توجد جولة نشطة حالياً. يرجى الانتظار حتى تفتح جولة جديدة.';
-    disableForm();
   }
   
   function enableForm() {
     // Enable all form elements
     document.querySelectorAll('input, textarea, button').forEach(element => {
-      if (element.id !== 'admin-password') {
-        element.disabled = false;
-      }
+      element.disabled = false;
     });
   }
   
   function disableForm() {
     // Disable form submission but keep viewing
-    document.getElementById('submit-btn').disabled = true;
-    document.getElementById('submit-btn').innerHTML = '<span>الجولة مغلقة</span>';
+    const submitBtn = document.getElementById('submit-btn');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span>الطلبات مغلقة</span>';
+    }
+    
+    // Disable type buttons
+    document.querySelectorAll('.type-btn').forEach(btn => {
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+      btn.style.cursor = 'not-allowed';
+    });
   }
   
   // ========== FORM FUNCTIONS ==========
   
   function selectOrderType(type) {
-    if (currentRound && currentRound.status !== 'Open') {
-      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الجولة مغلقة.');
+    if (currentOrderStatus !== 'Active') {
+      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
       return;
     }
     
@@ -603,8 +596,10 @@
     document.getElementById('mobile-error').textContent = '';
     document.getElementById('mobile-success').textContent = '';
     
+    // Clear messages
+    hideMessages();
+    
     // Update submit button
-    const submitBtn = document.getElementById('submit-btn');
     const submitText = document.getElementById('submit-text');
     submitText.textContent = type === 'new' ? 'إرسال الطلب' : 'تحديث الطلب';
   }
@@ -618,6 +613,7 @@
     // Clear previous messages
     errorElement.textContent = '';
     successElement.textContent = '';
+    hideMessages();
     
     // Validate format
     const mobileRegex = /^05\d{8}$/;
@@ -635,7 +631,7 @@
     // Valid number
     successElement.textContent = '✓ رقم هاتف صحيح';
     
-    // Check if customer exists
+    // Check if customer exists in Google Sheets
     await checkCustomerExists(mobileNumber);
     
     // Show WhatsApp options
@@ -646,36 +642,24 @@
   
   async function checkCustomerExists(phone) {
     try {
-      // In a real implementation, you would query Google Sheets here
-      // For demo, we'll use mock data
+      console.log('Checking customer:', phone);
+      const response = await fetch(`${SCRIPT_URL}?action=getCustomer&phone=${phone}&timestamp=${Date.now()}`);
+      const data = await response.json();
       
-      const mockCustomers = [
-        {
-          phone: '0501234567',
-          name: 'جميلة',
-          area: 'المعادي',
-          address: 'شارع النصر',
-          location: 'عمارة 12 ش النصر',
-          whatsapp: '0501234567'
-        },
-        {
-          phone: '0509876543',
-          name: 'منى',
-          area: 'مدينة نصر',
-          address: 'شارع الجامعة',
-          location: 'شقة 4',
-          whatsapp: '0509876543'
-        }
-      ];
+      console.log('Customer response:', data);
       
-      const customer = mockCustomers.find(c => c.phone === phone);
-      
-      if (customer) {
-        currentCustomer = customer;
-        showCustomerInfo(customer);
+      if (data.success && data.customer) {
+        currentCustomer = data.customer;
+        showCustomerInfo(data.customer);
         
         // Load previous orders
         await loadPreviousOrders(phone);
+        
+        // Auto-select same WhatsApp if exists
+        if (data.customer.whatsapp === phone || data.customer.whatsapp) {
+          document.getElementById('same-whatsapp').checked = true;
+          handleWhatsAppSelection('same');
+        }
       } else {
         // New customer
         currentCustomer = { phone: phone };
@@ -685,6 +669,10 @@
       
     } catch (error) {
       console.error('Error checking customer:', error);
+      // Continue as new customer
+      currentCustomer = { phone: phone };
+      document.getElementById('customer-info').style.display = 'none';
+      document.getElementById('previous-orders').style.display = 'none';
     }
   }
   
@@ -692,60 +680,61 @@
     const customerDetails = document.getElementById('customer-details');
     const customerInfo = document.getElementById('customer-info');
     
-    customerDetails.innerHTML = `
-      <div class="info-row">
-        <div class="info-item">
-          <strong>الاسم:</strong> ${customer.name || 'غير مسجل'}
-        </div>
-        <div class="info-item">
-          <strong>المنطقة:</strong> ${customer.area || 'غير مسجل'}
-        </div>
-        <div class="info-item">
-          <strong>العنوان:</strong> ${customer.address || 'غير مسجل'}
-        </div>
-        <div class="info-item">
-          <strong>الموقع:</strong> ${customer.location || 'غير مسجل'}
-        </div>
-      </div>
-    `;
+    let html = '<div class="info-grid">';
     
-    customerInfo.style.display = 'block';
-    
-    // Pre-fill WhatsApp if exists
-    if (customer.whatsapp) {
-      document.getElementById('same-whatsapp').checked = true;
-      handleWhatsAppSelection('same');
+    if (customer.name) {
+      html += `<div class="info-item"><strong>الاسم:</strong> ${customer.name}</div>`;
+      document.getElementById('customer-name').value = customer.name;
+    } else {
+      document.getElementById('customer-name').value = '';
     }
+    
+    if (customer.area) {
+      html += `<div class="info-item"><strong>المنطقة:</strong> ${customer.area}</div>`;
+      document.getElementById('customer-area').value = customer.area;
+    } else {
+      document.getElementById('customer-area').value = '';
+    }
+    
+    if (customer.address) {
+      html += `<div class="info-item"><strong>العنوان:</strong> ${customer.address}</div>`;
+      document.getElementById('customer-address').value = customer.address;
+    } else {
+      document.getElementById('customer-address').value = '';
+    }
+    
+    if (customer.location) {
+      html += `<div class="info-item"><strong>الموقع:</strong> ${customer.location}</div>`;
+      document.getElementById('customer-location').value = customer.location;
+    } else {
+      document.getElementById('customer-location').value = '';
+    }
+    
+    html += '</div>';
+    customerDetails.innerHTML = html;
+    customerInfo.style.display = 'block';
   }
   
   async function loadPreviousOrders(phone) {
     try {
-      // In real implementation, query Google Sheets
-      const mockOrders = [
-        {
-          date: '2026-01-02',
-          items: 'كيلو لحمة + 2 خبز',
-          status: 'تم التسليم'
-        },
-        {
-          date: '2025-12-28',
-          items: '1 كيلو فراخ + سلطة',
-          status: 'تم التسليم'
-        }
-      ];
+      console.log('Loading orders for:', phone);
+      const response = await fetch(`${SCRIPT_URL}?action=getOrders&phone=${phone}&timestamp=${Date.now()}`);
+      const data = await response.json();
+      
+      console.log('Orders response:', data);
       
       const ordersList = document.getElementById('orders-list');
       const previousOrders = document.getElementById('previous-orders');
       
-      if (mockOrders.length > 0) {
+      if (data.success && data.orders && data.orders.length > 0) {
         ordersList.innerHTML = '';
-        mockOrders.forEach(order => {
+        data.orders.forEach(order => {
           const orderItem = document.createElement('div');
           orderItem.className = 'order-item';
           orderItem.innerHTML = `
-            <p><strong>التاريخ:</strong> ${order.date}</p>
-            <p><strong>الطلب:</strong> ${order.items}</p>
-            <p><strong>الحالة:</strong> ${order.status}</p>
+            <p><strong>التاريخ:</strong> ${order.date || order.timestamp || 'غير معروف'}</p>
+            <p><strong>الطلب:</strong> ${order.items || 'لا توجد تفاصيل'}</p>
+            <p><strong>الحالة:</strong> ${order.status || 'جديد'}</p>
           `;
           ordersList.appendChild(orderItem);
         });
@@ -756,6 +745,7 @@
       
     } catch (error) {
       console.error('Error loading orders:', error);
+      document.getElementById('previous-orders').style.display = 'none';
     }
   }
   
@@ -784,13 +774,16 @@
   // ========== ORDER SUBMISSION ==========
   
   async function submitOrder() {
+    // Hide any previous messages
+    hideMessages();
+    
     if (!selectedOrderType) {
       alert('من فضلك اختر نوع الطلب أولاً');
       return;
     }
     
-    if (!currentRound || currentRound.status !== 'Open') {
-      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الجولة مغلقة.');
+    if (currentOrderStatus !== 'Active') {
+      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
       return;
     }
     
@@ -840,43 +833,60 @@
     try {
       // Prepare order data
       const orderData = {
-        customerId: currentCustomer ? currentCustomer.id : generateCustomerId(),
+        action: 'submitOrder',
+        orderType: selectedOrderType,
         phone: mobileNumber,
         whatsapp: whatsappNumber,
-        name: currentCustomer ? currentCustomer.name : '',
-        area: currentCustomer ? currentCustomer.area : '',
-        address: currentCustomer ? currentCustomer.address : '',
-        location: currentCustomer ? currentCustomer.location : '',
+        name: document.getElementById('customer-name').value.trim(),
+        area: document.getElementById('customer-area').value.trim(),
+        address: document.getElementById('customer-address').value.trim(),
+        location: document.getElementById('customer-location').value.trim(),
         orderText: orderText,
         notes: document.getElementById('notes').value.trim(),
         deliveryDate: document.getElementById('delivery-date').value,
-        roundId: currentRound.id,
-        orderType: selectedOrderType,
+        round: currentRound,
         timestamp: new Date().toISOString()
       };
       
-      // Save to Google Sheets (simulated)
-      await saveOrderToSheets(orderData);
+      console.log('Submitting order:', orderData);
       
-      // Show success message
-      const successMessage = document.getElementById('success-message');
-      successMessage.innerHTML = `
-        <h3>✅ تم إرسال الطلب بنجاح!</h3>
-        <p>رقم الطلب: ${orderData.customerId}</p>
-        <p>سيتم التواصل معك على واتساب للتأكيد.</p>
-        <p>شكراً لاستخدامك HomiCart! 💙</p>
-      `;
-      successMessage.style.display = 'block';
+      // Save to Google Sheets
+      const response = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData)
+      });
       
-      // Reset form after delay
-      setTimeout(() => {
-        resetForm();
-        successMessage.style.display = 'none';
-      }, 5000);
+      const result = await response.json();
+      console.log('Submit response:', result);
+      
+      if (result.success) {
+        // Show success message
+        const successMessage = document.getElementById('success-message');
+        successMessage.innerHTML = `
+          <h3>✅ تم إرسال الطلب بنجاح!</h3>
+          <p>${result.orderId ? `رقم الطلب: ${result.orderId}` : ''}</p>
+          <p>${result.customerId ? `رقم العميل: ${result.customerId}` : ''}</p>
+          <p>${orderData.name ? 'عزيزي/عزيزتي ' + orderData.name + '، ' : ''}سيتم التواصل معك على واتساب للتأكيد.</p>
+          <p>شكراً لاستخدامك HomiCart! 💙</p>
+        `;
+        successMessage.style.display = 'block';
+        
+        // Reset form after delay
+        setTimeout(() => {
+          resetForm();
+          successMessage.style.display = 'none';
+        }, 10000);
+      } else {
+        throw new Error(result.message || 'فشل إرسال الطلب');
+      }
       
     } catch (error) {
       console.error('Error submitting order:', error);
-      alert('حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى.');
+      showError('حدث خطأ أثناء إرسال الطلب: ' + error.message);
     } finally {
       // Hide loading
       submitBtn.disabled = false;
@@ -890,80 +900,23 @@
     return mobileRegex.test(phone);
   }
   
-  function generateCustomerId() {
-    return 'C-' + Date.now().toString().slice(-5);
-  }
-  
-  async function saveOrderToSheets(orderData) {
-    // This is where you would save to Google Sheets
-    // Using Google Sheets API or Google Apps Script
-    
-    // For demo purposes, we'll simulate the save
-    console.log('Saving order to Google Sheets:', orderData);
-    
-    // Simulate API call
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve({ success: true });
-      }, 1000);
-    });
-  }
-  
-  // ========== ADMIN FUNCTIONS ==========
-  
-  function adminLogin() {
-    const password = document.getElementById('admin-password').value;
-    
-    if (password === ADMIN_PASSWORD) {
-      isAdmin = true;
-      document.getElementById('login-section').style.display = 'none';
-      document.getElementById('admin-controls').style.display = 'block';
-      alert('تم تسجيل الدخول بنجاح!');
-    } else {
-      alert('كلمة المرور غير صحيحة');
-    }
-  }
-  
-  function openRound() {
-    if (!isAdmin) return;
-    
-    if (currentRound) {
-      currentRound.status = 'Open';
-      updateRoundStatus();
-      alert('تم فتح الجولة بنجاح!');
-    }
-  }
-  
-  function closeRound() {
-    if (!isAdmin) return;
-    
-    if (currentRound) {
-      currentRound.status = 'Closed';
-      updateRoundStatus();
-      alert('تم إغلاق الجولة بنجاح!');
-    }
-  }
-  
-  function createNewRound() {
-    if (!isAdmin) return;
-    
-    const roundName = prompt('أدخل اسم الجولة الجديدة:');
-    if (roundName) {
-      const today = new Date().toISOString().split('T')[0];
-      const roundId = 'R' + today.replace(/-/g, '');
-      
-      currentRound = {
-        id: roundId,
-        name: roundName,
-        status: 'Open'
-      };
-      
-      updateRoundStatus();
-      alert('تم إنشاء جولة جديدة بنجاح!');
-    }
-  }
-  
   // ========== UTILITY FUNCTIONS ==========
+  
+  function showError(message) {
+    const errorMessage = document.getElementById('error-message');
+    errorMessage.innerHTML = `<p>${message}</p>`;
+    errorMessage.style.display = 'block';
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      errorMessage.style.display = 'none';
+    }, 5000);
+  }
+  
+  function hideMessages() {
+    document.getElementById('success-message').style.display = 'none';
+    document.getElementById('error-message').style.display = 'none';
+  }
   
   function resetForm() {
     // Reset order type selection
@@ -1003,15 +956,5 @@
     submitText.textContent = 'إرسال الطلب';
   }
 </script>
-
-<!-- Google Sheets API Script -->
-<script>
-  // Note: You need to set up Google Cloud Console project and enable Sheets API
-  // Replace YOUR_API_KEY with your actual API key
-  
-  // For a production app, you should use Google Apps Script for better security
-  // This would handle the backend operations and keep your API keys secure
-</script>
-
 </body>
 </html>
