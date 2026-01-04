@@ -167,18 +167,15 @@
     text-align: center;
   }
   
-  .info-grid {
+  .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 15px;
-    margin-top: 10px;
+    margin-bottom: 15px;
   }
   
-  .info-item {
-    background: white;
-    padding: 10px;
-    border-radius: 6px;
-    border: 1px solid #e0e0e0;
+  .form-group {
+    margin-bottom: 15px;
   }
   
   .previous-orders {
@@ -289,19 +286,9 @@
     100% { transform: rotate(360deg); }
   }
   
-  .form-group {
-    margin-bottom: 20px;
-  }
-  
-  .form-row {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 15px;
-  }
-  
-  .form-row .form-group {
-    flex: 1;
-    margin-bottom: 0;
+  .required::after {
+    content: " *";
+    color: #dc3545;
   }
   
   @media (max-width: 768px) {
@@ -320,13 +307,8 @@
       max-width: 300px;
     }
     
-    .info-grid {
+    .form-grid {
       grid-template-columns: 1fr;
-    }
-    
-    .form-row {
-      flex-direction: column;
-      gap: 0;
     }
   }
 </style>
@@ -345,42 +327,35 @@
     <span id="round-status-text">جاري التحقق من حالة النظام...</span>
   </div>
 
-  <!-- Account Verification Section -->
-  <div id="verification-section" class="section">
-    <h2 class="section-title">التحقق من الحساب</h2>
+  <!-- Phone Input Section -->
+  <div id="phone-section" class="section">
+    <h2 class="section-title">أدخل رقم هاتفك</h2>
     
     <div class="form-group">
-      <label for="mobile-number">رقم الموبايل</label>
+      <label for="mobile-number" class="required">رقم الموبايل</label>
       <input 
         type="text" 
         id="mobile-number" 
         placeholder="05XXXXXXXX" 
         maxlength="10"
         oninput="formatMobileNumber(this)"
+        onkeyup="checkPhoneNumber()"
       >
       <div id="mobile-error" class="error"></div>
       <div id="mobile-success" class="success"></div>
+      <div id="mobile-warning" class="warning-message" style="display: none; margin-top: 10px;"></div>
     </div>
-    
-    <div style="text-align: center;">
-      <button class="btn" onclick="verifyAccount()" id="verify-btn">
-        <span id="verify-text">تحقق من الحساب</span>
-        <span id="verify-loading" class="loading" style="display: none;"></span>
-      </button>
-    </div>
-    
-    <div id="verification-message" style="display: none;"></div>
   </div>
 
-  <!-- Order Type Selection (Shown after successful verification) -->
+  <!-- Order Type Selection (Shown automatically after phone check) -->
   <div id="order-type-section" class="section" style="display: none;">
     <h2 class="section-title">اختر نوع الطلب</h2>
     
     <div class="order-type-buttons">
-      <button class="type-btn" onclick="selectOrderType('new')">
+      <button class="type-btn" onclick="selectOrderType('new')" id="new-order-btn">
         طلب جديد
       </button>
-      <button class="type-btn" onclick="selectOrderType('edit')">
+      <button class="type-btn" onclick="selectOrderType('edit')" id="edit-order-btn" style="display: none;">
         تعديل الطلب
       </button>
     </div>
@@ -388,11 +363,11 @@
 
   <!-- Customer Information Form (Editable) -->
   <div id="customer-info-form" class="customer-info-form" style="display: none;">
-    <h4>معلومات العميل (يمكن التعديل)</h4>
+    <h4>معلومات العميل</h4>
     
-    <div class="form-row">
+    <div class="form-grid">
       <div class="form-group">
-        <label for="customer-name">الاسم *</label>
+        <label for="customer-name" class="required">الاسم</label>
         <input 
           type="text" 
           id="customer-name" 
@@ -401,7 +376,7 @@
       </div>
       
       <div class="form-group">
-        <label for="customer-phone">رقم الموبايل *</label>
+        <label for="customer-phone" class="required">رقم الموبايل</label>
         <input 
           type="text" 
           id="customer-phone" 
@@ -412,9 +387,9 @@
       </div>
     </div>
     
-    <div class="form-row">
+    <div class="form-grid">
       <div class="form-group">
-        <label for="customer-whatsapp">رقم الواتساب *</label>
+        <label for="customer-whatsapp" class="required">رقم الواتساب</label>
         <input 
           type="text" 
           id="customer-whatsapp" 
@@ -424,7 +399,7 @@
       </div>
       
       <div class="form-group">
-        <label for="customer-area">المنطقة *</label>
+        <label for="customer-area" class="required">المنطقة</label>
         <input 
           type="text" 
           id="customer-area" 
@@ -433,31 +408,22 @@
       </div>
     </div>
     
-    <div class="form-group">
-      <label for="customer-address">العنوان *</label>
-      <input 
-        type="text" 
-        id="customer-address" 
-        placeholder="العنوان التفصيلي"
-      >
-    </div>
-    
-    <div class="form-row">
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="customer-address" class="required">العنوان</label>
+        <input 
+          type="text" 
+          id="customer-address" 
+          placeholder="العنوان التفصيلي"
+        >
+      </div>
+      
       <div class="form-group">
         <label for="customer-location">الموقع</label>
         <input 
           type="text" 
           id="customer-location" 
           placeholder="رقم المبنى، الشارع، إلخ"
-        >
-      </div>
-      
-      <div class="form-group">
-        <label for="customer-round">الجولة</label>
-        <input 
-          type="text" 
-          id="customer-round" 
-          placeholder="رقم أو اسم الجولة"
         >
       </div>
     </div>
@@ -472,9 +438,9 @@
     </div>
     
     <div style="text-align: center;">
-      <button class="btn" onclick="updateCustomerInfo()" id="update-customer-btn">
-        <span id="update-customer-text">حفظ معلومات العميل</span>
-        <span id="update-customer-loading" class="loading" style="display: none;"></span>
+      <button class="btn" onclick="saveCustomerInfo()" id="save-customer-btn">
+        <span id="save-customer-text">حفظ معلومات العميل</span>
+        <span id="save-customer-loading" class="loading" style="display: none;"></span>
       </button>
     </div>
   </div>
@@ -490,7 +456,7 @@
     <h3>تفاصيل الطلب</h3>
     
     <div class="form-group">
-      <label for="order-text">اكتب طلبك هنا *</label>
+      <label for="order-text" class="required">اكتب طلبك هنا</label>
       <textarea 
         id="order-text" 
         rows="5" 
@@ -510,13 +476,11 @@
   <div id="success-message" class="info-message" style="display: none;"></div>
   
   <div id="error-message" class="error-message" style="display: none;"></div>
-  
-  <div id="warning-message" class="warning-message" style="display: none;"></div>
 </div>
 
 <script>
-  // Google Apps Script Web App URL
-  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxbef3X438cfSxOQKTTkBHXkmjKzr8lCuLdGmGSQwJXCQUQ1u-W0Pb1aqADW3VOz03rjA/exec';
+  // Google Apps Script Web App URL - UPDATED
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzaJzw0KByElyQPKMzKkWHFg2H4TTUcb0IOJ6KdlfOt1qvtV2BIRoc798rUXChTHh5afg/exec';
   
   // Application State
   let selectedOrderType = null;
@@ -526,8 +490,11 @@
   let currentRound = '';
   let currentCustomerId = '';
   let currentCustomerPhone = '';
-  let isAccountVerified = false;
-  let isAccountActive = false;
+  let isAccountActive = true;
+  let customerExists = false;
+  
+  // Debounce timer
+  let phoneCheckTimer = null;
   
   document.addEventListener('DOMContentLoaded', function() {
     checkOrderStatus();
@@ -548,6 +515,138 @@
     }
     
     input.value = value;
+  }
+  
+  function checkPhoneNumber() {
+    // Clear previous timer
+    if (phoneCheckTimer) {
+      clearTimeout(phoneCheckTimer);
+    }
+    
+    // Set new timer to check after user stops typing (500ms)
+    phoneCheckTimer = setTimeout(async () => {
+      await validateMobileNumber();
+    }, 500);
+  }
+  
+  async function validateMobileNumber() {
+    const mobileInput = document.getElementById('mobile-number');
+    const mobileNumber = mobileInput.value.trim();
+    const errorElement = document.getElementById('mobile-error');
+    const successElement = document.getElementById('mobile-success');
+    const warningElement = document.getElementById('mobile-warning');
+    
+    errorElement.textContent = '';
+    successElement.textContent = '';
+    warningElement.style.display = 'none';
+    hideMessages();
+    
+    const mobileRegex = /^05\d{8}$/;
+    
+    if (!mobileNumber) {
+      errorElement.textContent = 'رقم الهاتف مطلوب';
+      document.getElementById('order-type-section').style.display = 'none';
+      return false;
+    }
+    
+    if (!mobileRegex.test(mobileNumber)) {
+      errorElement.textContent = 'رقم الهاتف يجب أن يبدأ بـ 05 ويحتوي على 10 أرقام';
+      document.getElementById('order-type-section').style.display = 'none';
+      return false;
+    }
+    
+    // Show loading state
+    successElement.textContent = 'جاري التحقق...';
+    
+    try {
+      console.log('Checking customer:', mobileNumber);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch(`${SCRIPT_URL}?action=getCustomer&phone=${encodeURIComponent(mobileNumber)}&_=${Date.now()}`, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const text = await response.text();
+      console.log('Raw customer response:', text);
+      
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Failed to parse JSON:', parseError);
+        throw new Error('Invalid server response');
+      }
+      
+      console.log('Customer response:', data);
+      
+      if (data.success && data.customer) {
+        // Customer exists
+        currentCustomer = data.customer;
+        currentCustomerId = data.customer.id;
+        currentCustomerPhone = mobileNumber;
+        customerExists = true;
+        
+        // Check if account is active
+        if (data.customer.accountStatus === 'Inactive' || data.customer.isActive === false) {
+          isAccountActive = false;
+          warningElement.innerHTML = `
+            <p>⚠️ حسابك غير نشط حالياً</p>
+            <p>يرجى التواصل مع الإدارة لتفعيل الحساب</p>
+          `;
+          warningElement.style.display = 'block';
+          
+          // Hide order buttons for inactive accounts
+          document.getElementById('order-type-section').style.display = 'none';
+          successElement.textContent = '';
+        } else {
+          // Account is active
+          isAccountActive = true;
+          successElement.textContent = '✓ تم العثور على حسابك';
+          
+          // Show both buttons for existing customers
+          document.getElementById('order-type-section').style.display = 'block';
+          document.getElementById('edit-order-btn').style.display = 'block';
+          document.getElementById('new-order-btn').style.display = 'block';
+        }
+        
+      } else {
+        // New customer
+        currentCustomer = null;
+        currentCustomerId = '';
+        currentCustomerPhone = mobileNumber;
+        customerExists = false;
+        isAccountActive = true;
+        
+        successElement.textContent = '✓ رقم جديد - سيتم إنشاء حساب جديد';
+        
+        // Show only "New Order" button for new customers
+        document.getElementById('order-type-section').style.display = 'block';
+        document.getElementById('new-order-btn').style.display = 'block';
+        document.getElementById('edit-order-btn').style.display = 'none';
+      }
+      
+      return true;
+      
+    } catch (error) {
+      console.error('Error checking customer:', error);
+      
+      if (error.name === 'AbortError') {
+        errorElement.textContent = '⚠️ انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.';
+      } else {
+        errorElement.textContent = 'حدث خطأ أثناء التحقق: ' + error.message;
+      }
+      
+      document.getElementById('order-type-section').style.display = 'none';
+      return false;
+    }
   }
   
   async function checkOrderStatus() {
@@ -643,188 +742,61 @@
     });
   }
   
-  async function verifyAccount() {
-    hideMessages();
-    
-    const mobileInput = document.getElementById('mobile-number');
-    const mobileNumber = mobileInput.value.trim();
-    const errorElement = document.getElementById('mobile-error');
-    const successElement = document.getElementById('mobile-success');
-    const verificationMessage = document.getElementById('verification-message');
-    
-    errorElement.textContent = '';
-    successElement.textContent = '';
-    verificationMessage.style.display = 'none';
-    
-    const mobileRegex = /^05\d{8}$/;
-    
-    if (!mobileNumber) {
-      errorElement.textContent = 'رقم الهاتف مطلوب';
-      return false;
-    }
-    
-    if (!mobileRegex.test(mobileNumber)) {
-      errorElement.textContent = 'رقم الهاتف يجب أن يبدأ بـ 05 ويحتوي على 10 أرقام';
-      return false;
-    }
-    
-    // Show loading
-    const verifyBtn = document.getElementById('verify-btn');
-    const verifyLoading = document.getElementById('verify-loading');
-    const verifyText = document.getElementById('verify-text');
-    verifyBtn.disabled = true;
-    verifyLoading.style.display = 'inline-block';
-    verifyText.textContent = 'جاري التحقق...';
-    
-    try {
-      console.log('Verifying account for:', mobileNumber);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
-      const response = await fetch(`${SCRIPT_URL}?action=verifyAccount&phone=${encodeURIComponent(mobileNumber)}&_=${Date.now()}`, {
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const text = await response.text();
-      console.log('Raw verification response:', text);
-      
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (parseError) {
-        console.error('Failed to parse JSON:', parseError);
-        throw new Error('Invalid server response');
-      }
-      
-      console.log('Verification response:', data);
-      
-      if (data.success) {
-        if (data.accountStatus === 'Active') {
-          isAccountVerified = true;
-          isAccountActive = true;
-          currentCustomerPhone = mobileNumber;
-          currentCustomerId = data.customerId || '';
-          
-          successElement.textContent = '✓ حساب نشط - يمكنك المتابعة';
-          
-          // Show order type selection
-          document.getElementById('order-type-section').style.display = 'block';
-          
-          // Load customer data
-          await loadCustomerData();
-          
-        } else if (data.accountStatus === 'Inactive') {
-          isAccountVerified = true;
-          isAccountActive = false;
-          
-          verificationMessage.innerHTML = `
-            <div class="warning-message">
-              <h3>⚠️ الحساب غير نشط</h3>
-              <p>حسابك غير نشط حالياً. يرجى التواصل مع الإدارة لتفعيل الحساب.</p>
-              <p>لا يمكنك تقديم طلبات جديدة حتى يتم تفعيل حسابك.</p>
-            </div>
-          `;
-          verificationMessage.style.display = 'block';
-        } else if (data.accountStatus === 'not_found') {
-          verificationMessage.innerHTML = `
-            <div class="info-message">
-              <h3>🆕 حساب جديد</h3>
-              <p>لم يتم العثور على حساب بهذا الرقم.</p>
-              <p>سوف يتم إنشاء حساب جديد لك عند تقديم أول طلب.</p>
-            </div>
-          `;
-          verificationMessage.style.display = 'block';
-          
-          isAccountVerified = true;
-          isAccountActive = true; // Allow new account creation
-          currentCustomerPhone = mobileNumber;
-          
-          // Show order type selection (only new order for new customers)
-          document.getElementById('order-type-section').style.display = 'block';
-          document.querySelector('.type-btn[onclick*="edit"]').style.display = 'none';
-        }
-      } else {
-        throw new Error(data.message || 'فشل التحقق من الحساب');
-      }
-      
-    } catch (error) {
-      console.error('Error verifying account:', error);
-      
-      if (error.name === 'AbortError') {
-        errorElement.textContent = '⚠️ انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.';
-      } else {
-        errorElement.textContent = 'حدث خطأ أثناء التحقق: ' + error.message;
-      }
-    } finally {
-      verifyBtn.disabled = false;
-      verifyLoading.style.display = 'none';
-      verifyText.textContent = 'تحقق من الحساب';
-    }
-  }
-  
-  async function loadCustomerData() {
-    if (!currentCustomerId) {
-      console.log('No customer ID, new customer');
-      // Set phone number for new customer
-      document.getElementById('customer-phone').value = currentCustomerPhone;
-      document.getElementById('customer-whatsapp').value = currentCustomerPhone;
+  function selectOrderType(type) {
+    if (currentOrderStatus.toLowerCase() !== 'active') {
+      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
       return;
     }
     
-    try {
-      console.log('Loading customer data for ID:', currentCustomerId);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
-      const response = await fetch(`${SCRIPT_URL}?action=getCustomerById&customerId=${encodeURIComponent(currentCustomerId)}&_=${Date.now()}`, {
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const text = await response.text();
-      console.log('Raw customer data response:', text);
-      
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (parseError) {
-        console.error('Failed to parse JSON:', parseError);
-        throw new Error('Invalid server response');
-      }
-      
-      console.log('Customer data response:', data);
-      
-      if (data.success && data.customer) {
-        currentCustomer = data.customer;
-        
-        // Fill customer form
-        document.getElementById('customer-name').value = currentCustomer.name || '';
-        document.getElementById('customer-phone').value = currentCustomer.phone || currentCustomerPhone;
-        document.getElementById('customer-whatsapp').value = currentCustomer.whatsapp || currentCustomer.phone || currentCustomerPhone;
-        document.getElementById('customer-area').value = currentCustomer.area || '';
-        document.getElementById('customer-address').value = currentCustomer.address || '';
-        document.getElementById('customer-location').value = currentCustomer.location || '';
-        document.getElementById('customer-round').value = currentRound;
-        document.getElementById('customer-notes').value = currentCustomer.notes || '';
-      }
-      
-    } catch (error) {
-      console.error('Error loading customer data:', error);
-      showError('⚠️ تعذر تحميل بيانات العميل. يمكنك المتابعة.');
+    if (!isAccountActive && customerExists) {
+      alert('حسابك غير نشط. يرجى التواصل مع الإدارة لتفعيل الحساب.');
+      return;
     }
+    
+    selectedOrderType = type;
+    
+    document.querySelectorAll('.type-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Show customer info form
+    document.getElementById('customer-info-form').style.display = 'block';
+    
+    // Fill customer form with existing data or prepare for new customer
+    if (customerExists && currentCustomer) {
+      // Fill with existing customer data
+      document.getElementById('customer-name').value = currentCustomer.name || '';
+      document.getElementById('customer-phone').value = currentCustomer.phone || currentCustomerPhone;
+      document.getElementById('customer-whatsapp').value = currentCustomer.whatsapp || currentCustomer.phone || currentCustomerPhone;
+      document.getElementById('customer-area').value = currentCustomer.area || '';
+      document.getElementById('customer-address').value = currentCustomer.address || '';
+      document.getElementById('customer-location').value = currentCustomer.location || '';
+      document.getElementById('customer-notes').value = currentCustomer.notes || '';
+    } else {
+      // New customer - pre-fill phone and WhatsApp
+      document.getElementById('customer-name').value = '';
+      document.getElementById('customer-phone').value = currentCustomerPhone;
+      document.getElementById('customer-whatsapp').value = currentCustomerPhone;
+      document.getElementById('customer-area').value = '';
+      document.getElementById('customer-address').value = '';
+      document.getElementById('customer-location').value = '';
+      document.getElementById('customer-notes').value = '';
+    }
+    
+    // For edit mode, load existing order
+    if (type === 'edit' && currentCustomerId) {
+      loadOrderData();
+    } else {
+      document.getElementById('existing-order-section').style.display = 'none';
+      // Clear order text for new orders
+      document.getElementById('order-text').value = '';
+    }
+    
+    // Show order details section
+    document.getElementById('order-details-section').style.display = 'block';
+    
+    hideMessages();
   }
   
   async function loadOrderData() {
@@ -895,41 +867,7 @@
     }
   }
   
-  function selectOrderType(type) {
-    if (currentOrderStatus.toLowerCase() !== 'active') {
-      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
-      return;
-    }
-    
-    if (!isAccountVerified || !isAccountActive) {
-      alert('يجب التحقق من الحساب أولاً.');
-      return;
-    }
-    
-    selectedOrderType = type;
-    
-    document.querySelectorAll('.type-btn').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    event.target.classList.add('active');
-    
-    // Show customer info form
-    document.getElementById('customer-info-form').style.display = 'block';
-    
-    // For edit mode, load existing order
-    if (type === 'edit') {
-      loadOrderData();
-    } else {
-      document.getElementById('existing-order-section').style.display = 'none';
-    }
-    
-    // Show order details section
-    document.getElementById('order-details-section').style.display = 'block';
-    
-    hideMessages();
-  }
-  
-  async function updateCustomerInfo() {
+  async function saveCustomerInfo() {
     hideMessages();
     
     // Validate required fields
@@ -949,8 +887,20 @@
       return;
     }
     
+    const phoneRegex = /^05\d{8}$/;
+    if (!phoneRegex.test(phone)) {
+      showError('رقم الموبايل يجب أن يبدأ بـ 05 ويحتوي على 10 أرقام');
+      return;
+    }
+    
     if (!whatsapp) {
       showError('رقم الواتساب مطلوب');
+      return;
+    }
+    
+    const whatsappRegex = /^05\d{8}$/;
+    if (!whatsappRegex.test(whatsapp)) {
+      showError('رقم الواتساب يجب أن يبدأ بـ 05 ويحتوي على 10 أرقام');
       return;
     }
     
@@ -965,35 +915,33 @@
     }
     
     const location = document.getElementById('customer-location').value.trim();
-    const round = document.getElementById('customer-round').value.trim();
     const notes = document.getElementById('customer-notes').value.trim();
     
     // Show loading
-    const updateBtn = document.getElementById('update-customer-btn');
-    const updateLoading = document.getElementById('update-customer-loading');
-    const updateText = document.getElementById('update-customer-text');
-    updateBtn.disabled = true;
-    updateLoading.style.display = 'inline-block';
-    updateText.textContent = 'جاري الحفظ...';
+    const saveBtn = document.getElementById('save-customer-btn');
+    const saveLoading = document.getElementById('save-customer-loading');
+    const saveText = document.getElementById('save-customer-text');
+    saveBtn.disabled = true;
+    saveLoading.style.display = 'inline-block';
+    saveText.textContent = 'جاري الحفظ...';
     
     try {
       const customerData = {
-        action: 'updateCustomer',
-        customerId: currentCustomerId || '',
-        name: name,
+        action: 'createOrUpdateCustomer',
         phone: phone,
         whatsapp: whatsapp,
+        name: name,
         area: area,
         address: address,
         location: location,
         notes: notes,
-        round: round || currentRound
+        round: currentRound
       };
       
-      console.log('Updating customer:', customerData);
+      console.log('Saving customer:', customerData);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       
       const response = await fetch(SCRIPT_URL, {
         method: 'POST',
@@ -1011,7 +959,7 @@
       }
       
       const text = await response.text();
-      console.log('Update response:', text);
+      console.log('Save response:', text);
       
       let result;
       try {
@@ -1021,21 +969,26 @@
         throw new Error('Invalid server response');
       }
       
-      console.log('Update result:', result);
+      console.log('Save result:', result);
       
       if (result.success) {
-        // Update customer ID if this is a new customer
-        if (!currentCustomerId && result.customerId) {
+        // Update customer ID
+        if (result.customerId) {
           currentCustomerId = result.customerId;
+          customerExists = true;
         }
         
         showSuccess('✅ تم حفظ معلومات العميل بنجاح');
+        
+        // Enable submit button
+        document.getElementById('submit-btn').disabled = false;
+        
       } else {
         throw new Error(result.message || 'فشل حفظ معلومات العميل');
       }
       
     } catch (error) {
-      console.error('Error updating customer:', error);
+      console.error('Error saving customer:', error);
       
       if (error.name === 'AbortError') {
         showError('⚠️ انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.');
@@ -1043,9 +996,9 @@
         showError('حدث خطأ أثناء حفظ معلومات العميل: ' + error.message);
       }
     } finally {
-      updateBtn.disabled = false;
-      updateLoading.style.display = 'none';
-      updateText.textContent = 'حفظ معلومات العميل';
+      saveBtn.disabled = false;
+      saveLoading.style.display = 'none';
+      saveText.textContent = 'حفظ معلومات العميل';
     }
   }
   
@@ -1062,8 +1015,8 @@
       return;
     }
     
-    if (!isAccountVerified || !isAccountActive) {
-      alert('يجب التحقق من الحساب أولاً.');
+    if (!isAccountActive && customerExists) {
+      alert('حسابك غير نشط. يرجى التواصل مع الإدارة لتفعيل الحساب.');
       return;
     }
     
@@ -1096,7 +1049,7 @@
       let result;
       
       if (selectedOrderType === 'edit' && currentOrder) {
-        // Update existing order
+        // UPDATE EXISTING ORDER
         const orderData = {
           action: 'updateOrder',
           orderId: currentOrder.id,
@@ -1107,7 +1060,7 @@
         console.log('Updating order:', orderData);
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
         
         const response = await fetch(SCRIPT_URL, {
           method: 'POST',
@@ -1135,9 +1088,8 @@
         }
         
       } else {
-        // Submit new order
+        // SUBMIT NEW ORDER
         const location = document.getElementById('customer-location').value.trim();
-        const round = document.getElementById('customer-round').value.trim();
         const notes = document.getElementById('customer-notes').value.trim();
         
         const orderData = {
@@ -1150,13 +1102,13 @@
           location: location,
           orderText: orderText,
           notes: notes,
-          round: round || currentRound
+          round: currentRound
         };
         
         console.log('Submitting new order:', orderData);
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
         
         const response = await fetch(SCRIPT_URL, {
           method: 'POST',
@@ -1243,30 +1195,38 @@
   function hideMessages() {
     document.getElementById('success-message').style.display = 'none';
     document.getElementById('error-message').style.display = 'none';
-    document.getElementById('warning-message').style.display = 'none';
   }
   
   function resetForm() {
     // Reset all form elements
-    document.querySelectorAll('input, textarea').forEach(input => {
-      input.value = '';
-    });
+    document.getElementById('mobile-number').value = '';
+    document.getElementById('customer-name').value = '';
+    document.getElementById('customer-phone').value = '';
+    document.getElementById('customer-whatsapp').value = '';
+    document.getElementById('customer-area').value = '';
+    document.getElementById('customer-address').value = '';
+    document.getElementById('customer-location').value = '';
+    document.getElementById('customer-notes').value = '';
+    document.getElementById('order-text').value = '';
     
     document.querySelectorAll('.error, .success').forEach(element => {
       element.textContent = '';
     });
     
-    // Hide all sections except verification
+    // Hide all sections except phone input
     document.getElementById('order-type-section').style.display = 'none';
     document.getElementById('customer-info-form').style.display = 'none';
     document.getElementById('existing-order-section').style.display = 'none';
     document.getElementById('order-details-section').style.display = 'none';
     
-    // Reset customer form phone
-    document.getElementById('customer-phone').removeAttribute('readonly');
-    
     // Show edit button again
-    document.querySelector('.type-btn[onclick*="edit"]').style.display = 'block';
+    document.getElementById('edit-order-btn').style.display = 'none';
+    document.getElementById('new-order-btn').style.display = 'none';
+    
+    // Reset buttons
+    document.querySelectorAll('.type-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
     
     // Reset state
     selectedOrderType = null;
@@ -1274,12 +1234,14 @@
     currentOrder = null;
     currentCustomerId = '';
     currentCustomerPhone = '';
-    isAccountVerified = false;
-    isAccountActive = false;
+    isAccountActive = true;
+    customerExists = false;
     
     hideMessages();
+    
+    // Focus on phone input
+    document.getElementById('mobile-number').focus();
   }
 </script>
 </body>
 </html>
-
