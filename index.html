@@ -340,14 +340,21 @@
         maxlength="10"
         oninput="formatMobileNumber(this)"
         onkeyup="checkPhoneNumber()"
+        autocomplete="off"
       >
       <div id="mobile-error" class="error"></div>
       <div id="mobile-success" class="success"></div>
       <div id="mobile-warning" class="warning-message" style="display: none; margin-top: 10px;"></div>
     </div>
+    
+    <div style="text-align: center; margin-top: 20px;">
+      <button class="btn" onclick="testConnection()" style="background: #28a745;">
+        <span>اختبار الاتصال بالسيرفر</span>
+      </button>
+    </div>
   </div>
 
-  <!-- Order Type Selection (Shown automatically after phone check) -->
+  <!-- Order Type Selection -->
   <div id="order-type-section" class="section" style="display: none;">
     <h2 class="section-title">اختر نوع الطلب</h2>
     
@@ -361,7 +368,7 @@
     </div>
   </div>
 
-  <!-- Customer Information Form (Editable) -->
+  <!-- Customer Information Form -->
   <div id="customer-info-form" class="customer-info-form" style="display: none;">
     <h4>معلومات العميل</h4>
     
@@ -372,6 +379,7 @@
           type="text" 
           id="customer-name" 
           placeholder="الاسم الكامل"
+          autocomplete="name"
         >
       </div>
       
@@ -395,6 +403,7 @@
           id="customer-whatsapp" 
           placeholder="05XXXXXXXX"
           maxlength="10"
+          autocomplete="tel"
         >
       </div>
       
@@ -404,6 +413,7 @@
           type="text" 
           id="customer-area" 
           placeholder="اسم المنطقة"
+          autocomplete="off"
         >
       </div>
     </div>
@@ -415,6 +425,7 @@
           type="text" 
           id="customer-address" 
           placeholder="العنوان التفصيلي"
+          autocomplete="street-address"
         >
       </div>
       
@@ -424,6 +435,7 @@
           type="text" 
           id="customer-location" 
           placeholder="رقم المبنى، الشارع، إلخ"
+          autocomplete="off"
         >
       </div>
     </div>
@@ -445,7 +457,7 @@
     </div>
   </div>
 
-  <!-- Existing Order Details (For Edit Mode) -->
+  <!-- Existing Order Details -->
   <div id="existing-order-section" class="previous-orders" style="display: none;">
     <h4>الطلب الحالي</h4>
     <div id="existing-order-details"></div>
@@ -479,10 +491,10 @@
 </div>
 
 <script>
-  // Google Apps Script Web App URL - UPDATED
-  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCaTzsw76yYfz1tPfNts8vOS2HLscSfIB_5W58gq5ztz3Dwd717l6vzXfZM0eJUSJTvA/exec';
+  // ===== رابط Google Apps Script الجديد =====
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwXPTP824xPDd0Pm7V_vetLaeNfR_5BFhcPHj_HgLlUg_we0bEYb8CmHM58qVHd2tNZjw/exec';
   
-  // Application State
+  // حالة التطبيق
   let selectedOrderType = null;
   let currentCustomer = null;
   let currentOrder = null;
@@ -493,23 +505,46 @@
   let isAccountActive = true;
   let customerExists = false;
   
-  // Debounce timer
+  // مؤقت لتأخير الطلبات
   let phoneCheckTimer = null;
   
+  // ===== تهيئة عند تحميل الصفحة =====
   document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ HomiCart System Initialized');
     checkOrderStatus();
+    document.getElementById('mobile-number').focus();
   });
   
+  // ===== اختبار الاتصال بالسيرفر =====
+  async function testConnection() {
+    try {
+      console.log('🔗 Testing connection to:', SCRIPT_URL);
+      
+      const response = await fetch(`${SCRIPT_URL}?action=test&_=${Date.now()}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Connection test response:', data);
+      
+      alert(`✅ الاتصال بالسيرفر ناجح!\n\nالرسالة: ${data.message}\n\nالحالة: ${data.success ? 'ناجح' : 'فشل'}`);
+      
+    } catch (error) {
+      console.error('❌ Connection test failed:', error);
+      alert(`❌ فشل الاتصال بالسيرفر:\n${error.message}\n\nيرجى التحقق من:\n1. اتصال الإنترنت\n2. الرابط: ${SCRIPT_URL}`);
+    }
+  }
+  
+  // ===== تنسيق رقم الهاتف =====
   function formatMobileNumber(input) {
-    // Remove all non-numeric characters
     let value = input.value.replace(/\D/g, '');
     
-    // Ensure it starts with 05 and has 10 digits
     if (value.length > 0 && !value.startsWith('05')) {
       value = '05' + value;
     }
     
-    // Limit to 10 digits
     if (value.length > 10) {
       value = value.substring(0, 10);
     }
@@ -517,18 +552,18 @@
     input.value = value;
   }
   
+  // ===== التحقق من رقم الهاتف =====
   function checkPhoneNumber() {
-    // Clear previous timer
     if (phoneCheckTimer) {
       clearTimeout(phoneCheckTimer);
     }
     
-    // Set new timer to check after user stops typing (500ms)
     phoneCheckTimer = setTimeout(async () => {
       await validateMobileNumber();
     }, 500);
   }
   
+  // ===== التحقق من رقم الهاتف وعرض حالة العميل =====
   async function validateMobileNumber() {
     const mobileInput = document.getElementById('mobile-number');
     const mobileNumber = mobileInput.value.trim();
@@ -536,65 +571,56 @@
     const successElement = document.getElementById('mobile-success');
     const warningElement = document.getElementById('mobile-warning');
     
+    // إعادة تعيين الرسائل
     errorElement.textContent = '';
     successElement.textContent = '';
     warningElement.style.display = 'none';
     hideMessages();
     
+    // إخفاء قسم نوع الطلب
+    document.getElementById('order-type-section').style.display = 'none';
+    document.getElementById('customer-info-form').style.display = 'none';
+    document.getElementById('existing-order-section').style.display = 'none';
+    document.getElementById('order-details-section').style.display = 'none';
+    
     const mobileRegex = /^05\d{8}$/;
     
+    // التحقق الأساسي
     if (!mobileNumber) {
       errorElement.textContent = 'رقم الهاتف مطلوب';
-      document.getElementById('order-type-section').style.display = 'none';
       return false;
     }
     
     if (!mobileRegex.test(mobileNumber)) {
       errorElement.textContent = 'رقم الهاتف يجب أن يبدأ بـ 05 ويحتوي على 10 أرقام';
-      document.getElementById('order-type-section').style.display = 'none';
       return false;
     }
     
-    // Show loading state
-    successElement.textContent = 'جاري التحقق...';
+    // عرض جاري التحميل
+    successElement.textContent = 'جاري التحقق من قاعدة البيانات...';
     
     try {
-      console.log('Checking customer:', mobileNumber);
+      console.log('🔍 Checking customer for phone:', mobileNumber);
       
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
-      const response = await fetch(`${SCRIPT_URL}?action=getCustomer&phone=${encodeURIComponent(mobileNumber)}&_=${Date.now()}`, {
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
+      const response = await fetch(`${SCRIPT_URL}?action=getCustomer&phone=${encodeURIComponent(mobileNumber)}&_=${Date.now()}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const text = await response.text();
-      console.log('Raw customer response:', text);
-      
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (parseError) {
-        console.error('Failed to parse JSON:', parseError);
-        throw new Error('Invalid server response');
-      }
-      
-      console.log('Customer response:', data);
+      const data = await response.json();
+      console.log('📋 Customer response:', data);
       
       if (data.success && data.customer) {
-        // Customer exists
+        // العميل موجود
         currentCustomer = data.customer;
         currentCustomerId = data.customer.id;
         currentCustomerPhone = mobileNumber;
         customerExists = true;
         
-        // Check if account is active
+        console.log('✅ Customer found:', data.customer);
+        
+        // التحقق من حالة الحساب
         if (data.customer.accountStatus === 'Inactive' || data.customer.isActive === false) {
           isAccountActive = false;
           warningElement.innerHTML = `
@@ -603,31 +629,33 @@
           `;
           warningElement.style.display = 'block';
           
-          // Hide order buttons for inactive accounts
-          document.getElementById('order-type-section').style.display = 'none';
-          successElement.textContent = '';
-        } else {
-          // Account is active
-          isAccountActive = true;
-          successElement.textContent = '✓ تم العثور على حسابك';
+          // إخفاء أزرار الطلبات للحسابات غير النشطة
+          successElement.textContent = 'حساب غير نشط';
           
-          // Show both buttons for existing customers
+        } else {
+          // الحساب نشط
+          isAccountActive = true;
+          successElement.textContent = '✅ تم العثور على حسابك';
+          
+          // عرض كلا الزرين للعملاء الحاليين
           document.getElementById('order-type-section').style.display = 'block';
           document.getElementById('edit-order-btn').style.display = 'block';
           document.getElementById('new-order-btn').style.display = 'block';
         }
         
       } else {
-        // New customer
+        // عميل جديد
         currentCustomer = null;
         currentCustomerId = '';
         currentCustomerPhone = mobileNumber;
         customerExists = false;
         isAccountActive = true;
         
-        successElement.textContent = '✓ رقم جديد - سيتم إنشاء حساب جديد';
+        console.log('🆕 New customer detected');
         
-        // Show only "New Order" button for new customers
+        successElement.textContent = '🆕 رقم جديد - سيتم إنشاء حساب جديد';
+        
+        // عرض زر "طلب جديد" فقط للعملاء الجدد
         document.getElementById('order-type-section').style.display = 'block';
         document.getElementById('new-order-btn').style.display = 'block';
         document.getElementById('edit-order-btn').style.display = 'none';
@@ -636,48 +664,26 @@
       return true;
       
     } catch (error) {
-      console.error('Error checking customer:', error);
-      
-      if (error.name === 'AbortError') {
-        errorElement.textContent = '⚠️ انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.';
-      } else {
-        errorElement.textContent = 'حدث خطأ أثناء التحقق: ' + error.message;
-      }
-      
+      console.error('❌ Error checking customer:', error);
+      errorElement.textContent = 'حدث خطأ أثناء التحقق: ' + error.message;
       document.getElementById('order-type-section').style.display = 'none';
       return false;
     }
   }
   
+  // ===== التحقق من حالة الطلبات =====
   async function checkOrderStatus() {
     try {
-      console.log('Checking order status...');
+      console.log('📊 Checking order status...');
       
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
-      const response = await fetch(`${SCRIPT_URL}?action=getOrderStatus&_=${Date.now()}`, {
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
+      const response = await fetch(`${SCRIPT_URL}?action=getOrderStatus&_=${Date.now()}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const text = await response.text();
-      console.log('Raw status response:', text);
-      
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (parseError) {
-        console.error('Failed to parse JSON:', parseError);
-        throw new Error('Invalid server response');
-      }
-      
-      console.log('Status response:', data);
+      const data = await response.json();
+      console.log('📊 Status response:', data);
       
       if (data.success) {
         currentOrderStatus = data.status || 'Active';
@@ -690,19 +696,15 @@
         showError('⚠️ تعذر التحقق من حالة النظام. يمكنك المحاولة.');
       }
     } catch (error) {
-      console.error('Error checking order status:', error);
+      console.error('❌ Error checking order status:', error);
       currentOrderStatus = 'Active';
       currentRound = '';
       updateOrderStatusDisplay();
-      
-      if (error.name === 'AbortError') {
-        showError('⚠️ انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.');
-      } else {
-        showError('⚠️ تعذر الاتصال بالخادم. يمكنك المحاولة.');
-      }
+      showError('⚠️ تعذر الاتصال بالخادم. يمكنك المحاولة.');
     }
   }
   
+  // ===== تحديث عرض حالة النظام =====
   function updateOrderStatusDisplay() {
     const statusElement = document.getElementById('round-status');
     const statusText = document.getElementById('round-status-text');
@@ -720,6 +722,7 @@
     }
   }
   
+  // ===== تفعيل عناصر النموذج =====
   function enableForm() {
     document.querySelectorAll('input, textarea, button').forEach(element => {
       if (element.id !== 'submit-btn' || currentOrderStatus.toLowerCase() === 'active') {
@@ -728,6 +731,7 @@
     });
   }
   
+  // ===== تعطيل عناصر النموذج =====
   function disableForm() {
     const submitBtn = document.getElementById('submit-btn');
     if (submitBtn) {
@@ -742,6 +746,7 @@
     });
   }
   
+  // ===== اختيار نوع الطلب =====
   function selectOrderType(type) {
     if (currentOrderStatus.toLowerCase() !== 'active') {
       alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
@@ -755,17 +760,18 @@
     
     selectedOrderType = type;
     
+    // تحديث حالة الأزرار
     document.querySelectorAll('.type-btn').forEach(btn => {
       btn.classList.remove('active');
     });
     event.target.classList.add('active');
     
-    // Show customer info form
+    // عرض نموذج معلومات العميل
     document.getElementById('customer-info-form').style.display = 'block';
     
-    // Fill customer form with existing data or prepare for new customer
+    // ملء نموذج العميل بالبيانات الحالية أو التحضير لعميل جديد
     if (customerExists && currentCustomer) {
-      // Fill with existing customer data
+      // ملء ببيانات العميل الحالية
       document.getElementById('customer-name').value = currentCustomer.name || '';
       document.getElementById('customer-phone').value = currentCustomer.phone || currentCustomerPhone;
       document.getElementById('customer-whatsapp').value = currentCustomer.whatsapp || currentCustomer.phone || currentCustomerPhone;
@@ -774,7 +780,7 @@
       document.getElementById('customer-location').value = currentCustomer.location || '';
       document.getElementById('customer-notes').value = currentCustomer.notes || '';
     } else {
-      // New customer - pre-fill phone and WhatsApp
+      // عميل جديد - تعبئة رقم الهاتف والواتساب
       document.getElementById('customer-name').value = '';
       document.getElementById('customer-phone').value = currentCustomerPhone;
       document.getElementById('customer-whatsapp').value = currentCustomerPhone;
@@ -784,21 +790,21 @@
       document.getElementById('customer-notes').value = '';
     }
     
-    // For edit mode, load existing order
+    // لوضع التعديل، تحميل الطلب الحالي
     if (type === 'edit' && currentCustomerId) {
       loadOrderData();
     } else {
       document.getElementById('existing-order-section').style.display = 'none';
-      // Clear order text for new orders
       document.getElementById('order-text').value = '';
     }
     
-    // Show order details section
+    // عرض قسم تفاصيل الطلب
     document.getElementById('order-details-section').style.display = 'block';
     
     hideMessages();
   }
   
+  // ===== تحميل بيانات الطلب للتعديل =====
   async function loadOrderData() {
     if (!currentCustomerId) {
       console.log('No customer ID, no existing order');
@@ -806,38 +812,21 @@
     }
     
     try {
-      console.log('Loading order data for customer ID:', currentCustomerId);
+      console.log('📋 Loading order data for customer ID:', currentCustomerId);
       
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
-      const response = await fetch(`${SCRIPT_URL}?action=getOrderByCustomer&customerId=${encodeURIComponent(currentCustomerId)}&_=${Date.now()}`, {
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
+      const response = await fetch(`${SCRIPT_URL}?action=getOrderByCustomer&customerId=${encodeURIComponent(currentCustomerId)}&_=${Date.now()}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const text = await response.text();
-      console.log('Raw order data response:', text);
-      
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (parseError) {
-        console.error('Failed to parse JSON:', parseError);
-        throw new Error('Invalid server response');
-      }
-      
-      console.log('Order data response:', data);
+      const data = await response.json();
+      console.log('📋 Order data response:', data);
       
       if (data.success && data.order) {
         currentOrder = data.order;
         
-        // Show existing order section
+        // عرض قسم الطلب الحالي
         const existingOrderSection = document.getElementById('existing-order-section');
         const existingOrderDetails = document.getElementById('existing-order-details');
         
@@ -850,27 +839,28 @@
           </div>
         `;
         
-        // Pre-fill the order text for editing
+        // تعبئة نص الطلب للتعديل
         if (currentOrder.items) {
           document.getElementById('order-text').value = currentOrder.items;
         }
         
         existingOrderSection.style.display = 'block';
       } else {
-        // No existing order
+        // لا يوجد طلب حالياً
         document.getElementById('existing-order-section').style.display = 'none';
       }
       
     } catch (error) {
-      console.error('Error loading order data:', error);
+      console.error('❌ Error loading order data:', error);
       document.getElementById('existing-order-section').style.display = 'none';
     }
   }
   
+  // ===== حفظ معلومات العميل =====
   async function saveCustomerInfo() {
     hideMessages();
     
-    // Validate required fields
+    // التحقق من الحقول المطلوبة
     const name = document.getElementById('customer-name').value.trim();
     const phone = document.getElementById('customer-phone').value.trim();
     const whatsapp = document.getElementById('customer-whatsapp').value.trim();
@@ -917,7 +907,7 @@
     const location = document.getElementById('customer-location').value.trim();
     const notes = document.getElementById('customer-notes').value.trim();
     
-    // Show loading
+    // عرض جاري التحميل
     const saveBtn = document.getElementById('save-customer-btn');
     const saveLoading = document.getElementById('save-customer-loading');
     const saveText = document.getElementById('save-customer-text');
@@ -938,10 +928,7 @@
         round: currentRound
       };
       
-      console.log('Saving customer:', customerData);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      console.log('💾 Saving customer:', customerData);
       
       const response = await fetch(SCRIPT_URL, {
         method: 'POST',
@@ -949,27 +936,14 @@
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(customerData),
-        signal: controller.signal
       });
-      
-      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const text = await response.text();
-      console.log('Save response:', text);
-      
-      let result;
-      try {
-        result = JSON.parse(text);
-      } catch (parseError) {
-        console.error('Failed to parse JSON:', parseError);
-        throw new Error('Invalid server response');
-      }
-      
-      console.log('Save result:', result);
+      const result = await response.json();
+      console.log('💾 Save result:', result);
       
       if (result.success) {
         // Update customer ID
@@ -988,13 +962,8 @@
       }
       
     } catch (error) {
-      console.error('Error saving customer:', error);
-      
-      if (error.name === 'AbortError') {
-        showError('⚠️ انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.');
-      } else {
-        showError('حدث خطأ أثناء حفظ معلومات العميل: ' + error.message);
-      }
+      console.error('❌ Error saving customer:', error);
+      showError('حدث خطأ أثناء حفظ معلومات العميل: ' + error.message);
     } finally {
       saveBtn.disabled = false;
       saveLoading.style.display = 'none';
@@ -1002,6 +971,7 @@
     }
   }
   
+  // ===== إرسال الطلب =====
   async function submitOrder() {
     hideMessages();
     
@@ -1020,7 +990,7 @@
       return;
     }
     
-    // Validate customer info is saved first
+    // التحقق من حفظ معلومات العميل أولاً
     const name = document.getElementById('customer-name').value.trim();
     const phone = document.getElementById('customer-phone').value.trim();
     const whatsapp = document.getElementById('customer-whatsapp').value.trim();
@@ -1049,7 +1019,7 @@
       let result;
       
       if (selectedOrderType === 'edit' && currentOrder) {
-        // UPDATE EXISTING ORDER
+        // تحديث الطلب الحالي
         const orderData = {
           action: 'updateOrder',
           orderId: currentOrder.id,
@@ -1057,10 +1027,7 @@
           status: 'تم التحديث'
         };
         
-        console.log('Updating order:', orderData);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        console.log('✏️ Updating order:', orderData);
         
         const response = await fetch(SCRIPT_URL, {
           method: 'POST',
@@ -1068,27 +1035,17 @@
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(orderData),
-          signal: controller.signal
         });
-        
-        clearTimeout(timeoutId);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const text = await response.text();
-        console.log('Update order response:', text);
-        
-        try {
-          result = JSON.parse(text);
-        } catch (parseError) {
-          console.error('Failed to parse JSON:', parseError);
-          throw new Error('Invalid server response');
-        }
+        result = await response.json();
+        console.log('✏️ Update order result:', result);
         
       } else {
-        // SUBMIT NEW ORDER
+        // إرسال طلب جديد
         const location = document.getElementById('customer-location').value.trim();
         const notes = document.getElementById('customer-notes').value.trim();
         
@@ -1105,10 +1062,7 @@
           round: currentRound
         };
         
-        console.log('Submitting new order:', orderData);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        console.log('📤 Submitting new order:', orderData);
         
         const response = await fetch(SCRIPT_URL, {
           method: 'POST',
@@ -1116,24 +1070,14 @@
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(orderData),
-          signal: controller.signal
         });
-        
-        clearTimeout(timeoutId);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const text = await response.text();
-        console.log('Submit order response:', text);
-        
-        try {
-          result = JSON.parse(text);
-        } catch (parseError) {
-          console.error('Failed to parse JSON:', parseError);
-          throw new Error('Invalid server response');
-        }
+        result = await response.json();
+        console.log('📤 Submit order result:', result);
       }
       
       console.log('Submit/Update result:', result);
@@ -1142,13 +1086,14 @@
         const successMessage = document.getElementById('success-message');
         successMessage.innerHTML = `
           <h3>✅ ${selectedOrderType === 'new' ? 'تم إرسال الطلب بنجاح!' : 'تم تحديث الطلب بنجاح!'}</h3>
-          <p>${result.orderId ? `رقم الطلب: ${result.orderId}` : ''}</p>
-          <p>${result.customerId ? `رقم العميل: ${result.customerId}` : ''}</p>
-          <p>عزيزي/عزيزتي ${name}، سيتم التواصل معك على واتساب للتأكيد.</p>
+          ${result.orderId ? `<p><strong>رقم الطلب:</strong> ${result.orderId}</p>` : ''}
+          ${result.customerId ? `<p><strong>رقم العميل:</strong> ${result.customerId}</p>` : ''}
+          <p>عزيزي/عزيزتي <strong>${name}</strong>، سيتم التواصل معك على واتساب للتأكيد.</p>
           <p>شكراً لاستخدامك HomiCart! 💙</p>
         `;
         successMessage.style.display = 'block';
         
+        // Auto-reset after 10 seconds
         setTimeout(() => {
           resetForm();
           successMessage.style.display = 'none';
@@ -1158,13 +1103,8 @@
       }
       
     } catch (error) {
-      console.error('Error submitting order:', error);
-      
-      if (error.name === 'AbortError') {
-        showError('⚠️ انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.');
-      } else {
-        showError('حدث خطأ أثناء إرسال الطلب: ' + error.message);
-      }
+      console.error('❌ Error submitting order:', error);
+      showError('حدث خطأ أثناء إرسال الطلب: ' + error.message);
     } finally {
       submitBtn.disabled = false;
       submitLoading.style.display = 'none';
@@ -1172,6 +1112,7 @@
     }
   }
   
+  // ===== عرض رسالة خطأ =====
   function showError(message) {
     const errorMessage = document.getElementById('error-message');
     errorMessage.innerHTML = `<p>${message}</p>`;
@@ -1182,6 +1123,7 @@
     }, 5000);
   }
   
+  // ===== عرض رسالة نجاح =====
   function showSuccess(message) {
     const successMessage = document.getElementById('success-message');
     successMessage.innerHTML = `<p>${message}</p>`;
@@ -1192,13 +1134,15 @@
     }, 5000);
   }
   
+  // ===== إخفاء جميع الرسائل =====
   function hideMessages() {
     document.getElementById('success-message').style.display = 'none';
     document.getElementById('error-message').style.display = 'none';
   }
   
+  // ===== إعادة تعيين النموذج للحالة الأولية =====
   function resetForm() {
-    // Reset all form elements
+    // إعادة تعيين قيم النموذج
     document.getElementById('mobile-number').value = '';
     document.getElementById('customer-name').value = '';
     document.getElementById('customer-phone').value = '';
@@ -1209,26 +1153,25 @@
     document.getElementById('customer-notes').value = '';
     document.getElementById('order-text').value = '';
     
+    // مسح الرسائل
     document.querySelectorAll('.error, .success').forEach(element => {
       element.textContent = '';
     });
     
-    // Hide all sections except phone input
+    // إخفاء الأقسام
     document.getElementById('order-type-section').style.display = 'none';
     document.getElementById('customer-info-form').style.display = 'none';
     document.getElementById('existing-order-section').style.display = 'none';
     document.getElementById('order-details-section').style.display = 'none';
     
-    // Show edit button again
+    // إعادة تعيين الأزرار
     document.getElementById('edit-order-btn').style.display = 'none';
     document.getElementById('new-order-btn').style.display = 'none';
-    
-    // Reset buttons
     document.querySelectorAll('.type-btn').forEach(btn => {
       btn.classList.remove('active');
     });
     
-    // Reset state
+    // إعادة تعيين الحالة
     selectedOrderType = null;
     currentCustomer = null;
     currentOrder = null;
@@ -1237,13 +1180,12 @@
     isAccountActive = true;
     customerExists = false;
     
+    // إخفاء الرسائل
     hideMessages();
     
-    // Focus on phone input
+    // التركيز على إدخال الهاتف
     document.getElementById('mobile-number').focus();
   }
 </script>
 </body>
 </html>
-
-
