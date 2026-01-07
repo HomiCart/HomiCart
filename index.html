@@ -1177,14 +1177,164 @@
     }
   }
   
-  // ===== باقي الدوال (بدون تغيير) =====
+  // ===== التحقق من حالة الطلبات =====
+  async function checkOrderStatus() {
+    try {
+      console.log('📊 Checking order status...');
+      
+      const url = `${SCRIPT_URL}?action=getOrderStatus&_=${Date.now()}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        cache: 'no-cache'
+      });
+      
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('📊 Status response:', data);
+      
+      if (data.success) {
+        currentOrderStatus = data.status || 'Active';
+        currentRound = data.round || '';
+        updateOrderStatusDisplay();
+      } else {
+        currentOrderStatus = 'Active';
+        currentRound = '';
+        updateOrderStatusDisplay();
+        showError('⚠️ تعذر التحقق من حالة النظام. يمكنك المحاولة.');
+      }
+    } catch (error) {
+      console.error('❌ Error checking order status:', error);
+      currentOrderStatus = 'Active';
+      currentRound = '';
+      updateOrderStatusDisplay();
+      showError('⚠️ تعذر الاتصال بالخادم. يمكنك المحاولة.');
+    }
+  }
   
-  // [يتبقى لديك دوال: checkOrderStatus, updateOrderStatusDisplay, enableForm, disableForm,
-  // showError, showSuccess, hideMessages, resetForm - إحتفظ بها كما هي بدون تغيير]
+  // ===== تحديث عرض حالة النظام =====
+  function updateOrderStatusDisplay() {
+    const statusElement = document.getElementById('round-status');
+    const statusText = document.getElementById('round-status-text');
+    
+    if (currentOrderStatus.toLowerCase() === 'active') {
+      statusElement.className = 'round-status';
+      statusText.textContent = currentRound ? 
+        `✅ الطلبات مفتوحة - ${currentRound}` : 
+        '✅ الطلبات مفتوحة - يمكنك تقديم طلب جديد';
+      enableForm();
+    } else {
+      statusElement.className = 'round-status closed';
+      statusText.textContent = '⛔ الطلبات مغلقة حالياً - يرجى الانتظار حتى يتم فتح الطلبات';
+      disableForm();
+    }
+  }
   
-  // ... [أضف باقي الدوال هنا بدون تغيير] ...
+  // ===== تفعيل عناصر النموذج =====
+  function enableForm() {
+    document.querySelectorAll('input, textarea, button').forEach(element => {
+      if (element.id !== 'submit-btn' || currentOrderStatus.toLowerCase() === 'active') {
+        element.disabled = false;
+      }
+    });
+  }
+  
+  // ===== تعطيل عناصر النموذج =====
+  function disableForm() {
+    const submitBtn = document.getElementById('submit-btn');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span>الطلبات مغلقة</span>';
+    }
+    
+    document.querySelectorAll('.type-btn').forEach(btn => {
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+      btn.style.cursor = 'not-allowed';
+    });
+  }
+  
+  // ===== عرض رسالة خطأ =====
+  function showError(message) {
+    const errorMessage = document.getElementById('error-message');
+    errorMessage.innerHTML = `<p>${message}</p>`;
+    errorMessage.style.display = 'block';
+    
+    setTimeout(() => {
+      errorMessage.style.display = 'none';
+    }, 5000);
+  }
+  
+  // ===== عرض رسالة نجاح =====
+  function showSuccess(message) {
+    const successMessage = document.getElementById('success-message');
+    successMessage.innerHTML = `<p>${message}</p>`;
+    successMessage.style.display = 'block';
+    
+    setTimeout(() => {
+      successMessage.style.display = 'none';
+    }, 5000);
+  }
+  
+  // ===== إخفاء جميع الرسائل =====
+  function hideMessages() {
+    document.getElementById('success-message').style.display = 'none';
+    document.getElementById('error-message').style.display = 'none';
+  }
+  
+  // ===== إعادة تعيين النموذج للحالة الأولية =====
+  function resetForm() {
+    // إعادة تعيين قيم النموذج
+    document.getElementById('mobile-number').value = '';
+    document.getElementById('customer-name').value = '';
+    document.getElementById('customer-phone').value = '';
+    document.getElementById('customer-whatsapp').value = '';
+    document.getElementById('customer-area').value = '';
+    document.getElementById('customer-address').value = '';
+    document.getElementById('customer-location').value = '';
+    document.getElementById('customer-notes').value = '';
+    document.getElementById('order-text').value = '';
+    
+    // مسح الرسائل
+    document.querySelectorAll('.error, .success').forEach(element => {
+      element.textContent = '';
+    });
+    
+    // إخفاء الأقسام
+    document.getElementById('order-type-section').style.display = 'none';
+    document.getElementById('customer-actions-section').style.display = 'none';
+    document.getElementById('customer-info-form').style.display = 'none';
+    document.getElementById('existing-order-section').style.display = 'none';
+    document.getElementById('order-details-section').style.display = 'none';
+    
+    // إعادة تعيين الأزرار
+    document.getElementById('edit-order-btn').style.display = 'none';
+    document.getElementById('new-order-btn').style.display = 'none';
+    document.querySelectorAll('.type-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    
+    // إعادة تعيين الحالة
+    selectedOrderType = null;
+    currentCustomer = null;
+    currentOrder = null;
+    currentCustomerId = '';
+    currentCustomerPhone = '';
+    isAccountActive = true;
+    customerExists = false;
+    isEditingCustomer = false;
+    existingOrderId = null;
+    
+    // إخفاء الرسائل
+    hideMessages();
+    
+    // التركيز على إدخال الهاتف
+    document.getElementById('mobile-number').focus();
+  }
 </script>
-
-<!-- أكمل باقي الـ JavaScript هنا -->
 </body>
 </html>
