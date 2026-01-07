@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HomiCart - نظام الطلبات</title>
 <style>
-  /* نفس الـ CSS السابق */
   * {
     margin: 0;
     padding: 0;
@@ -231,6 +230,15 @@
     box-shadow: 0 6px 15px rgba(108, 117, 125, 0.25);
   }
   
+  .btn-warning {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+  }
+  
+  .btn-warning:hover {
+    background: linear-gradient(135deg, #f57c00, #e65100);
+    box-shadow: 0 6px 15px rgba(255, 152, 0, 0.25);
+  }
+  
   .error { 
     color: #dc3545; 
     margin-top: 5px; 
@@ -292,18 +300,26 @@
     color: #dc3545;
   }
   
+  .customer-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+  }
+  
   @media (max-width: 768px) {
     .container {
       padding: 20px;
       margin: 15px;
     }
     
-    .order-type-buttons {
+    .order-type-buttons, .customer-actions {
       flex-direction: column;
       align-items: center;
     }
     
-    .type-btn {
+    .type-btn, .btn {
       width: 100%;
       max-width: 300px;
     }
@@ -355,23 +371,26 @@
     </div>
   </div>
 
-  <!-- Order Type Selection -->
-  <div id="order-type-section" class="section" style="display: none;">
-    <h2 class="section-title">اختر نوع الطلب</h2>
+  <!-- Customer Actions -->
+  <div id="customer-actions-section" class="section" style="display: none;">
+    <h2 class="section-title">مرحباً <span id="customer-name-display"></span></h2>
     
-    <div class="order-type-buttons">
+    <div class="customer-actions">
+      <button class="btn btn-warning" onclick="editCustomerInfo()" id="edit-customer-btn">
+        تعديل بياناتي
+      </button>
       <button class="type-btn" onclick="selectOrderType('new')" id="new-order-btn">
         طلب جديد
       </button>
-      <button class="type-btn" onclick="selectOrderType('edit')" id="edit-order-btn" style="display: none;">
-        تعديل الطلب
+      <button class="type-btn" onclick="selectOrderType('edit')" id="edit-order-btn">
+        تعديل الطلب الأخير
       </button>
     </div>
   </div>
 
   <!-- Customer Information Form -->
   <div id="customer-info-form" class="customer-info-form" style="display: none;">
-    <h4>معلومات العميل</h4>
+    <h4 id="customer-form-title">معلومات العميل</h4>
     
     <div class="form-grid">
       <div class="form-group">
@@ -452,21 +471,22 @@
     
     <div style="text-align: center;">
       <button class="btn" onclick="saveCustomerInfo()" id="save-customer-btn">
-        <span id="save-customer-text">حفظ معلومات العميل</span>
+        <span id="save-customer-text">حفظ المعلومات</span>
         <span id="save-customer-loading" class="loading" style="display: none;"></span>
       </button>
+      <button class="btn btn-secondary" onclick="cancelEdit()" id="cancel-btn" style="display: none;">إلغاء</button>
     </div>
   </div>
 
   <!-- Existing Order Details -->
   <div id="existing-order-section" class="previous-orders" style="display: none;">
-    <h4>الطلب الحالي</h4>
+    <h4>الطلب الحالي للتعديل</h4>
     <div id="existing-order-details"></div>
   </div>
 
   <!-- Order Details Section -->
   <div id="order-details-section" class="section" style="display: none;">
-    <h3>تفاصيل الطلب</h3>
+    <h3 class="section-title" id="order-title">تفاصيل الطلب</h3>
     
     <div class="form-group">
       <label for="order-text" class="required">اكتب طلبك هنا</label>
@@ -505,6 +525,8 @@
   let currentCustomerPhone = '';
   let isAccountActive = true;
   let customerExists = false;
+  let isEditingCustomer = false;
+  let existingOrderId = null;
   
   // مؤقت لتأخير الطلبات
   let phoneCheckTimer = null;
@@ -585,8 +607,8 @@
     warningElement.style.display = 'none';
     hideMessages();
     
-    // إخفاء قسم نوع الطلب
-    document.getElementById('order-type-section').style.display = 'none';
+    // إخفاء الأقسام
+    document.getElementById('customer-actions-section').style.display = 'none';
     document.getElementById('customer-info-form').style.display = 'none';
     document.getElementById('existing-order-section').style.display = 'none';
     document.getElementById('order-details-section').style.display = 'none';
@@ -645,18 +667,19 @@
           `;
           warningElement.style.display = 'block';
           
-          // إخفاء أزرار الطلبات للحسابات غير النشطة
           successElement.textContent = 'حساب غير نشط';
           
         } else {
           // الحساب نشط
           isAccountActive = true;
-          successElement.textContent = '✅ تم العثور على حسابك';
+          successElement.textContent = `✅ مرحباً ${data.customer.name}`;
           
-          // عرض كلا الزرين للعملاء الحاليين
-          document.getElementById('order-type-section').style.display = 'block';
-          document.getElementById('edit-order-btn').style.display = 'block';
-          document.getElementById('new-order-btn').style.display = 'block';
+          // عرض قسم الإجراءات مع اسم العميل
+          document.getElementById('customer-name-display').textContent = data.customer.name;
+          document.getElementById('customer-actions-section').style.display = 'block';
+          
+          // ملء بيانات العميل في الخلفية للاستخدام لاحقاً
+          fillCustomerForm(data.customer);
         }
         
       } else {
@@ -671,10 +694,20 @@
         
         successElement.textContent = '🆕 رقم جديد - سيتم إنشاء حساب جديد';
         
-        // عرض زر "طلب جديد" فقط للعملاء الجدد
-        document.getElementById('order-type-section').style.display = 'block';
-        document.getElementById('new-order-btn').style.display = 'block';
-        document.getElementById('edit-order-btn').style.display = 'none';
+        // عرض نموذج العميل مباشرة للعميل الجديد
+        document.getElementById('customer-actions-section').style.display = 'none';
+        document.getElementById('customer-info-form').style.display = 'block';
+        document.getElementById('customer-form-title').textContent = 'معلومات العميل الجديد';
+        document.getElementById('cancel-btn').style.display = 'none';
+        
+        // تعبئة رقم الهاتف فقط
+        document.getElementById('customer-phone').value = mobileNumber;
+        document.getElementById('customer-whatsapp').value = mobileNumber;
+        document.getElementById('customer-name').value = '';
+        document.getElementById('customer-area').value = '';
+        document.getElementById('customer-address').value = '';
+        document.getElementById('customer-location').value = '';
+        document.getElementById('customer-notes').value = '';
       }
       
       return true;
@@ -682,90 +715,58 @@
     } catch (error) {
       console.error('❌ Error checking customer:', error);
       errorElement.textContent = 'حدث خطأ أثناء التحقق: ' + error.message;
-      document.getElementById('order-type-section').style.display = 'none';
       return false;
     }
   }
   
-  // ===== التحقق من حالة الطلبات =====
-  async function checkOrderStatus() {
-    try {
-      console.log('📊 Checking order status...');
-      
-      const url = `${SCRIPT_URL}?action=getOrderStatus&_=${Date.now()}`;
-      const response = await fetch(url, {
-        method: 'GET',
-        cache: 'no-cache'
-      });
-      
-      console.log('Response status:', response.status);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('📊 Status response:', data);
-      
-      if (data.success) {
-        currentOrderStatus = data.status || 'Active';
-        currentRound = data.round || '';
-        updateOrderStatusDisplay();
-      } else {
-        currentOrderStatus = 'Active';
-        currentRound = '';
-        updateOrderStatusDisplay();
-        showError('⚠️ تعذر التحقق من حالة النظام. يمكنك المحاولة.');
-      }
-    } catch (error) {
-      console.error('❌ Error checking order status:', error);
-      currentOrderStatus = 'Active';
-      currentRound = '';
-      updateOrderStatusDisplay();
-      showError('⚠️ تعذر الاتصال بالخادم. يمكنك المحاولة.');
-    }
-  }
-  
-  // ===== تحديث عرض حالة النظام =====
-  function updateOrderStatusDisplay() {
-    const statusElement = document.getElementById('round-status');
-    const statusText = document.getElementById('round-status-text');
+  // ===== تعبئة نموذج العميل =====
+  function fillCustomerForm(customer) {
+    if (!customer) return;
     
-    if (currentOrderStatus.toLowerCase() === 'active') {
-      statusElement.className = 'round-status';
-      statusText.textContent = currentRound ? 
-        `✅ الطلبات مفتوحة - ${currentRound}` : 
-        '✅ الطلبات مفتوحة - يمكنك تقديم طلب جديد';
-      enableForm();
-    } else {
-      statusElement.className = 'round-status closed';
-      statusText.textContent = '⛔ الطلبات مغلقة حالياً - يرجى الانتظار حتى يتم فتح الطلبات';
-      disableForm();
-    }
+    document.getElementById('customer-name').value = customer.name || '';
+    document.getElementById('customer-phone').value = customer.phone || currentCustomerPhone;
+    document.getElementById('customer-whatsapp').value = customer.whatsapp || customer.phone || currentCustomerPhone;
+    document.getElementById('customer-area').value = customer.area || '';
+    document.getElementById('customer-address').value = customer.address || '';
+    document.getElementById('customer-location').value = customer.location || '';
+    document.getElementById('customer-notes').value = customer.notes || '';
   }
   
-  // ===== تفعيل عناصر النموذج =====
-  function enableForm() {
-    document.querySelectorAll('input, textarea, button').forEach(element => {
-      if (element.id !== 'submit-btn' || currentOrderStatus.toLowerCase() === 'active') {
-        element.disabled = false;
-      }
-    });
+  // ===== تعديل بيانات العميل =====
+  function editCustomerInfo() {
+    if (!currentCustomer) return;
+    
+    isEditingCustomer = true;
+    
+    // إخفاء قسم الإجراءات
+    document.getElementById('customer-actions-section').style.display = 'none';
+    
+    // عرض نموذج تعديل البيانات
+    document.getElementById('customer-info-form').style.display = 'block';
+    document.getElementById('customer-form-title').textContent = 'تعديل بياناتي';
+    document.getElementById('cancel-btn').style.display = 'inline-block';
+    
+    // تعبئة النموذج بالبيانات الحالية
+    fillCustomerForm(currentCustomer);
+    
+    hideMessages();
   }
   
-  // ===== تعطيل عناصر النموذج =====
-  function disableForm() {
-    const submitBtn = document.getElementById('submit-btn');
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span>الطلبات مغلقة</span>';
+  // ===== إلغاء التعديل =====
+  function cancelEdit() {
+    isEditingCustomer = false;
+    
+    // إخفاء نموذج البيانات
+    document.getElementById('customer-info-form').style.display = 'none';
+    document.getElementById('existing-order-section').style.display = 'none';
+    document.getElementById('order-details-section').style.display = 'none';
+    
+    // إعادة عرض قسم الإجراءات
+    if (customerExists && currentCustomer) {
+      document.getElementById('customer-actions-section').style.display = 'block';
     }
     
-    document.querySelectorAll('.type-btn').forEach(btn => {
-      btn.disabled = true;
-      btn.style.opacity = '0.6';
-      btn.style.cursor = 'not-allowed';
-    });
+    hideMessages();
   }
   
   // ===== اختيار نوع الطلب =====
@@ -781,43 +782,29 @@
     }
     
     selectedOrderType = type;
+    isEditingCustomer = false;
     
-    // تحديث حالة الأزرار
-    document.querySelectorAll('.type-btn').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    event.target.classList.add('active');
+    // إخفاء قسم الإجراءات
+    document.getElementById('customer-actions-section').style.display = 'none';
     
     // عرض نموذج معلومات العميل
     document.getElementById('customer-info-form').style.display = 'block';
+    document.getElementById('customer-form-title').textContent = 'معلومات العميل';
+    document.getElementById('cancel-btn').style.display = 'inline-block';
     
-    // ملء نموذج العميل بالبيانات الحالية أو التحضير لعميل جديد
-    if (customerExists && currentCustomer) {
-      // ملء ببيانات العميل الحالية
-      document.getElementById('customer-name').value = currentCustomer.name || '';
-      document.getElementById('customer-phone').value = currentCustomer.phone || currentCustomerPhone;
-      document.getElementById('customer-whatsapp').value = currentCustomer.whatsapp || currentCustomer.phone || currentCustomerPhone;
-      document.getElementById('customer-area').value = currentCustomer.area || '';
-      document.getElementById('customer-address').value = currentCustomer.address || '';
-      document.getElementById('customer-location').value = currentCustomer.location || '';
-      document.getElementById('customer-notes').value = currentCustomer.notes || '';
-    } else {
-      // عميل جديد - تعبئة رقم الهاتف والواتساب
-      document.getElementById('customer-name').value = '';
-      document.getElementById('customer-phone').value = currentCustomerPhone;
-      document.getElementById('customer-whatsapp').value = currentCustomerPhone;
-      document.getElementById('customer-area').value = '';
-      document.getElementById('customer-address').value = '';
-      document.getElementById('customer-location').value = '';
-      document.getElementById('customer-notes').value = '';
-    }
+    // تعبئة النموذج ببيانات العميل الحالية
+    fillCustomerForm(currentCustomer);
     
-    // لوضع التعديل، تحميل الطلب الحالي
-    if (type === 'edit' && currentCustomerId) {
+    // إذا كان تعديل طلب، تحميل الطلب الحالي
+    if (type === 'edit') {
       loadOrderData();
+      document.getElementById('order-title').textContent = 'تعديل الطلب الأخير';
+      document.getElementById('submit-text').textContent = 'تحديث الطلب';
     } else {
       document.getElementById('existing-order-section').style.display = 'none';
       document.getElementById('order-text').value = '';
+      document.getElementById('order-title').textContent = 'طلب جديد';
+      document.getElementById('submit-text').textContent = 'إرسال الطلب';
     }
     
     // عرض قسم تفاصيل الطلب
@@ -853,6 +840,7 @@
       
       if (data.success && data.order) {
         currentOrder = data.order;
+        existingOrderId = data.order.id;
         
         // عرض قسم الطلب الحالي
         const existingOrderSection = document.getElementById('existing-order-section');
@@ -865,6 +853,9 @@
             <p><strong>الطلب الحالي:</strong> ${currentOrder.items || 'لا توجد تفاصيل'}</p>
             <p><strong>الحالة:</strong> ${currentOrder.status || 'جديد'}</p>
           </div>
+          <p style="color: #ff9800; margin-top: 10px; font-weight: bold;">
+            ⚠️ سيتم استبدال هذا الطلب بالطلب الجديد
+          </p>
         `;
         
         // تعبئة نص الطلب للتعديل
@@ -876,15 +867,18 @@
       } else {
         // لا يوجد طلب حالياً
         document.getElementById('existing-order-section').style.display = 'none';
+        existingOrderId = null;
+        alert('لا يوجد طلب سابق لتعديله. يمكنك إنشاء طلب جديد.');
       }
       
     } catch (error) {
       console.error('❌ Error loading order data:', error);
       document.getElementById('existing-order-section').style.display = 'none';
+      existingOrderId = null;
     }
   }
   
-  // ===== حفظ معلومات العميل باستخدام GET =====
+  // ===== حفظ معلومات العميل =====
   async function saveCustomerInfo() {
     hideMessages();
     
@@ -944,7 +938,7 @@
     saveText.textContent = 'جاري الحفظ...';
     
     try {
-      // بناء رابط GET مع جميع المعلمات
+      // بناء رابط GET
       const params = new URLSearchParams();
       params.append('action', 'createOrUpdateCustomer');
       params.append('phone', phone);
@@ -974,36 +968,63 @@
       console.log('💾 Save result:', data);
       
       if (data.success) {
-        // Update customer ID
+        // تحديث بيانات العميل المحلية
         if (data.customerId) {
           currentCustomerId = data.customerId;
           customerExists = true;
         }
         
-        showSuccess('✅ تم حفظ معلومات العميل بنجاح');
+        // تحديث كائن العميل الحالي
+        currentCustomer = {
+          id: currentCustomerId,
+          name: name,
+          phone: phone,
+          whatsapp: whatsapp,
+          area: area,
+          address: address,
+          location: location,
+          notes: notes
+        };
         
-        // Enable submit button
+        showSuccess('✅ تم حفظ المعلومات بنجاح');
+        
+        // إذا كان مجرد تعديل بيانات، العودة لقسم الإجراءات
+        if (isEditingCustomer) {
+          setTimeout(() => {
+            cancelEdit();
+            document.getElementById('customer-actions-section').style.display = 'block';
+            document.getElementById('customer-name-display').textContent = name;
+          }, 1500);
+        } else if (!selectedOrderType) {
+          // إذا كان عميل جديد حفظ بياناته، عرض قسم الإجراءات
+          document.getElementById('customer-info-form').style.display = 'none';
+          document.getElementById('customer-actions-section').style.display = 'block';
+          document.getElementById('customer-name-display').textContent = name;
+          document.getElementById('mobile-success').textContent = `✅ مرحباً ${name}`;
+        }
+        
+        // تفعيل زر إرسال الطلب
         document.getElementById('submit-btn').disabled = false;
         
       } else {
-        throw new Error(data.message || 'فشل حفظ معلومات العميل');
+        throw new Error(data.message || 'فشل حفظ المعلومات');
       }
       
     } catch (error) {
       console.error('❌ Error saving customer:', error);
-      showError('حدث خطأ أثناء حفظ معلومات العميل: ' + error.message);
+      showError('حدث خطأ أثناء حفظ المعلومات: ' + error.message);
     } finally {
       saveBtn.disabled = false;
       saveLoading.style.display = 'none';
-      saveText.textContent = 'حفظ معلومات العميل';
+      saveText.textContent = 'حفظ المعلومات';
     }
   }
   
-  // ===== إرسال الطلب باستخدام GET =====
+  // ===== إرسال/تحديث الطلب =====
   async function submitOrder() {
     hideMessages();
     
-    if (!selectedOrderType) {
+    if (!selectedOrderType && !isEditingCustomer) {
       alert('من فضلك اختر نوع الطلب أولاً');
       return;
     }
@@ -1026,7 +1047,7 @@
     const address = document.getElementById('customer-address').value.trim();
     
     if (!name || !phone || !whatsapp || !area || !address) {
-      alert('من فضلك أكمل معلومات العميل أولاً ثم اضغط على "حفظ معلومات العميل"');
+      alert('من فضلك أكمل معلومات العميل أولاً ثم اضغط على "حفظ المعلومات"');
       return;
     }
     
@@ -1044,16 +1065,21 @@
     submitText.textContent = 'جاري الإرسال...';
     
     try {
-      if (selectedOrderType === 'edit' && currentOrder) {
+      const location = document.getElementById('customer-location').value.trim();
+      const notes = document.getElementById('customer-notes').value.trim();
+      
+      if (selectedOrderType === 'edit' && existingOrderId) {
         // تحديث الطلب الحالي
+        console.log('✏️ Updating existing order:', existingOrderId);
+        
         const params = new URLSearchParams();
         params.append('action', 'updateOrder');
-        params.append('orderId', currentOrder.id);
+        params.append('orderId', existingOrderId);
         params.append('orderText', orderText);
         params.append('status', 'تم التحديث');
         
         const url = `${SCRIPT_URL}?${params.toString()}`;
-        console.log('✏️ Update order URL:', url);
+        console.log('Update order URL:', url);
         
         const response = await fetch(url, { 
           method: 'GET',
@@ -1071,16 +1097,16 @@
         
         if (result.success) {
           showSuccess('✅ تم تحديث الطلب بنجاح');
+          setTimeout(() => {
+            resetForm();
+          }, 3000);
         } else {
           throw new Error(result.message || 'فشل تحديث الطلب');
         }
         
       } else {
-        // إرسال طلب جديد
-        const location = document.getElementById('customer-location').value.trim();
-        const notes = document.getElementById('customer-notes').value.trim();
-        
-        console.log('📤 Submitting new order...');
+        // إرسال طلب جديد أو استبدال الطلب القديم
+        console.log('📤 Submitting order...');
         
         const params = new URLSearchParams();
         params.append('action', 'submitOrder');
@@ -1094,8 +1120,13 @@
         if (notes) params.append('notes', notes);
         if (currentRound) params.append('round', currentRound);
         
+        // إذا كان هناك طلب قديم، أضف معلمة لاستبداله
+        if (existingOrderId) {
+          params.append('replaceOrderId', existingOrderId);
+        }
+        
         const url = `${SCRIPT_URL}?${params.toString()}`;
-        console.log('📤 Submit order URL:', url.substring(0, 200) + '...');
+        console.log('Submit order URL:', url.substring(0, 200) + '...');
         
         const response = await fetch(url, { 
           method: 'GET',
@@ -1122,7 +1153,11 @@
           `;
           successMessage.style.display = 'block';
           
-          // Auto-reset after 10 seconds
+          // تحديث بيانات العميل المحلية
+          currentCustomerId = result.customerId;
+          customerExists = true;
+          
+          // إعادة التعيين بعد 10 ثواني
           setTimeout(() => {
             resetForm();
             successMessage.style.display = 'none';
@@ -1138,86 +1173,18 @@
     } finally {
       submitBtn.disabled = false;
       submitLoading.style.display = 'none';
-      submitText.textContent = selectedOrderType === 'new' ? 'إرسال الطلب' : 'تحديث الطلب';
+      submitText.textContent = selectedOrderType === 'edit' ? 'تحديث الطلب' : 'إرسال الطلب';
     }
   }
   
-  // ===== عرض رسالة خطأ =====
-  function showError(message) {
-    const errorMessage = document.getElementById('error-message');
-    errorMessage.innerHTML = `<p>${message}</p>`;
-    errorMessage.style.display = 'block';
-    
-    setTimeout(() => {
-      errorMessage.style.display = 'none';
-    }, 5000);
-  }
+  // ===== باقي الدوال (بدون تغيير) =====
   
-  // ===== عرض رسالة نجاح =====
-  function showSuccess(message) {
-    const successMessage = document.getElementById('success-message');
-    successMessage.innerHTML = `<p>${message}</p>`;
-    successMessage.style.display = 'block';
-    
-    setTimeout(() => {
-      successMessage.style.display = 'none';
-    }, 5000);
-  }
+  // [يتبقى لديك دوال: checkOrderStatus, updateOrderStatusDisplay, enableForm, disableForm,
+  // showError, showSuccess, hideMessages, resetForm - إحتفظ بها كما هي بدون تغيير]
   
-  // ===== إخفاء جميع الرسائل =====
-  function hideMessages() {
-    document.getElementById('success-message').style.display = 'none';
-    document.getElementById('error-message').style.display = 'none';
-  }
-  
-  // ===== إعادة تعيين النموذج للحالة الأولية =====
-  function resetForm() {
-    // إعادة تعيين قيم النموذج
-    document.getElementById('mobile-number').value = '';
-    document.getElementById('customer-name').value = '';
-    document.getElementById('customer-phone').value = '';
-    document.getElementById('customer-whatsapp').value = '';
-    document.getElementById('customer-area').value = '';
-    document.getElementById('customer-address').value = '';
-    document.getElementById('customer-location').value = '';
-    document.getElementById('customer-notes').value = '';
-    document.getElementById('order-text').value = '';
-    
-    // مسح الرسائل
-    document.querySelectorAll('.error, .success').forEach(element => {
-      element.textContent = '';
-    });
-    
-    // إخفاء الأقسام
-    document.getElementById('order-type-section').style.display = 'none';
-    document.getElementById('customer-info-form').style.display = 'none';
-    document.getElementById('existing-order-section').style.display = 'none';
-    document.getElementById('order-details-section').style.display = 'none';
-    
-    // إعادة تعيين الأزرار
-    document.getElementById('edit-order-btn').style.display = 'none';
-    document.getElementById('new-order-btn').style.display = 'none';
-    document.querySelectorAll('.type-btn').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    
-    // إعادة تعيين الحالة
-    selectedOrderType = null;
-    currentCustomer = null;
-    currentOrder = null;
-    currentCustomerId = '';
-    currentCustomerPhone = '';
-    isAccountActive = true;
-    customerExists = false;
-    
-    // إخفاء الرسائل
-    hideMessages();
-    
-    // التركيز على إدخال الهاتف
-    document.getElementById('mobile-number').focus();
-  }
+  // ... [أضف باقي الدوال هنا بدون تغيير] ...
 </script>
+
+<!-- أكمل باقي الـ JavaScript هنا -->
 </body>
 </html>
-
-
