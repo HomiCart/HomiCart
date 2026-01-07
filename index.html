@@ -595,7 +595,7 @@
     
     phoneCheckTimer = setTimeout(async () => {
       await validateMobileNumber();
-    }, 800); // زيادة زمن التأخير قليلاً
+    }, 800);
   }
   
   // ===== التحقق من رقم الهاتف وعرض حالة العميل =====
@@ -727,48 +727,40 @@
     }
   }
   
-  // ===== تحميل الطلب الأخير للعميل (دون عرضه) =====
+  // ===== تحميل الطلب الأخير للعميل =====
   async function loadRecentOrder() {
     if (!currentCustomerId) return;
     
     try {
       console.log('📋 Loading recent order for customer ID:', currentCustomerId);
       
-      // أولاً: جلب جميع الطلبات
-      const url = `${SCRIPT_URL}?action=getOrders&phone=${encodeURIComponent(currentCustomerPhone)}&_=${Date.now()}`;
+      // استخدام action مخصصة لجلب أحدث طلب
+      const url = `${SCRIPT_URL}?action=getOrderByCustomer&customerId=${encodeURIComponent(currentCustomerId)}&_=${Date.now()}`;
       const response = await fetch(url, {
         method: 'GET',
         cache: 'no-cache'
       });
       
-      console.log('Orders response status:', response.status);
+      console.log('Order response status:', response.status);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
-      console.log('📋 Orders response:', data);
+      console.log('📋 Latest order response:', data);
       
-      if (data.success && data.orders && data.orders.length > 0) {
-        // أخذ أحدث طلب (الأول في المصفوفة - المفروض يكون الأحدث)
-        const latestOrder = data.orders[0];
-        currentOrder = latestOrder;
-        existingOrderId = latestOrder.id;
+      if (data.success && data.order) {
+        currentOrder = data.order;
+        existingOrderId = data.order.id;
         
-        console.log('✅ Latest order found:', latestOrder);
-        
-        // تحديث زر تعديل الطلب ليعكس وجود طلب
-        document.getElementById('edit-order-btn').style.display = 'block';
+        console.log('✅ Latest order found:', data.order);
         
       } else {
         // لا يوجد طلبات
         currentOrder = null;
         existingOrderId = null;
         console.log('No orders found for customer');
-        
-        // يمكن إخفاء زر تعديل الطلب أو تركه مع رسالة
-        document.getElementById('edit-order-btn').style.display = 'block';
       }
       
     } catch (error) {
@@ -829,7 +821,7 @@
   }
   
   // ===== اختيار نوع الطلب =====
-  function selectOrderType(type) {
+  async function selectOrderType(type) {
     if (currentOrderStatus.toLowerCase() !== 'active') {
       alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
       return;
@@ -856,7 +848,7 @@
     
     // إذا كان تعديل طلب، تحميل الطلب الحالي
     if (type === 'edit') {
-      loadOrderDataForEdit();
+      await loadOrderDataForEdit();
       document.getElementById('order-title').textContent = 'تعديل الطلب الأخير';
       document.getElementById('submit-text').textContent = 'تحديث الطلب';
     } else {
@@ -872,18 +864,21 @@
     hideMessages();
   }
   
-  // ===== تحميل بيانات الطلب للتعديل - النسخة المحسنة =====
+  // ===== تحميل بيانات الطلب الأخير للتعديل - النسخة المحسنة =====
   async function loadOrderDataForEdit() {
     if (!currentCustomerId) {
       console.log('No customer ID, no existing order');
+      document.getElementById('existing-order-section').style.display = 'none';
+      existingOrderId = null;
+      alert('لا يوجد طلب سابق لتعديله. يمكنك إنشاء طلب جديد.');
       return;
     }
     
     try {
-      console.log('📋 Loading order data for customer ID:', currentCustomerId);
+      console.log('📋 Loading latest order for editing, customer ID:', currentCustomerId);
       
-      // استخدام getOrders بدلاً من getOrderByCustomer للحصول على أحدث طلب
-      const url = `${SCRIPT_URL}?action=getOrders&phone=${encodeURIComponent(currentCustomerPhone)}&_=${Date.now()}`;
+      // استخدام دالة getOrderByCustomer التي تعيد أحدث طلب
+      const url = `${SCRIPT_URL}?action=getOrderByCustomer&customerId=${encodeURIComponent(currentCustomerId)}&_=${Date.now()}`;
       const response = await fetch(url, {
         method: 'GET',
         cache: 'no-cache'
@@ -896,13 +891,11 @@
       }
       
       const data = await response.json();
-      console.log('📋 Order data response:', data);
+      console.log('📋 Latest order response:', data);
       
-      if (data.success && data.orders && data.orders.length > 0) {
-        // أخذ أحدث طلب
-        const latestOrder = data.orders[0];
-        currentOrder = latestOrder;
-        existingOrderId = latestOrder.id;
+      if (data.success && data.order) {
+        currentOrder = data.order;
+        existingOrderId = data.order.id;
         
         // عرض قسم الطلب الحالي
         const existingOrderSection = document.getElementById('existing-order-section');
@@ -910,25 +903,31 @@
         
         existingOrderDetails.innerHTML = `
           <div class="order-item">
-            <p><strong>رقم الطلب:</strong> ${latestOrder.id || 'غير معروف'}</p>
-            <p><strong>التاريخ:</strong> ${latestOrder.date || 'غير معروف'}</p>
-            <p><strong>الطلب الحالي:</strong> ${latestOrder.items || 'لا توجد تفاصيل'}</p>
-            <p><strong>الحالة:</strong> ${latestOrder.status || 'جديد'}</p>
+            <p><strong>رقم الطلب:</strong> ${data.order.id || 'غير معروف'}</p>
+            <p><strong>التاريخ:</strong> ${data.order.date || data.order.timestamp || 'غير معروف'}</p>
+            <p><strong>الحالة:</strong> ${data.order.status || 'جديد'}</p>
+            <p><strong>الطلب الحالي:</strong> ${data.order.items || 'لا توجد تفاصيل'}</p>
           </div>
           <p style="color: #ff9800; margin-top: 10px; font-weight: bold;">
             ⚠️ سيتم استبدال هذا الطلب بالطلب الجديد
           </p>
         `;
         
-        // تعبئة نص الطلب للتعديل
-        if (latestOrder.items) {
-          document.getElementById('order-text').value = latestOrder.items;
+        // تعبئة نص الطلب في الخانة الرئيسية للتعديل
+        if (data.order.items) {
+          document.getElementById('order-text').value = data.order.items;
+        } else {
+          document.getElementById('order-text').value = '';
+          document.getElementById('order-text').placeholder = 'لم يتم العثور على طلب سابق';
         }
         
         existingOrderSection.style.display = 'block';
+        
       } else {
         // لا يوجد طلب حالياً
         document.getElementById('existing-order-section').style.display = 'none';
+        document.getElementById('order-text').value = '';
+        document.getElementById('order-text').placeholder = 'لا يوجد طلب سابق لتعديله';
         existingOrderId = null;
         alert('لا يوجد طلب سابق لتعديله. يمكنك إنشاء طلب جديد.');
       }
@@ -936,6 +935,8 @@
     } catch (error) {
       console.error('❌ Error loading order data:', error);
       document.getElementById('existing-order-section').style.display = 'none';
+      document.getElementById('order-text').value = '';
+      document.getElementById('order-text').placeholder = 'حدث خطأ في تحميل الطلب السابق';
       existingOrderId = null;
     }
   }
@@ -1131,14 +1132,21 @@
       const notes = document.getElementById('customer-notes').value.trim();
       
       if (selectedOrderType === 'edit' && existingOrderId) {
-        // تحديث الطلب الحالي
+        // تحديث الطلب الحالي باستخدام replaceOrderId
         console.log('✏️ Updating existing order:', existingOrderId);
         
         const params = new URLSearchParams();
-        params.append('action', 'updateOrder');
-        params.append('orderId', existingOrderId);
+        params.append('action', 'submitOrder');
+        params.append('phone', phone);
+        params.append('whatsapp', whatsapp);
+        params.append('name', name);
+        params.append('area', area);
+        params.append('address', address);
+        if (location) params.append('location', location);
         params.append('orderText', orderText);
-        params.append('status', 'تم التحديث');
+        if (notes) params.append('notes', notes);
+        if (currentRound) params.append('round', currentRound);
+        params.append('replaceOrderId', existingOrderId); // هذا المهم
         
         const url = `${SCRIPT_URL}?${params.toString()}`;
         console.log('Update order URL:', url);
@@ -1167,8 +1175,8 @@
         }
         
       } else {
-        // إرسال طلب جديد أو استبدال الطلب القديم
-        console.log('📤 Submitting order...');
+        // إرسال طلب جديد
+        console.log('📤 Submitting new order...');
         
         const params = new URLSearchParams();
         params.append('action', 'submitOrder');
@@ -1181,11 +1189,6 @@
         params.append('orderText', orderText);
         if (notes) params.append('notes', notes);
         if (currentRound) params.append('round', currentRound);
-        
-        // إذا كان هناك طلب قديم، أضف معلمة لاستبداله
-        if (existingOrderId) {
-          params.append('replaceOrderId', existingOrderId);
-        }
         
         const url = `${SCRIPT_URL}?${params.toString()}`;
         console.log('Submit order URL:', url.substring(0, 200) + '...');
