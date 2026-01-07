@@ -353,7 +353,7 @@
       <input 
         type="text" 
         id="mobile-number" 
-        placeholder="05XXXXXXXX" 
+        placeholder="أدخل رقم الموبايل 05XXXXXXXX"
         maxlength="10"
         oninput="formatMobileNumber(this)"
         onkeyup="checkPhoneNumber()"
@@ -567,19 +567,24 @@
     }
   }
   
-  // ===== تنسيق رقم الهاتف =====
+  // ===== تنسيق رقم الهاتف - الإصدار الجديد (بدون إضافة 05 تلقائياً) =====
   function formatMobileNumber(input) {
     let value = input.value.replace(/\D/g, '');
     
-    if (value.length > 0 && !value.startsWith('05')) {
-      value = '05' + value;
-    }
-    
+    // الحد الأقصى 10 أرقام فقط
     if (value.length > 10) {
       value = value.substring(0, 10);
     }
     
     input.value = value;
+    
+    // عرض رسالة تلميح إذا لم يبدأ بـ 05
+    const errorElement = document.getElementById('mobile-error');
+    if (value.length > 0 && !value.startsWith('05') && value.length >= 2) {
+      errorElement.textContent = 'الرقم يجب أن يبدأ بـ 05';
+    } else {
+      errorElement.textContent = '';
+    }
   }
   
   // ===== التحقق من رقم الهاتف =====
@@ -590,7 +595,7 @@
     
     phoneCheckTimer = setTimeout(async () => {
       await validateMobileNumber();
-    }, 500);
+    }, 800); // زيادة زمن التأخير قليلاً
   }
   
   // ===== التحقق من رقم الهاتف وعرض حالة العميل =====
@@ -613,14 +618,14 @@
     document.getElementById('existing-order-section').style.display = 'none';
     document.getElementById('order-details-section').style.display = 'none';
     
-    const mobileRegex = /^05\d{8}$/;
-    
     // التحقق الأساسي
     if (!mobileNumber) {
       errorElement.textContent = 'رقم الهاتف مطلوب';
       return false;
     }
     
+    // التحقق من الصيغة الصحيحة
+    const mobileRegex = /^05\d{8}$/;
     if (!mobileRegex.test(mobileNumber)) {
       errorElement.textContent = 'رقم الهاتف يجب أن يبدأ بـ 05 ويحتوي على 10 أرقام';
       return false;
@@ -680,6 +685,9 @@
           
           // ملء بيانات العميل في الخلفية للاستخدام لاحقاً
           fillCustomerForm(data.customer);
+          
+          // تحميل الطلب الأخير تلقائياً للاستعداد
+          loadRecentOrder();
         }
         
       } else {
@@ -716,6 +724,57 @@
       console.error('❌ Error checking customer:', error);
       errorElement.textContent = 'حدث خطأ أثناء التحقق: ' + error.message;
       return false;
+    }
+  }
+  
+  // ===== تحميل الطلب الأخير للعميل (دون عرضه) =====
+  async function loadRecentOrder() {
+    if (!currentCustomerId) return;
+    
+    try {
+      console.log('📋 Loading recent order for customer ID:', currentCustomerId);
+      
+      // أولاً: جلب جميع الطلبات
+      const url = `${SCRIPT_URL}?action=getOrders&phone=${encodeURIComponent(currentCustomerPhone)}&_=${Date.now()}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        cache: 'no-cache'
+      });
+      
+      console.log('Orders response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('📋 Orders response:', data);
+      
+      if (data.success && data.orders && data.orders.length > 0) {
+        // أخذ أحدث طلب (الأول في المصفوفة - المفروض يكون الأحدث)
+        const latestOrder = data.orders[0];
+        currentOrder = latestOrder;
+        existingOrderId = latestOrder.id;
+        
+        console.log('✅ Latest order found:', latestOrder);
+        
+        // تحديث زر تعديل الطلب ليعكس وجود طلب
+        document.getElementById('edit-order-btn').style.display = 'block';
+        
+      } else {
+        // لا يوجد طلبات
+        currentOrder = null;
+        existingOrderId = null;
+        console.log('No orders found for customer');
+        
+        // يمكن إخفاء زر تعديل الطلب أو تركه مع رسالة
+        document.getElementById('edit-order-btn').style.display = 'block';
+      }
+      
+    } catch (error) {
+      console.error('❌ Error loading recent order:', error);
+      currentOrder = null;
+      existingOrderId = null;
     }
   }
   
@@ -797,7 +856,7 @@
     
     // إذا كان تعديل طلب، تحميل الطلب الحالي
     if (type === 'edit') {
-      loadOrderData();
+      loadOrderDataForEdit();
       document.getElementById('order-title').textContent = 'تعديل الطلب الأخير';
       document.getElementById('submit-text').textContent = 'تحديث الطلب';
     } else {
@@ -813,8 +872,8 @@
     hideMessages();
   }
   
-  // ===== تحميل بيانات الطلب للتعديل =====
-  async function loadOrderData() {
+  // ===== تحميل بيانات الطلب للتعديل - النسخة المحسنة =====
+  async function loadOrderDataForEdit() {
     if (!currentCustomerId) {
       console.log('No customer ID, no existing order');
       return;
@@ -823,7 +882,8 @@
     try {
       console.log('📋 Loading order data for customer ID:', currentCustomerId);
       
-      const url = `${SCRIPT_URL}?action=getOrderByCustomer&customerId=${encodeURIComponent(currentCustomerId)}&_=${Date.now()}`;
+      // استخدام getOrders بدلاً من getOrderByCustomer للحصول على أحدث طلب
+      const url = `${SCRIPT_URL}?action=getOrders&phone=${encodeURIComponent(currentCustomerPhone)}&_=${Date.now()}`;
       const response = await fetch(url, {
         method: 'GET',
         cache: 'no-cache'
@@ -838,9 +898,11 @@
       const data = await response.json();
       console.log('📋 Order data response:', data);
       
-      if (data.success && data.order) {
-        currentOrder = data.order;
-        existingOrderId = data.order.id;
+      if (data.success && data.orders && data.orders.length > 0) {
+        // أخذ أحدث طلب
+        const latestOrder = data.orders[0];
+        currentOrder = latestOrder;
+        existingOrderId = latestOrder.id;
         
         // عرض قسم الطلب الحالي
         const existingOrderSection = document.getElementById('existing-order-section');
@@ -848,10 +910,10 @@
         
         existingOrderDetails.innerHTML = `
           <div class="order-item">
-            <p><strong>رقم الطلب:</strong> ${currentOrder.id || 'غير معروف'}</p>
-            <p><strong>التاريخ:</strong> ${currentOrder.date || currentOrder.timestamp || 'غير معروف'}</p>
-            <p><strong>الطلب الحالي:</strong> ${currentOrder.items || 'لا توجد تفاصيل'}</p>
-            <p><strong>الحالة:</strong> ${currentOrder.status || 'جديد'}</p>
+            <p><strong>رقم الطلب:</strong> ${latestOrder.id || 'غير معروف'}</p>
+            <p><strong>التاريخ:</strong> ${latestOrder.date || 'غير معروف'}</p>
+            <p><strong>الطلب الحالي:</strong> ${latestOrder.items || 'لا توجد تفاصيل'}</p>
+            <p><strong>الحالة:</strong> ${latestOrder.status || 'جديد'}</p>
           </div>
           <p style="color: #ff9800; margin-top: 10px; font-weight: bold;">
             ⚠️ سيتم استبدال هذا الطلب بالطلب الجديد
@@ -859,8 +921,8 @@
         `;
         
         // تعبئة نص الطلب للتعديل
-        if (currentOrder.items) {
-          document.getElementById('order-text').value = currentOrder.items;
+        if (latestOrder.items) {
+          document.getElementById('order-text').value = latestOrder.items;
         }
         
         existingOrderSection.style.display = 'block';
