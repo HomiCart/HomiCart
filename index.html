@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HomiCart - نظام الطلبات الموحد</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   * {
     margin: 0;
@@ -33,7 +34,7 @@
   }
   
   .container { 
-    max-width: 800px; 
+    max-width: 900px; 
     margin: 30px auto; 
     background: #fff; 
     border-radius: 16px; 
@@ -191,6 +192,7 @@
     gap: 10px;
     align-items: center;
     margin-top: 10px;
+    flex-wrap: wrap;
   }
   
   .location-info span {
@@ -200,6 +202,27 @@
     padding: 5px 10px;
     border-radius: 5px;
     border: 1px solid #eee;
+  }
+  
+  #map-container {
+    margin-top: 15px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #2e5cff;
+    height: 300px;
+    display: none;
+  }
+  
+  #map {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .map-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
   }
   
   .previous-orders {
@@ -270,6 +293,15 @@
   .btn-success:hover {
     background: linear-gradient(135deg, #218838, #1e7e34);
     box-shadow: 0 6px 15px rgba(40, 167, 69, 0.25);
+  }
+  
+  .btn-info {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+  }
+  
+  .btn-info:hover {
+    background: linear-gradient(135deg, #138496, #117a8b);
+    box-shadow: 0 6px 15px rgba(23, 162, 184, 0.25);
   }
   
   .error { 
@@ -347,7 +379,7 @@
       margin: 15px;
     }
     
-    .order-type-buttons, .customer-actions {
+    .order-type-buttons, .customer-actions, .map-controls {
       flex-direction: column;
       align-items: center;
     }
@@ -364,6 +396,10 @@
     .location-info {
       flex-direction: column;
       align-items: flex-start;
+    }
+    
+    #map-container {
+      height: 250px;
     }
   }
 </style>
@@ -498,35 +534,66 @@
       </div>
     </div>
     
-    <!-- Location Section -->
+    <!-- Location Section with Map -->
     <div class="form-group location-group">
-      <label for="location-btn" class="required">📍 الموقع الجغرافي (دقة عالية)</label>
+      <label for="location-btn" class="required">📍 تحديد الموقع</label>
       <div style="margin-top: 10px;">
         <button type="button" class="btn btn-success" onclick="getUserLocation()" id="location-btn">
-          <span id="location-btn-text">تحديد موقعي الحالي بدقة عالية</span>
+          <span id="location-btn-text">تحديد موقعي الحالي</span>
           <span id="location-loading" class="loading" style="display: none;"></span>
+        </button>
+        <button type="button" class="btn btn-info" onclick="toggleMap()" id="map-toggle-btn">
+          <span id="map-toggle-text">📌 عرض الخريطة لتحديد الموقع يدوياً</span>
         </button>
         <button type="button" class="btn btn-secondary" onclick="updateLocation()" id="update-location-btn" style="display: none;">
           تحديث الموقع
         </button>
       </div>
       
+      <!-- Map Container -->
+      <div id="map-container">
+        <div id="map"></div>
+      </div>
+      
+      <!-- Map Controls -->
+      <div class="map-controls" id="map-controls" style="display: none;">
+        <button type="button" class="btn" onclick="useCurrentLocationOnMap()" style="background: #17a2b8;">
+          استخدام موقعي الحالي على الخريطة
+        </button>
+        <button type="button" class="btn" onclick="confirmMapLocation()" style="background: #28a745;">
+          تأكيد الموقع المحدد
+        </button>
+        <button type="button" class="btn btn-secondary" onclick="toggleMap()">
+          إخفاء الخريطة
+        </button>
+      </div>
+      
+      <!-- Hidden fields for coordinates -->
       <input type="hidden" id="customer-latitude">
       <input type="hidden" id="customer-longitude">
       
+      <!-- Display coordinates -->
       <div id="location-coordinates" class="location-info" style="display: none;">
         <span id="latitude-display"></span>
         <span id="longitude-display"></span>
       </div>
       
+      <!-- Address display -->
       <div id="location-address" class="success" style="margin-top: 10px;"></div>
       <div id="location-error" class="error" style="margin-top: 5px;"></div>
       <div id="location-warning" class="warning-message" style="margin-top: 10px; display: none;">
-        ⚠️ الموقع الجغرافي مطلوب لإكمال طلبك. يرجى تحديد موقعك بدقة عالية.
+        ⚠️ يجب تحديد موقعك الجغرافي قبل إكمال الطلب
       </div>
       
-      <div id="location-accuracy" class="info-message" style="margin-top: 10px; display: none; font-size: 12px;">
-        <strong>💡 ملاحظة:</strong> يتم تحديد موقعك بدقة عالية باستخدام GPS للحصول على أفضل النتائج.
+      <!-- Instructions -->
+      <div id="location-instructions" class="info-message" style="margin-top: 10px; font-size: 14px; display: none;">
+        <strong>💡 تعليمات:</strong>
+        <ul style="margin: 8px 0 0 20px; text-align: right;">
+          <li>اضغط على "تحديد موقعي الحالي" للاستخدام التلقائي</li>
+          <li>أو اضغط على "عرض الخريطة" لتحديد الموقع يدوياً</li>
+          <li>يمكنك سحب المؤشر الأحمر على الخريطة لتحديد الموقع بدقة</li>
+          <li>بعد التحديد، اضغط على "تأكيد الموقع المحدد"</li>
+        </ul>
       </div>
     </div>
     
@@ -581,6 +648,7 @@
   <div id="error-message" class="error-message" style="display: none;"></div>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
   // ===== رابط Google Apps Script =====
   // ⚠️ استبدل هذا الرابط برابط تطبيقك الخاص بعد النشر
@@ -601,14 +669,20 @@
   let hasLocation = false;
   let locationAccuracy = 0;
   
+  // متغيرات الخريطة
+  let map = null;
+  let marker = null;
+  let mapInitialized = false;
+  
   // مؤقت لتأخير الطلبات
   let phoneCheckTimer = null;
   
   // ===== تهيئة عند تحميل الصفحة =====
   document.addEventListener('DOMContentLoaded', function() {
-    console.log('✅ HomiCart System Initialized - Unified Version with High Accuracy Location');
+    console.log('✅ HomiCart System Initialized - Enhanced Version with Map');
     checkOrderStatus();
     document.getElementById('mobile-number').focus();
+    document.getElementById('location-instructions').style.display = 'block';
   });
   
   // ===== اختبار الاتصال بالسيرفر =====
@@ -710,8 +784,8 @@
     try {
       console.log('🔍 Checking customer for phone:', mobileNumber);
       
-      // استخدام دالة موحدة تجلب العميل + آخر طلب
-      const url = `${SCRIPT_URL}?action=getCustomerAndLatestOrder&phone=${encodeURIComponent(mobileNumber)}&_=${Date.now()}`;
+      // استخدام دالة getCustomer البسيطة للتحقق من وجود العميل
+      const url = `${SCRIPT_URL}?action=getCustomer&phone=${encodeURIComponent(mobileNumber)}&_=${Date.now()}`;
       console.log('Fetch URL:', url);
       
       const response = await fetch(url, {
@@ -729,7 +803,7 @@
       console.log('📋 Customer response:', data);
       
       if (data.success && data.customer) {
-        // العميل موجود
+        // ✅ العميل موجود
         currentCustomer = data.customer;
         currentCustomerId = data.customer.id;
         currentCustomerPhone = mobileNumber;
@@ -771,19 +845,14 @@
             document.getElementById('location-coordinates').style.display = 'flex';
             document.getElementById('location-warning').style.display = 'none';
             document.getElementById('update-location-btn').style.display = 'inline-block';
-            document.getElementById('location-accuracy').style.display = 'block';
           }
           
-          // إذا كان هناك طلب آخر، تخزينه
-          if (data.latestOrder) {
-            currentOrder = data.latestOrder;
-            existingOrderId = data.latestOrder.id;
-            console.log('✅ Latest order found:', data.latestOrder);
-          }
+          // جلب آخر طلب للعميل
+          await loadRecentOrder();
         }
         
       } else {
-        // عميل جديد
+        // 🆕 عميل جديد
         currentCustomer = null;
         currentCustomerId = '';
         currentCustomerPhone = mobileNumber;
@@ -812,9 +881,6 @@
         
         // إعادة تعيين الموقع
         resetLocation();
-        
-        // عرض رسالة دقة الموقع
-        document.getElementById('location-accuracy').style.display = 'block';
       }
       
       return true;
@@ -826,7 +892,181 @@
     }
   }
   
-  // ===== تحديد موقع المستخدم بدقة عالية =====
+  // ===== تحميل الطلب الأخير للعميل =====
+  async function loadRecentOrder() {
+    if (!currentCustomerId) return;
+    
+    try {
+      console.log('📋 Loading recent order for customer ID:', currentCustomerId);
+      
+      // استخدام دالة getOrderByCustomer التي تعيد أحدث طلب
+      const url = `${SCRIPT_URL}?action=getOrderByCustomer&customerId=${encodeURIComponent(currentCustomerId)}&_=${Date.now()}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        cache: 'no-cache'
+      });
+      
+      console.log('Order response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('📋 Latest order response:', data);
+      
+      if (data.success && data.order) {
+        currentOrder = data.order;
+        existingOrderId = data.order.id;
+        
+        console.log('✅ Latest order found:', data.order);
+        
+      } else {
+        // لا يوجد طلبات
+        currentOrder = null;
+        existingOrderId = null;
+        console.log('No orders found for customer');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error loading recent order:', error);
+      currentOrder = null;
+      existingOrderId = null;
+    }
+  }
+  
+  // ===== تهيئة الخريطة =====
+  function initMap(lat = 24.7136, lng = 46.6753) {
+    if (!mapInitialized) {
+      map = L.map('map').setView([lat, lng], 15);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+      }).addTo(map);
+      
+      // إضافة علامة قابلة للسحب
+      marker = L.marker([lat, lng], {
+        draggable: true,
+        autoPan: true
+      }).addTo(map);
+      
+      // تحديث الإحداثيات عند سحب العلامة
+      marker.on('dragend', function() {
+        const position = marker.getLatLng();
+        updateCoordinatesFromMap(position.lat, position.lng);
+      });
+      
+      // تحديث الإحداثيات عند النقر على الخريطة
+      map.on('click', function(e) {
+        marker.setLatLng(e.latlng);
+        updateCoordinatesFromMap(e.latlng.lat, e.latlng.lng);
+      });
+      
+      mapInitialized = true;
+    } else {
+      map.setView([lat, lng], 15);
+      marker.setLatLng([lat, lng]);
+    }
+  }
+  
+  // ===== عرض/إخفاء الخريطة =====
+  function toggleMap() {
+    const mapContainer = document.getElementById('map-container');
+    const mapControls = document.getElementById('map-controls');
+    const mapToggleBtn = document.getElementById('map-toggle-btn');
+    const mapToggleText = document.getElementById('map-toggle-text');
+    
+    if (mapContainer.style.display === 'none' || mapContainer.style.display === '') {
+      // عرض الخريطة
+      mapContainer.style.display = 'block';
+      mapControls.style.display = 'flex';
+      mapToggleText.textContent = '🗺️ إخفاء الخريطة';
+      
+      // تهيئة الخريطة إذا لم تكن مهيأة
+      if (!mapInitialized) {
+        const defaultLat = 24.7136;
+        const defaultLng = 46.6753;
+        initMap(defaultLat, defaultLng);
+      }
+    } else {
+      // إخفاء الخريطة
+      mapContainer.style.display = 'none';
+      mapControls.style.display = 'none';
+      mapToggleText.textContent = '📌 عرض الخريطة لتحديد الموقع يدوياً';
+    }
+  }
+  
+  // ===== تحديث الإحداثيات من الخريطة =====
+  function updateCoordinatesFromMap(lat, lng) {
+    document.getElementById('customer-latitude').value = lat;
+    document.getElementById('customer-longitude').value = lng;
+    document.getElementById('latitude-display').textContent = `خط العرض: ${lat.toFixed(6)}`;
+    document.getElementById('longitude-display').textContent = `خط الطول: ${lng.toFixed(6)}`;
+    document.getElementById('location-coordinates').style.display = 'flex';
+    
+    // محاولة الحصول على العنوان
+    getAddressFromCoordinates(lat, lng).then(address => {
+      if (address) {
+        document.getElementById('customer-location').value = address;
+        document.getElementById('location-address').textContent = `✅ ${address}`;
+        document.getElementById('location-address').style.color = '#28a745';
+      }
+    }).catch(error => {
+      console.warn('Could not get address:', error);
+    });
+  }
+  
+  // ===== استخدام الموقع الحالي على الخريطة =====
+  function useCurrentLocationOnMap() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        function(position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          
+          // تحديث الخريطة
+          map.setView([lat, lng], 16);
+          marker.setLatLng([lat, lng]);
+          
+          // تحديث الإحداثيات
+          updateCoordinatesFromMap(lat, lng);
+          
+          // إخفاء رسالة التحذير
+          document.getElementById('location-warning').style.display = 'none';
+          hasLocation = true;
+        },
+        function(error) {
+          alert('تعذر الحصول على موقعك الحالي. يرجى تحديد الموقع يدوياً على الخريطة.');
+        },
+        { enableHighAccuracy: true }
+      );
+    } else {
+      alert('متصفحك لا يدعم تحديد الموقع الجغرافي.');
+    }
+  }
+  
+  // ===== تأكيد الموقع المحدد على الخريطة =====
+  function confirmMapLocation() {
+    if (!marker) {
+      alert('يرجى تحديد موقع على الخريطة أولاً');
+      return;
+    }
+    
+    const position = marker.getLatLng();
+    updateCoordinatesFromMap(position.lat, position.lng);
+    
+    // إخفاء الخريطة
+    toggleMap();
+    
+    // إظهار رسالة نجاح
+    document.getElementById('location-address').textContent = '✅ تم تحديد الموقع بنجاح من الخريطة';
+    document.getElementById('location-address').style.color = '#28a745';
+    document.getElementById('location-warning').style.display = 'none';
+    hasLocation = true;
+  }
+  
+  // ===== تحديد موقع المستخدم =====
   function getUserLocation() {
     hideMessages();
     
@@ -844,7 +1084,7 @@
     // عرض التحميل
     locationBtn.disabled = true;
     locationLoading.style.display = 'inline-block';
-    locationText.textContent = 'جاري تحديد الموقع بدقة عالية...';
+    locationText.textContent = 'جاري تحديد الموقع...';
     
     // التحقق من دعم تحديد الموقع الجغرافي
     if (!navigator.geolocation) {
@@ -861,14 +1101,10 @@
         const longitude = position.coords.longitude;
         locationAccuracy = position.coords.accuracy;
         
-        console.log('📍 High accuracy location obtained:', { 
+        console.log('📍 Location obtained:', { 
           latitude, 
           longitude, 
-          accuracy: locationAccuracy,
-          altitude: position.coords.altitude,
-          altitudeAccuracy: position.coords.altitudeAccuracy,
-          heading: position.coords.heading,
-          speed: position.coords.speed
+          accuracy: locationAccuracy
         });
         
         // تخزين الإحداثيات
@@ -882,33 +1118,16 @@
         document.getElementById('location-coordinates').style.display = 'flex';
         document.getElementById('location-warning').style.display = 'none';
         document.getElementById('update-location-btn').style.display = 'inline-block';
-        document.getElementById('location-accuracy').style.display = 'block';
-        
-        // عرض دقة الموقع
-        let accuracyMessage = '';
-        if (locationAccuracy < 10) {
-          accuracyMessage = `✅ دقة موقعك: ${locationAccuracy.toFixed(1)} متر (دقة ممتازة)`;
-        } else if (locationAccuracy < 50) {
-          accuracyMessage = `✅ دقة موقعك: ${locationAccuracy.toFixed(1)} متر (دقة جيدة)`;
-        } else {
-          accuracyMessage = `⚠️ دقة موقعك: ${locationAccuracy.toFixed(1)} متر (قد تحتاج لتحسين الدقة)`;
-        }
         
         // محاولة الحصول على العنوان من الإحداثيات
         try {
           const address = await getAddressFromCoordinates(latitude, longitude);
           document.getElementById('customer-location').value = address;
-          locationAddress.innerHTML = `
-            <p>✅ ${address}</p>
-            <p style="font-size: 12px; color: #666; margin-top: 5px;">${accuracyMessage}</p>
-          `;
+          locationAddress.textContent = `✅ ${address}`;
           locationAddress.style.color = '#28a745';
         } catch (error) {
           console.warn('Could not get address:', error);
-          locationAddress.innerHTML = `
-            <p>✅ تم تحديد إحداثيات موقعك بنجاح</p>
-            <p style="font-size: 12px; color: #666; margin-top: 5px;">${accuracyMessage}</p>
-          `;
+          locationAddress.textContent = `✅ تم تحديد إحداثيات موقعك بنجاح`;
           locationAddress.style.color = '#28a745';
         }
         
@@ -924,27 +1143,27 @@
         let errorMessage = '';
         switch(error.code) {
           case error.PERMISSION_DENIED:
-            errorMessage = 'تم رفض طلب تحديد الموقع. يرجى:<br>1. تفعيل صلاحيات الموقع في إعدادات المتصفح<br>2. التأكد من تفعيل GPS في جهازك<br>3. إعادة تحميل الصفحة والمحاولة مرة أخرى';
+            errorMessage = 'تم رفض طلب تحديد الموقع. يرجى تفعيل صلاحيات الموقع في إعدادات المتصفح.';
             break;
           case error.POSITION_UNAVAILABLE:
-            errorMessage = 'معلومات الموقع غير متاحة. تأكد من:<br>1. تفعيل خدمة الموقع (GPS) في جهازك<br>2. الاتصال بالإنترنت<br>3. السماح للمتصفح بالوصول للموقع';
+            errorMessage = 'معلومات الموقع غير متاحة. تأكد من تفعيل GPS.';
             break;
           case error.TIMEOUT:
-            errorMessage = 'انتهت مهلة طلب الموقع. يرجى:<br>1. الانتظار لبضع ثواني<br>2. التأكد من أن GPS مفعل<br>3. المحاولة مرة أخرى';
+            errorMessage = 'انتهت مهلة طلب الموقع. حاول مرة أخرى.';
             break;
           default:
             errorMessage = 'حدث خطأ غير معروف في تحديد الموقع.';
         }
         
-        locationError.innerHTML = errorMessage;
+        locationError.textContent = errorMessage;
         console.error('Location error:', error);
         resetLocationButton();
       },
-      // Options - دقة عالية
+      // Options
       {
-        enableHighAccuracy: true,      // دقة عالية باستخدام GPS
-        timeout: 15000,                // زيادة المهلة لـ GPS
-        maximumAge: 0                  // لا استخدام بيانات قديمة
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
       }
     );
   }
@@ -1030,9 +1249,16 @@
     document.getElementById('location-error').textContent = '';
     document.getElementById('location-warning').style.display = 'block';
     document.getElementById('update-location-btn').style.display = 'none';
-    document.getElementById('location-accuracy').style.display = 'block';
+    document.getElementById('location-instructions').style.display = 'block';
     hasLocation = false;
     locationAccuracy = 0;
+    
+    // إخفاء الخريطة
+    document.getElementById('map-container').style.display = 'none';
+    document.getElementById('map-controls').style.display = 'none';
+    if (document.getElementById('map-toggle-btn')) {
+      document.getElementById('map-toggle-text').textContent = '📌 عرض الخريطة لتحديد الموقع يدوياً';
+    }
   }
   
   // ===== تعبئة نموذج العميل =====
@@ -1270,16 +1496,8 @@
     }
     
     if (!latitude || !longitude) {
-      showError('يرجى تحديد موقعك الجغرافي بدقة عالية أولاً');
+      showError('يرجى تحديد موقعك الجغرافي أولاً');
       return;
-    }
-    
-    // التحقق من دقة الموقع (اختياري)
-    if (locationAccuracy > 100) {
-      const confirmProceed = confirm(`دقة موقعك الحالية: ${locationAccuracy.toFixed(1)} متر (دقة منخفضة)\n\nهل تريد المتابعة بهذه الدقة؟\n\nلتحسين الدقة:\n1. افتح النافذة في الخارج\n2. تأكد من تفعيل GPS\n3. انتظر بضع ثواني`);
-      if (!confirmProceed) {
-        return;
-      }
     }
     
     const location = document.getElementById('customer-location').value.trim();
@@ -1294,7 +1512,7 @@
     saveText.textContent = 'جاري الحفظ...';
     
     try {
-      // بناء رابط GET مع الإحداثيات
+      // بناء رابط GET
       const params = new URLSearchParams();
       params.append('action', 'createOrUpdateCustomer');
       params.append('phone', phone);
@@ -1414,7 +1632,7 @@
     }
     
     if (!latitude || !longitude) {
-      alert('يرجى تحديد موقعك الجغرافي بدقة عالية أولاً');
+      alert('يرجى تحديد موقعك الجغرافي أولاً');
       return;
     }
     
@@ -1705,6 +1923,14 @@
     existingOrderId = null;
     hasLocation = false;
     locationAccuracy = 0;
+    
+    // إعادة تعيين الخريطة
+    mapInitialized = false;
+    if (map) {
+      map.remove();
+      map = null;
+      marker = null;
+    }
     
     // إخفاء الرسائل
     hideMessages();
