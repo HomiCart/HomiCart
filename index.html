@@ -574,7 +574,6 @@
       
       <input type="hidden" id="customer-latitude">
       <input type="hidden" id="customer-longitude">
-      <input type="hidden" id="customer-location-address">
       <input type="hidden" id="location-accuracy">
       <input type="hidden" id="location-confirmed" value="false">
     </div>
@@ -659,7 +658,6 @@
   let currentLatitude = null;
   let currentLongitude = null;
   let currentAccuracy = null;
-  let currentAddress = '';
   
   // مؤقت لتأخير الطلبات
   let phoneCheckTimer = null;
@@ -945,12 +943,10 @@
         // محاولة الحصول على العنوان
         try {
           const address = await getAddressFromCoordinates(latitude, longitude);
-          currentAddress = address;
           document.getElementById('location-address').textContent = `📍 ${address}`;
           document.getElementById('location-address').style.color = '#28a745';
         } catch (error) {
           console.warn('Could not get address:', error);
-          currentAddress = `الموقع: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
           document.getElementById('location-address').textContent = '📍 تم تحديد موقعك على الخريطة';
           document.getElementById('location-address').style.color = '#1976d2';
         }
@@ -1079,12 +1075,10 @@
   async function updateAddressFromCoordinates(lat, lng) {
     try {
       const address = await getAddressFromCoordinates(lat, lng);
-      currentAddress = address;
       document.getElementById('location-address').textContent = `📍 ${address}`;
       document.getElementById('location-address').style.color = '#28a745';
     } catch (error) {
       console.warn('Reverse geocoding failed:', error);
-      currentAddress = `الموقع: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
       document.getElementById('location-address').textContent = `📍 الموقع: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
       document.getElementById('location-address').style.color = '#1976d2';
     }
@@ -1131,11 +1125,9 @@
     // تخزين الإحداثيات المؤكدة
     document.getElementById('customer-latitude').value = currentLatitude;
     document.getElementById('customer-longitude').value = currentLongitude;
-    document.getElementById('customer-location-address').value = currentAddress || `الموقع: ${currentLatitude.toFixed(6)}, ${currentLongitude.toFixed(6)}`;
     document.getElementById('location-accuracy').value = currentAccuracy || '';
     document.getElementById('location-confirmed').value = 'true';
     locationConfirmed = true;
-    hasLocation = true;
     
     // إضافة علامة التأكيد
     if (confirmedMarker) {
@@ -1170,48 +1162,11 @@
     document.getElementById('location-controls').style.display = 'none';
     
     showSuccess('✅ تم تأكيد موقعك بنجاح');
-    
-    // حفظ الموقع في قاعدة البيانات إذا كان العميل موجوداً
-    if (currentCustomerId) {
-      saveCustomerLocation(currentCustomerId, currentLatitude, currentLongitude, currentAddress);
-    }
-  }
-  
-  // ===== حفظ موقع العميل في قاعدة البيانات =====
-  async function saveCustomerLocation(customerId, latitude, longitude, address) {
-    try {
-      if (!customerId || !latitude || !longitude) return;
-      
-      const params = new URLSearchParams();
-      params.append('action', 'updateCustomerLocation');
-      params.append('customerId', customerId);
-      params.append('latitude', latitude);
-      params.append('longitude', longitude);
-      params.append('address', address || `الموقع: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-      
-      const url = `${SCRIPT_URL}?${params.toString()}`;
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        cache: 'no-cache'
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        console.log('✅ Location saved in database for customer:', customerId);
-      } else {
-        console.warn('⚠️ Could not save location in database:', result.message);
-      }
-    } catch (error) {
-      console.error('❌ Error saving location in database:', error);
-    }
   }
   
   // ===== تغيير الموقع =====
   function changeLocation() {
     locationConfirmed = false;
-    hasLocation = false;
     document.getElementById('location-confirmed').value = 'false';
     document.getElementById('location-status').style.display = 'none';
     document.getElementById('location-controls').style.display = 'flex';
@@ -1253,7 +1208,6 @@
   function resetLocation() {
     document.getElementById('customer-latitude').value = '';
     document.getElementById('customer-longitude').value = '';
-    document.getElementById('customer-location-address').value = '';
     document.getElementById('location-accuracy').value = '';
     document.getElementById('location-confirmed').value = 'false';
     document.getElementById('location-map').style.display = 'none';
@@ -1278,7 +1232,6 @@
     currentLatitude = null;
     currentLongitude = null;
     currentAccuracy = null;
-    currentAddress = '';
   }
   
   // ===== تعبئة نموذج العميل =====
@@ -1296,7 +1249,6 @@
     if (customer.latitude && customer.longitude) {
       document.getElementById('customer-latitude').value = customer.latitude;
       document.getElementById('customer-longitude').value = customer.longitude;
-      document.getElementById('customer-location-address').value = customer.address || '';
       document.getElementById('location-confirmed').value = 'true';
       locationConfirmed = true;
       hasLocation = true;
@@ -1491,7 +1443,6 @@
     const address = document.getElementById('customer-address').value.trim();
     const latitude = document.getElementById('customer-latitude').value.trim();
     const longitude = document.getElementById('customer-longitude').value.trim();
-    const locationAddress = document.getElementById('customer-location-address').value.trim();
     const locationConfirmed = document.getElementById('location-confirmed').value === 'true';
     
     if (!name) {
@@ -1561,7 +1512,6 @@
       params.append('name', name);
       params.append('area', area);
       params.append('address', address);
-      params.append('location', locationAddress); // إرسال العنوان من الخريطة
       if (notes) params.append('notes', notes);
       if (currentRound) params.append('round', currentRound);
       params.append('latitude', latitude);
@@ -1599,7 +1549,6 @@
           whatsapp: whatsapp,
           area: area,
           address: address,
-          location: locationAddress,
           notes: notes,
           latitude: latitude,
           longitude: longitude
@@ -1666,7 +1615,6 @@
     const address = document.getElementById('customer-address').value.trim();
     const latitude = document.getElementById('customer-latitude').value.trim();
     const longitude = document.getElementById('customer-longitude').value.trim();
-    const locationAddress = document.getElementById('customer-location-address').value.trim();
     const locationConfirmed = document.getElementById('location-confirmed').value === 'true';
     
     if (!name || !phone || !whatsapp || !area || !address) {
@@ -1712,7 +1660,6 @@
         params.append('name', name);
         params.append('area', area);
         params.append('address', address);
-        params.append('location', locationAddress);
         params.append('orderText', orderText);
         if (notes) params.append('notes', notes);
         if (currentRound) params.append('round', currentRound);
@@ -1757,7 +1704,6 @@
         params.append('name', name);
         params.append('area', area);
         params.append('address', address);
-        params.append('location', locationAddress);
         params.append('orderText', orderText);
         if (notes) params.append('notes', notes);
         if (currentRound) params.append('round', currentRound);
@@ -1976,7 +1922,6 @@
     currentLatitude = null;
     currentLongitude = null;
     currentAccuracy = null;
-    currentAddress = '';
     
     // إخفاء الرسائل
     hideMessages();
