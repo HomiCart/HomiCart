@@ -438,7 +438,8 @@
       <div id="mobile-warning" class="warning-message" style="display: none; margin-top: 10px;"></div>
     </div>
     
-    <div style="text-align: center; margin-top: 20px;">
+    <!-- Hidden Test Server Connection Button -->
+    <div style="text-align: center; margin-top: 20px; display: none;">
       <button class="btn" onclick="testConnection()" style="background: #28a745;">
         <span>اختبار الاتصال بالسيرفر</span>
       </button>
@@ -595,6 +596,11 @@
           <li>بعد التحديد، اضغط على "تأكيد الموقع المحدد"</li>
         </ul>
       </div>
+      
+      <!-- Accuracy Warning -->
+      <div id="accuracy-warning" class="warning-message" style="margin-top: 10px; display: none;">
+        ⚠️ دقة الموقع منخفضة (أكثر من 10 أمتار). يرجى التأكد من موقعك.
+      </div>
     </div>
     
     <div class="form-group">
@@ -668,6 +674,7 @@
   let existingOrderId = null;
   let hasLocation = false;
   let locationAccuracy = 0;
+  let hasLocationPermission = false;
   
   // متغيرات الخريطة
   let map = null;
@@ -683,7 +690,86 @@
     checkOrderStatus();
     document.getElementById('mobile-number').focus();
     document.getElementById('location-instructions').style.display = 'block';
+    
+    // طلب إذن الوصول إلى الموقع عند تحميل الصفحة
+    requestLocationPermission();
   });
+  
+  // ===== طلب إذن الوصول إلى الموقع =====
+  function requestLocationPermission() {
+    if (!navigator.geolocation) {
+      console.warn('🚫 المتصفح لا يدعم تحديد الموقع');
+      showError('متصفحك لا يدعم تحديد الموقع الجغرافي. يرجى استخدام متصفح آخر.');
+      return;
+    }
+    
+    console.log('📍 طلب إذن الوصول إلى الموقع...');
+    
+    // اختبار صلاحيات الموقع
+    navigator.geolocation.getCurrentPosition(
+      function(position) {
+        // تم منح الإذن
+        hasLocationPermission = true;
+        console.log('✅ تم منح إذن الوصول إلى الموقع');
+        
+        // الحصول على الموقع الحالي تلقائياً
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        locationAccuracy = position.coords.accuracy;
+        
+        // تخزين الإحداثيات للاستخدام لاحقاً
+        initialUserLocation = { lat, lng, accuracy: locationAccuracy };
+        console.log('📍 الموقع الأولي للمستخدم:', initialUserLocation);
+        
+        // عرض تحذير دقة الموقع إذا كانت منخفضة
+        checkLocationAccuracy(locationAccuracy);
+      },
+      function(error) {
+        // تم رفض الإذن
+        hasLocationPermission = false;
+        console.warn('❌ تم رفض إذن الوصول إلى الموقع:', error.message);
+        
+        let errorMessage = '';
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'تم رفض طلب تحديد الموقع. الوصول إلى موقعك ضروري لخدمة التوصيل. يرجى تفعيل صلاحيات الموقع في إعدادات المتصورد.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'معلومات الموقع غير متاحة. تأكد من تفعيل GPS.';
+            break;
+          case error.TIMEOUT:
+            errorMessage = 'انتهت مهلة طلب الموقع. حاول مرة أخرى.';
+            break;
+          default:
+            errorMessage = 'حدث خطأ غير معروف في تحديد الموقع.';
+        }
+        
+        // عرض رسالة واضحة للمستخدم
+        showError(`⚠️ ${errorMessage}<br><br>الوصول إلى موقعك الجغرافي ضروري لتقديم خدمة التوصيل.`);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  }
+  
+  // ===== التحقق من دقة الموقع =====
+  function checkLocationAccuracy(accuracy) {
+    const accuracyWarning = document.getElementById('accuracy-warning');
+    
+    if (accuracy > 10) {
+      // دقة منخفضة
+      accuracyWarning.textContent = `⚠️ دقة الموقع منخفضة (${Math.round(accuracy)} أمتار). يرجى التأكد من موقعك.`;
+      accuracyWarning.style.display = 'block';
+      console.log(`⚠️ دقة الموقع منخفضة: ${accuracy} أمتار`);
+    } else {
+      // دقة ممتازة
+      accuracyWarning.style.display = 'none';
+      console.log(`✅ دقة الموقع ممتازة: ${accuracy} أمتار`);
+    }
+  }
   
   // ===== اختبار الاتصال بالسيرفر =====
   async function testConnection() {
@@ -1019,11 +1105,21 @@
   
   // ===== استخدام الموقع الحالي على الخريطة =====
   function useCurrentLocationOnMap() {
+    if (!hasLocationPermission) {
+      alert('يرجى السماح بالوصول إلى موقعك الجغرافي أولاً.');
+      requestLocationPermission();
+      return;
+    }
+    
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         function(position) {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
+          locationAccuracy = position.coords.accuracy;
+          
+          // التحقق من دقة الموقع
+          checkLocationAccuracy(locationAccuracy);
           
           // تحديث الخريطة
           map.setView([lat, lng], 16);
@@ -1070,6 +1166,13 @@
   function getUserLocation() {
     hideMessages();
     
+    // التحقق من إذن الموقع
+    if (!hasLocationPermission) {
+      alert('يرجى السماح بالوصول إلى موقعك الجغرافي أولاً. سيظهر طلب إذن قريباً.');
+      requestLocationPermission();
+      return;
+    }
+    
     const locationBtn = document.getElementById('location-btn');
     const locationText = document.getElementById('location-btn-text');
     const locationLoading = document.getElementById('location-loading');
@@ -1107,6 +1210,9 @@
           accuracy: locationAccuracy
         });
         
+        // التحقق من دقة الموقع
+        checkLocationAccuracy(locationAccuracy);
+        
         // تخزين الإحداثيات
         document.getElementById('customer-latitude').value = latitude;
         document.getElementById('customer-longitude').value = longitude;
@@ -1137,6 +1243,14 @@
         if (currentCustomerId) {
           await saveCustomerLocation(currentCustomerId, latitude, longitude);
         }
+        
+        // إذا كانت الخريطة معروضة، تحديثها بالموقع الجديد
+        if (mapInitialized && map) {
+          map.setView([latitude, longitude], 15);
+          if (marker) {
+            marker.setLatLng([latitude, longitude]);
+          }
+        }
       },
       // Error callback
       function(error) {
@@ -1144,6 +1258,7 @@
         switch(error.code) {
           case error.PERMISSION_DENIED:
             errorMessage = 'تم رفض طلب تحديد الموقع. يرجى تفعيل صلاحيات الموقع في إعدادات المتصفح.';
+            hasLocationPermission = false;
             break;
           case error.POSITION_UNAVAILABLE:
             errorMessage = 'معلومات الموقع غير متاحة. تأكد من تفعيل GPS.';
@@ -1248,6 +1363,7 @@
     document.getElementById('location-address').textContent = '';
     document.getElementById('location-error').textContent = '';
     document.getElementById('location-warning').style.display = 'block';
+    document.getElementById('accuracy-warning').style.display = 'none';
     document.getElementById('update-location-btn').style.display = 'none';
     document.getElementById('location-instructions').style.display = 'block';
     hasLocation = false;
@@ -1282,9 +1398,42 @@
       document.getElementById('location-warning').style.display = 'none';
       document.getElementById('update-location-btn').style.display = 'inline-block';
       hasLocation = true;
+      
+      // إذا كان العميل موجوداً ولديه موقع، افتح الخريطة على موقعه
+      if (customerExists && hasLocationPermission && !isEditingCustomer) {
+        setTimeout(() => {
+          openMapOnUserLocation(customer.latitude, customer.longitude);
+        }, 500);
+      }
     } else {
       resetLocation();
     }
+  }
+  
+  // ===== فتح الخريطة على موقع المستخدم =====
+  function openMapOnUserLocation(lat, lng) {
+    if (!lat || !lng) return;
+    
+    // تحويل الإحداثيات إلى أرقام
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lng);
+    
+    // عرض الخريطة إذا لم تكن معروضة
+    const mapContainer = document.getElementById('map-container');
+    if (mapContainer.style.display === 'none') {
+      toggleMap();
+    }
+    
+    // تهيئة الخريطة إذا لم تكن مهيأة
+    if (!mapInitialized) {
+      initMap(latitude, longitude);
+    } else {
+      // تحديث الخريطة بالموقع الجديد
+      map.setView([latitude, longitude], 15);
+      marker.setLatLng([latitude, longitude]);
+    }
+    
+    console.log('🗺️ Map opened on user location:', latitude, longitude);
   }
   
   // ===== تعديل بيانات العميل =====
