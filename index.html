@@ -593,13 +593,7 @@
     </div>
   </div>
 
-  <!-- Existing Order Details -->
-  <div id="existing-order-section" class="previous-orders" style="display: none;">
-    <h4>تعديل الطلب الأخير</h4>
-    <div id="existing-order-details"></div>
-  </div>
-
-  <!-- Order Details Section -->
+  <!-- Order Details Section (لطلبات جديدة) -->
   <div id="order-details-section" class="section" style="display: none;">
     <h3 class="section-title" id="order-title">تفاصيل الطلب</h3>
     
@@ -616,6 +610,35 @@
       <button class="btn" onclick="submitOrder()" id="submit-btn">
         <span id="submit-text">إرسال الطلب</span>
         <span id="submit-loading" class="loading" style="display: none;"></span>
+      </button>
+      <button class="btn btn-secondary" onclick="resetForm()">بدء من جديد</button>
+    </div>
+  </div>
+
+  <!-- Edit Order Section (لطلبات التعديل فقط) -->
+  <div id="edit-order-section" class="section" style="display: none;">
+    <h3 class="section-title">تعديل الطلب الأخير</h3>
+    
+    <!-- Previous Order Details -->
+    <div class="previous-orders">
+      <h4>الطلب الحالي</h4>
+      <div id="existing-order-details"></div>
+    </div>
+    
+    <!-- Edit Order Form -->
+    <div class="form-group">
+      <label for="edit-order-text" class="required">اكتب الطلب الجديد</label>
+      <textarea 
+        id="edit-order-text" 
+        rows="5" 
+        placeholder="اكتب تفاصيل الطلب الجديد هنا..."
+      ></textarea>
+    </div>
+    
+    <div style="text-align: center;">
+      <button class="btn btn-success" onclick="updateExistingOrder()" id="update-order-btn">
+        <span id="update-order-text">تحديث الطلب</span>
+        <span id="update-order-loading" class="loading" style="display: none;"></span>
       </button>
       <button class="btn btn-secondary" onclick="resetForm()">بدء من جديد</button>
     </div>
@@ -654,6 +677,7 @@
   let currentLatitude = null;
   let currentLongitude = null;
   let currentAccuracy = null;
+  let mapInitialized = false;
   
   // مؤقت لتأخير الطلبات
   let phoneCheckTimer = null;
@@ -663,11 +687,11 @@
     console.log('✅ HomiCart System Initialized - Enhanced Location System');
     checkOrderStatus();
     document.getElementById('mobile-number').focus();
-    // تأخير تهيئة الخريطة حتى نحصل على موقع المستخدم
+    // لا نهيئ الخريطة الآن، سننتظر حتى يضغط المستخدم على الزر
   });
   
   // ===== تهيئة الخريطة =====
-  function initializeMap(latitude = 24.7136, longitude = 46.6753) {
+  function initializeMap(latitude = 24.4539, longitude = 54.3773) { // أبوظبي كمركز افتراضي
     // إنشاء خريطة فارغة في البداية
     const mapElement = document.getElementById('map');
     if (!mapElement) return;
@@ -678,43 +702,11 @@
       maxZoom: 19
     }).addTo(map);
     
-    // تعيين مركز افتراضي بناءً على موقع المستخدم أو الرياض
+    // تعيين مركز افتراضي (أبوظبي)
     map.setView([latitude, longitude], 13);
-  }
-  
-  // ===== الحصول على موقع المستخدم لتعيين المركز الافتراضي =====
-  function getUserCityForMap() {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        function(position) {
-          const latitude = position.coords.latitude;
-          const longitude = position.coords.longitude;
-          
-          // تهيئة الخريطة بموقع المستخدم
-          if (!map) {
-            initializeMap(latitude, longitude);
-          } else {
-            map.setView([latitude, longitude], 13);
-          }
-          
-          console.log('📍 Map centered on user location:', latitude, longitude);
-        },
-        function(error) {
-          // إذا فشل الحصول على الموقع، استخدم الرياض كمركز افتراضي
-          if (!map) {
-            initializeMap();
-          }
-          console.log('⚠️ Using default map center (Riyadh)');
-        },
-        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
-      );
-    } else {
-      // إذا كان المتصفح لا يدعم تحديد الموقع، استخدم الرياض
-      if (!map) {
-        initializeMap();
-      }
-      console.log('⚠️ Geolocation not supported, using default center');
-    }
+    mapInitialized = true;
+    
+    console.log('🗺️ Map initialized with center:', latitude, longitude);
   }
   
   // ===== تنسيق رقم الهاتف =====
@@ -765,8 +757,8 @@
     // إخفاء الأقسام
     document.getElementById('customer-actions-section').style.display = 'none';
     document.getElementById('customer-info-form').style.display = 'none';
-    document.getElementById('existing-order-section').style.display = 'none';
     document.getElementById('order-details-section').style.display = 'none';
+    document.getElementById('edit-order-section').style.display = 'none';
     
     // التحقق الأساسي
     if (!mobileNumber) {
@@ -880,56 +872,13 @@
     }
   }
   
-  // ===== تحميل الطلب الأخير للعميل =====
-  async function loadRecentOrder() {
-    if (!currentCustomerId) return;
-    
-    try {
-      console.log('📋 Loading recent order for customer ID:', currentCustomerId);
-      
-      // استخدام دالة getOrderByCustomer التي تعيد أحدث طلب
-      const url = `${SCRIPT_URL}?action=getOrderByCustomer&customerId=${encodeURIComponent(currentCustomerId)}&_=${Date.now()}`;
-      const response = await fetch(url, {
-        method: 'GET',
-        cache: 'no-cache'
-      });
-      
-      console.log('Order response status:', response.status);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('📋 Latest order response:', data);
-      
-      if (data.success && data.order) {
-        currentOrder = data.order;
-        existingOrderId = data.order.id;
-        
-        console.log('✅ Latest order found:', data.order);
-        
-      } else {
-        // لا يوجد طلبات
-        currentOrder = null;
-        existingOrderId = null;
-        console.log('No orders found for customer');
-      }
-      
-    } catch (error) {
-      console.error('❌ Error loading recent order:', error);
-      currentOrder = null;
-      existingOrderId = null;
-    }
-  }
-  
-  // ===== تحديد موقع المستخدم بدقة عالية =====
+  // ===== تحديد موقع المستخدم بدقة عالية (5-15 متر) =====
   function getUserLocation() {
     hideMessages();
     
-    // إذا لم تكن الخريطة مهيأة بعد، قم بتهيئتها أولاً
-    if (!map) {
-      getUserCityForMap();
+    // إذا لم تكن الخريطة مهيأة بعد، قم بتهيئتها أولاً باستخدام أبوظبي كمركز
+    if (!mapInitialized) {
+      initializeMap();
     }
     
     const locationBtn = document.getElementById('location-btn');
@@ -959,7 +908,7 @@
       return;
     }
     
-    // الحصول على الموقع بدقة عالية
+    // الحصول على الموقع بدقة عالية جداً (5-15 متر)
     navigator.geolocation.getCurrentPosition(
       // Success callback
       async function(position) {
@@ -969,15 +918,26 @@
         
         console.log('📍 Location obtained:', { latitude, longitude, accuracy });
         
-        // التحقق من دقة الموقع
-        if (accuracy > 100) { // إذا كانت الدقة أكثر من 100 متر
+        // التحقق من دقة الموقع (مطلوبة من 5 إلى 15 متر)
+        let accuracyClass = 'accuracy-good';
+        let accuracyText = 'دقة ممتازة';
+        
+        if (accuracy > 15) {
+          accuracyClass = 'accuracy-poor';
+          accuracyText = 'دقة منخفضة';
+        } else if (accuracy > 10) {
+          accuracyClass = 'accuracy-fair';
+          accuracyText = 'دقة جيدة';
+        }
+        
+        if (accuracy > 15) {
           locationError.innerHTML = `
             <div class="warning-message" style="text-align: right; margin: 10px 0;">
-              <p><strong>⚠️ دقة الموقع منخفضة (${Math.round(accuracy)} متر)</strong></p>
+              <p><strong>⚠️ الدقة الحالية ${Math.round(accuracy)} متر - المطلوبة 5-15 متر</strong></p>
               <p>لتحسين الدقة:</p>
               <ul style="text-align: right; margin-right: 15px;">
-                <li>تفعيل GPS على هاتفك</li>
-                <li>الانتقال إلى مكان مفتوح</li>
+                <li>تفعيل GPS عالي الدقة</li>
+                <li>الانتقال إلى مكان مفتوح بعيد عن المباني</li>
                 <li>إعادة المحاولة</li>
               </ul>
               <p style="margin-top: 10px;">
@@ -1005,19 +965,9 @@
         document.getElementById('latitude-display').textContent = latitude.toFixed(6);
         document.getElementById('longitude-display').textContent = longitude.toFixed(6);
         
-        let accuracyClass = 'accuracy-good';
-        let accuracyText = 'دقة عالية';
-        if (accuracy > 100) {
-          accuracyClass = 'accuracy-poor';
-          accuracyText = 'دقة منخفضة';
-        } else if (accuracy > 50) {
-          accuracyClass = 'accuracy-fair';
-          accuracyText = 'دقة متوسطة';
-        }
-        
         document.getElementById('accuracy-info').innerHTML = `
           <span class="${accuracyClass}">📍 الدقة: ${Math.round(accuracy)} متر (${accuracyText})</span>
-          ${accuracy > 100 ? '<br><small>يرجى التأكد من موقع المؤشر على الخريطة</small>' : ''}
+          ${accuracy > 15 ? '<br><small>يرجى التأكد من موقع المؤشر على الخريطة</small>' : ''}
         `;
         
         // محاولة الحصول على العنوان
@@ -1060,7 +1010,7 @@
             showRetry = false;
             break;
           case error.POSITION_UNAVAILABLE:
-            errorMessage = 'معلومات الموقع غير متاحة. تأكد من تفعيل GPS على هاتفك.';
+            errorMessage = 'معلومات الموقع غير متاحة. تأكد من تفعيل GPS عالي الدقة على هاتفك.';
             break;
           case error.TIMEOUT:
             errorMessage = 'انتهت مهلة طلب الموقع. يرجى التأكد من اتصال الإنترنت والمحاولة مرة أخرى.';
@@ -1084,10 +1034,10 @@
         
         resetLocationButton();
       },
-      // Options - HIGH ACCURACY MODE
+      // Options - VERY HIGH ACCURACY MODE (5-15 متر)
       {
-        enableHighAccuracy: true, // تفعيل الدقة العالية
-        timeout: 15000, // 15 ثانية مهلة
+        enableHighAccuracy: true, // تفعيل الدقة العالية جداً
+        timeout: 20000, // 20 ثانية مهلة
         maximumAge: 0 // عدم استخدام مواقع مخزنة
       }
     );
@@ -1099,7 +1049,7 @@
     mapContainer.style.display = 'block';
     
     // تعيين مركز الخريطة
-    map.setView([latitude, longitude], 17); // تكبير مستوى 17
+    map.setView([latitude, longitude], 18); // تكبير مستوى 18 لرؤية أفضل
     
     // إزالة العلامات القديمة
     if (userMarker) {
@@ -1119,7 +1069,7 @@
     if (accuracy) {
       accuracyCircle = L.circle([latitude, longitude], {
         radius: accuracy,
-        color: accuracy <= 50 ? '#28a745' : accuracy <= 100 ? '#ffc107' : '#dc3545',
+        color: accuracy <= 10 ? '#28a745' : accuracy <= 15 ? '#ffc107' : '#dc3545',
         fillOpacity: 0.1,
         weight: 2
       }).addTo(map);
@@ -1265,7 +1215,7 @@
   // ===== العودة إلى الموقع الأصلي =====
   function recenterMap() {
     if (currentLatitude && currentLongitude && userMarker) {
-      map.setView([currentLatitude, currentLongitude], 17);
+      map.setView([currentLatitude, currentLongitude], 18);
       userMarker.setLatLng([currentLatitude, currentLongitude]);
       
       // إزالة علامة التأكيد
@@ -1388,8 +1338,8 @@
     
     // إخفاء نموذج البيانات
     document.getElementById('customer-info-form').style.display = 'none';
-    document.getElementById('existing-order-section').style.display = 'none';
     document.getElementById('order-details-section').style.display = 'none';
+    document.getElementById('edit-order-section').style.display = 'none';
     
     // إعادة عرض قسم الإجراءات
     if (customerExists && currentCustomer) {
@@ -1414,31 +1364,35 @@
     selectedOrderType = type;
     isEditingCustomer = false;
     
-    // إخفاء قسم الإجراءات
-    document.getElementById('customer-actions-section').style.display = 'none';
-    
-    // عرض نموذج معلومات العميل
-    document.getElementById('customer-info-form').style.display = 'block';
-    document.getElementById('customer-form-title').textContent = 'معلومات العميل';
-    document.getElementById('cancel-btn').style.display = 'inline-block';
-    
-    // تعبئة النموذج ببيانات العميل الحالية
-    fillCustomerForm(currentCustomer);
-    
-    // إذا كان تعديل طلب، تحميل الطلب الحالي
-    if (type === 'edit') {
-      await loadOrderDataForEdit();
-      document.getElementById('order-title').textContent = 'تعديل الطلب الأخير';
-      document.getElementById('submit-text').textContent = 'تحديث الطلب';
-    } else {
-      document.getElementById('existing-order-section').style.display = 'none';
-      document.getElementById('order-text').value = '';
+    if (type === 'new') {
+      // طلب جديد
+      document.getElementById('customer-actions-section').style.display = 'none';
+      document.getElementById('customer-info-form').style.display = 'block';
+      document.getElementById('customer-form-title').textContent = 'معلومات العميل';
+      document.getElementById('cancel-btn').style.display = 'inline-block';
+      
+      // تعبئة النموذج ببيانات العميل الحالية
+      fillCustomerForm(currentCustomer);
+      
+      // إعداد قسم الطلب الجديد
+      document.getElementById('edit-order-section').style.display = 'none';
+      document.getElementById('order-details-section').style.display = 'block';
       document.getElementById('order-title').textContent = 'طلب جديد';
+      document.getElementById('order-text').value = '';
       document.getElementById('submit-text').textContent = 'إرسال الطلب';
+      
+    } else if (type === 'edit') {
+      // تعديل الطلب الأخير
+      document.getElementById('customer-actions-section').style.display = 'none';
+      
+      // تحميل بيانات الطلب الأخير
+      await loadOrderDataForEdit();
+      
+      // عرض قسم التعديل فقط (بدون بيانات العميل)
+      document.getElementById('customer-info-form').style.display = 'none';
+      document.getElementById('order-details-section').style.display = 'none';
+      document.getElementById('edit-order-section').style.display = 'block';
     }
-    
-    // عرض قسم تفاصيل الطلب
-    document.getElementById('order-details-section').style.display = 'block';
     
     hideMessages();
   }
@@ -1447,9 +1401,8 @@
   async function loadOrderDataForEdit() {
     if (!currentCustomerId) {
       console.log('No customer ID, no existing order');
-      document.getElementById('existing-order-section').style.display = 'none';
-      existingOrderId = null;
       alert('لا يوجد طلب سابق لتعديله. يمكنك إنشاء طلب جديد.');
+      selectOrderType('new');
       return;
     }
     
@@ -1475,14 +1428,13 @@
         currentOrder = data.order;
         existingOrderId = data.order.id;
         
-        // عرض قسم الطلب الحالي - بدون بيانات العميل
-        const existingOrderSection = document.getElementById('existing-order-section');
+        // عرض قسم الطلب الحالي فقط (بدون بيانات العميل)
         const existingOrderDetails = document.getElementById('existing-order-details');
         
         existingOrderDetails.innerHTML = `
           <div class="order-item">
             <p><strong>الطلب الحالي:</strong></p>
-            <p style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 5px;">
+            <p style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 5px; white-space: pre-wrap;">
               ${data.order.items || 'لا توجد تفاصيل'}
             </p>
           </div>
@@ -1491,31 +1443,24 @@
           </p>
         `;
         
-        // تعبئة نص الطلب
+        // تعبئة نص الطلب في حقل التعديل
         if (data.order.items) {
-          document.getElementById('order-text').value = data.order.items;
+          document.getElementById('edit-order-text').value = data.order.items;
         } else {
-          document.getElementById('order-text').value = '';
-          document.getElementById('order-text').placeholder = 'لم يتم العثور على طلب سابق';
+          document.getElementById('edit-order-text').value = '';
+          document.getElementById('edit-order-text').placeholder = 'لم يتم العثور على طلب سابق';
         }
-        
-        existingOrderSection.style.display = 'block';
         
       } else {
         // لا يوجد طلب حالياً
-        document.getElementById('existing-order-section').style.display = 'none';
-        document.getElementById('order-text').value = '';
-        document.getElementById('order-text').placeholder = 'لا يوجد طلب سابق لتعديله';
-        existingOrderId = null;
-        alert('لا يوجد طلب سابق لتعديله. يمكنك إنشاء طلب جديد.');
+        alert('لا يوجد طلب سابق لتعديله. سيتم تحويلك إلى طلب جديد.');
+        selectOrderType('new');
       }
       
     } catch (error) {
       console.error('❌ Error loading order data:', error);
-      document.getElementById('existing-order-section').style.display = 'none';
-      document.getElementById('order-text').value = '';
-      document.getElementById('order-text').placeholder = 'حدث خطأ في تحميل الطلب السابق';
-      existingOrderId = null;
+      alert('حدث خطأ في تحميل الطلب السابق. سيتم تحويلك إلى طلب جديد.');
+      selectOrderType('new');
     }
   }
   
@@ -1647,11 +1592,10 @@
             document.getElementById('customer-actions-section').style.display = 'block';
             document.getElementById('customer-name-display').textContent = name;
           }, 1500);
-        } else if (!selectedOrderType) {
-          // إذا كان عميل جديد حفظ بياناته، عرض قسم الإجراءات
+        } else if (selectedOrderType === 'new') {
+          // إذا كان عميل جديد حفظ بياناته، استمر في عملية الطلب
           document.getElementById('customer-info-form').style.display = 'none';
-          document.getElementById('customer-actions-section').style.display = 'block';
-          document.getElementById('customer-name-display').textContent = name;
+          document.getElementById('order-details-section').style.display = 'block';
           document.getElementById('mobile-success').textContent = `✅ مرحباً ${name}`;
         }
         
@@ -1672,14 +1616,104 @@
     }
   }
   
-  // ===== إرسال/تحديث الطلب =====
-  async function submitOrder() {
+  // ===== تحديث الطلب الحالي =====
+  async function updateExistingOrder() {
     hideMessages();
     
-    if (!selectedOrderType && !isEditingCustomer) {
-      alert('من فضلك اختر نوع الطلب أولاً');
+    if (currentOrderStatus.toLowerCase() !== 'active') {
+      alert('لا يمكن تحديث الطلبات حالياً لأن النظام مغلق.');
       return;
     }
+    
+    if (!isAccountActive && customerExists) {
+      alert('حسابك غير نشط. يرجى التواصل مع الإدارة لتفعيل الحساب.');
+      return;
+    }
+    
+    const orderText = document.getElementById('edit-order-text').value.trim();
+    if (!orderText) {
+      alert('من فضلك اكتب تفاصيل الطلب الجديد أولاً');
+      return;
+    }
+    
+    const updateBtn = document.getElementById('update-order-btn');
+    const updateLoading = document.getElementById('update-order-loading');
+    const updateText = document.getElementById('update-order-text');
+    updateBtn.disabled = true;
+    updateLoading.style.display = 'inline-block';
+    updateText.textContent = 'جاري التحديث...';
+    
+    try {
+      // نحتاج بيانات العميل من currentCustomer
+      if (!currentCustomer) {
+        throw new Error('بيانات العميل غير متوفرة');
+      }
+      
+      console.log('✏️ Updating existing order:', existingOrderId);
+      
+      const params = new URLSearchParams();
+      params.append('action', 'submitOrder');
+      params.append('phone', currentCustomer.phone);
+      params.append('whatsapp', currentCustomer.whatsapp || currentCustomer.phone);
+      params.append('name', currentCustomer.name);
+      params.append('area', currentCustomer.area);
+      params.append('address', currentCustomer.address);
+      params.append('orderText', orderText);
+      if (currentRound) params.append('round', currentRound);
+      params.append('replaceOrderId', existingOrderId);
+      params.append('latitude', currentCustomer.latitude || '');
+      params.append('longitude', currentCustomer.longitude || '');
+      
+      const url = `${SCRIPT_URL}?${params.toString()}`;
+      console.log('Update order URL:', url);
+      
+      const response = await fetch(url, { 
+        method: 'GET',
+        cache: 'no-cache'
+      });
+      
+      console.log('Update response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('✏️ Update order result:', result);
+      
+      if (result.success) {
+        // إخفاء جميع الأقسام
+        document.getElementById('edit-order-section').style.display = 'none';
+        
+        // عرض رسالة النجاح فقط
+        const successMessage = document.getElementById('success-message');
+        successMessage.innerHTML = `
+          <h3>✅ تم تحديث الطلب بنجاح!</h3>
+          <p>عزيزي/عزيزتي <strong>${currentCustomer.name}</strong>، سيتم التواصل معك على واتساب للتأكيد.</p>
+          <p>شكراً لاستخدامك HomiCart! 💙</p>
+        `;
+        successMessage.style.display = 'block';
+        
+        setTimeout(() => {
+          resetForm();
+        }, 3000);
+      } else {
+        throw new Error(result.message || 'فشل تحديث الطلب');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error updating order:', error);
+      showError('حدث خطأ أثناء تحديث الطلب: ' + error.message);
+    } finally {
+      updateBtn.disabled = false;
+      updateLoading.style.display = 'none';
+      updateText.textContent = 'تحديث الطلب';
+    }
+  }
+  
+  // ===== إرسال طلب جديد =====
+  async function submitOrder() {
+    hideMessages();
     
     if (currentOrderStatus.toLowerCase() !== 'active') {
       alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
@@ -1731,126 +1765,66 @@
     submitText.textContent = 'جاري الإرسال...';
     
     try {
-      if (selectedOrderType === 'edit' && existingOrderId) {
-        // تحديث الطلب الحالي
-        console.log('✏️ Updating existing order:', existingOrderId);
+      console.log('📤 Submitting new order...');
+      
+      const params = new URLSearchParams();
+      params.append('action', 'submitOrder');
+      params.append('phone', phone);
+      params.append('whatsapp', whatsapp);
+      params.append('name', name);
+      params.append('area', area);
+      params.append('address', address);
+      params.append('orderText', orderText);
+      if (currentRound) params.append('round', currentRound);
+      params.append('latitude', latitude);
+      params.append('longitude', longitude);
+      
+      const url = `${SCRIPT_URL}?${params.toString()}`;
+      console.log('Submit order URL:', url.substring(0, 200) + '...');
+      
+      const response = await fetch(url, { 
+        method: 'GET',
+        cache: 'no-cache'
+      });
+      
+      console.log('Submit response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('📤 Submit order result:', result);
+      
+      if (result.success) {
+        // إخفاء جميع الأقسام
+        document.getElementById('customer-info-form').style.display = 'none';
+        document.getElementById('order-details-section').style.display = 'none';
         
-        const params = new URLSearchParams();
-        params.append('action', 'submitOrder');
-        params.append('phone', phone);
-        params.append('whatsapp', whatsapp);
-        params.append('name', name);
-        params.append('area', area);
-        params.append('address', address);
-        params.append('orderText', orderText);
-        if (currentRound) params.append('round', currentRound);
-        params.append('replaceOrderId', existingOrderId);
-        params.append('latitude', latitude);
-        params.append('longitude', longitude);
+        // عرض رسالة النجاح فقط
+        const successMessage = document.getElementById('success-message');
+        successMessage.innerHTML = `
+          <h3>✅ تم إرسال الطلب بنجاح!</h3>
+          ${result.orderId ? `<p><strong>رقم الطلب:</strong> ${result.orderId}</p>` : ''}
+          ${result.customerId ? `<p><strong>رقم العميل:</strong> ${result.customerId}</p>` : ''}
+          <p>📍 <strong>موقع التسليم:</strong> ${address}</p>
+          <p>📍 <strong>الإحداثيات:</strong> ${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</p>
+          <p>عزيزي/عزيزتي <strong>${name}</strong>، سيتم التواصل معك على واتساب للتأكيد.</p>
+          <p>شكراً لاستخدامك HomiCart! 💙</p>
+        `;
+        successMessage.style.display = 'block';
         
-        const url = `${SCRIPT_URL}?${params.toString()}`;
-        console.log('Update order URL:', url);
+        // تحديث بيانات العميل المحلية
+        currentCustomerId = result.customerId;
+        customerExists = true;
         
-        const response = await fetch(url, { 
-          method: 'GET',
-          cache: 'no-cache'
-        });
-        
-        console.log('Update response status:', response.status);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        console.log('✏️ Update order result:', result);
-        
-        if (result.success) {
-          // إخفاء جميع الأقسام
-          document.getElementById('customer-info-form').style.display = 'none';
-          document.getElementById('existing-order-section').style.display = 'none';
-          document.getElementById('order-details-section').style.display = 'none';
-          
-          // عرض رسالة النجاح فقط
-          const successMessage = document.getElementById('success-message');
-          successMessage.innerHTML = `
-            <h3>✅ تم تحديث الطلب بنجاح!</h3>
-            <p>عزيزي/عزيزتي <strong>${name}</strong>، سيتم التواصل معك على واتساب للتأكيد.</p>
-            <p>شكراً لاستخدامك HomiCart! 💙</p>
-          `;
-          successMessage.style.display = 'block';
-          
-          setTimeout(() => {
-            resetForm();
-          }, 3000);
-        } else {
-          throw new Error(result.message || 'فشل تحديث الطلب');
-        }
-        
+        // إعادة التعيين بعد 10 ثواني
+        setTimeout(() => {
+          resetForm();
+          successMessage.style.display = 'none';
+        }, 10000);
       } else {
-        // إرسال طلب جديد
-        console.log('📤 Submitting new order...');
-        
-        const params = new URLSearchParams();
-        params.append('action', 'submitOrder');
-        params.append('phone', phone);
-        params.append('whatsapp', whatsapp);
-        params.append('name', name);
-        params.append('area', area);
-        params.append('address', address);
-        params.append('orderText', orderText);
-        if (currentRound) params.append('round', currentRound);
-        params.append('latitude', latitude);
-        params.append('longitude', longitude);
-        
-        const url = `${SCRIPT_URL}?${params.toString()}`;
-        console.log('Submit order URL:', url.substring(0, 200) + '...');
-        
-        const response = await fetch(url, { 
-          method: 'GET',
-          cache: 'no-cache'
-        });
-        
-        console.log('Submit response status:', response.status);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        console.log('📤 Submit order result:', result);
-        
-        if (result.success) {
-          // إخفاء جميع الأقسام
-          document.getElementById('customer-info-form').style.display = 'none';
-          document.getElementById('existing-order-section').style.display = 'none';
-          document.getElementById('order-details-section').style.display = 'none';
-          
-          // عرض رسالة النجاح فقط
-          const successMessage = document.getElementById('success-message');
-          successMessage.innerHTML = `
-            <h3>✅ تم إرسال الطلب بنجاح!</h3>
-            ${result.orderId ? `<p><strong>رقم الطلب:</strong> ${result.orderId}</p>` : ''}
-            ${result.customerId ? `<p><strong>رقم العميل:</strong> ${result.customerId}</p>` : ''}
-            <p>📍 <strong>موقع التسليم:</strong> ${address}</p>
-            <p>📍 <strong>الإحداثيات:</strong> ${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</p>
-            <p>عزيزي/عزيزتي <strong>${name}</strong>، سيتم التواصل معك على واتساب للتأكيد.</p>
-            <p>شكراً لاستخدامك HomiCart! 💙</p>
-          `;
-          successMessage.style.display = 'block';
-          
-          // تحديث بيانات العميل المحلية
-          currentCustomerId = result.customerId;
-          customerExists = true;
-          
-          // إعادة التعيين بعد 10 ثواني
-          setTimeout(() => {
-            resetForm();
-            successMessage.style.display = 'none';
-          }, 10000);
-        } else {
-          throw new Error(result.message || 'فشل إرسال الطلب');
-        }
+        throw new Error(result.message || 'فشل إرسال الطلب');
       }
       
     } catch (error) {
@@ -1859,7 +1833,7 @@
     } finally {
       submitBtn.disabled = false;
       submitLoading.style.display = 'none';
-      submitText.textContent = selectedOrderType === 'edit' ? 'تحديث الطلب' : 'إرسال الطلب';
+      submitText.textContent = 'إرسال الطلب';
     }
   }
   
@@ -1982,6 +1956,7 @@
     document.getElementById('customer-area').value = '';
     document.getElementById('customer-address').value = '';
     document.getElementById('order-text').value = '';
+    document.getElementById('edit-order-text').value = '';
     
     // إعادة تعيين الموقع
     resetLocation();
@@ -1994,8 +1969,8 @@
     // إخفاء الأقسام
     document.getElementById('customer-actions-section').style.display = 'none';
     document.getElementById('customer-info-form').style.display = 'none';
-    document.getElementById('existing-order-section').style.display = 'none';
     document.getElementById('order-details-section').style.display = 'none';
+    document.getElementById('edit-order-section').style.display = 'none';
     
     // إعادة تعيين الأزرار
     document.querySelectorAll('.type-btn').forEach(btn => {
@@ -2019,8 +1994,10 @@
     currentAccuracy = null;
     
     // إعادة تعيين الخريطة
+    mapInitialized = false;
     if (map) {
-      map.setView([24.7136, 46.6753], 13);
+      map.remove();
+      map = null;
     }
     
     // إخفاء الرسائل
