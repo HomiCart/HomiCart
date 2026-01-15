@@ -194,6 +194,14 @@
     margin: 15px 0;
     border: 1px solid #ddd;
     display: none;
+    position: relative;
+    z-index: 1;
+  }
+  
+  #map {
+    height: 100%;
+    width: 100%;
+    border-radius: 8px;
   }
   
   .map-controls {
@@ -413,6 +421,34 @@
     padding: 10px;
     border-radius: 6px;
     border: 1px solid #ffcc80;
+  }
+  
+  .location-marker {
+    background: #2e5cff;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    border: 3px solid white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  }
+  
+  .confirmed-marker {
+    background: #28a745;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    border: 3px solid white;
+    box-shadow: 0 0 15px rgba(0,0,0,0.4);
   }
   
   @media (max-width: 768px) {
@@ -745,35 +781,56 @@
   
   // ===== تهيئة عند تحميل الصفحة =====
   document.addEventListener('DOMContentLoaded', function() {
-    console.log('✅ HomiCart System Initialized - Enhanced Location System');
+    console.log('✅ HomiCart System Initialized');
     checkOrderStatus();
     document.getElementById('mobile-number').focus();
+    // لا نهيئ الخريطة الآن، سننتظر حتى يضغط المستخدم على الزر
   });
   
   // ===== تهيئة الخريطة =====
-  function initializeMap(latitude = 24.4539, longitude = 54.3773) { // أبوظبي كمركز افتراضي
+  function initializeMap(latitude = 24.4539, longitude = 54.3773) {
     const mapContainer = document.getElementById('map-container');
-    if (!mapContainer) return;
+    const mapElement = document.getElementById('map');
+    
+    if (!mapContainer || !mapElement) {
+      console.error('❌ Map container or element not found');
+      return;
+    }
     
     // إذا كانت الخريطة مهيأة بالفعل، لا تقم بإعادة التهيئة
     if (map) {
-      map.remove();
+      console.log('🗺️ Map already initialized');
+      return;
     }
     
     // إنشاء الخريطة
-    map = L.map('map');
-    
-    // إضافة طبقة الخريطة من OpenStreetMap
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19
-    }).addTo(map);
-    
-    // تعيين مركز افتراضي (أبوظبي)
-    map.setView([latitude, longitude], 13);
-    mapInitialized = true;
-    
-    console.log('🗺️ Map initialized with center:', latitude, longitude);
+    try {
+      map = L.map('map', {
+        attributionControl: false
+      });
+      
+      // إضافة طبقة الخريطة من OpenStreetMap
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+      }).addTo(map);
+      
+      // تعيين مركز افتراضي (أبوظبي)
+      map.setView([latitude, longitude], 15);
+      mapInitialized = true;
+      
+      console.log('🗺️ Map initialized successfully with center:', latitude, longitude);
+      
+      // إضافة سيطرة بسيطة للعزو
+      L.control.attribution({
+        position: 'bottomright',
+        prefix: '© OpenStreetMap'
+      }).addTo(map);
+      
+    } catch (error) {
+      console.error('❌ Error initializing map:', error);
+      mapInitialized = false;
+    }
   }
   
   // ===== تنسيق رقم الهاتف =====
@@ -854,7 +911,8 @@
       
       const customerResponse = await fetch(customerUrl, {
         method: 'GET',
-        cache: 'no-cache'
+        cache: 'no-cache',
+        mode: 'cors'
       });
       
       console.log('Customer response status:', customerResponse.status);
@@ -876,6 +934,11 @@
         
         console.log('✅ Customer found:', customerData.customer);
         console.log('📍 Has location:', hasLocation);
+        
+        // تنسيق التاريخ إذا كان موجوداً
+        if (customerData.customer.timestamp) {
+          customerData.customer.formattedDate = formatDateString(customerData.customer.timestamp);
+        }
         
         // التحقق من حالة الحساب
         if (customerData.customer.accountStatus === 'Inactive' || customerData.customer.isActive === false) {
@@ -899,7 +962,8 @@
             
             const ordersResponse = await fetch(ordersUrl, {
               method: 'GET',
-              cache: 'no-cache'
+              cache: 'no-cache',
+              mode: 'cors'
             });
             
             if (ordersResponse.ok) {
@@ -907,12 +971,23 @@
               console.log('📋 Orders response:', ordersData);
               
               if (ordersData.success && ordersData.order) {
+                // تنسيق تاريخ الطلب
+                if (ordersData.order.timestamp) {
+                  ordersData.order.formattedDate = formatDateString(ordersData.order.timestamp);
+                }
+                if (ordersData.order.date) {
+                  ordersData.order.formattedDate = formatDateString(ordersData.order.date);
+                }
+                
                 // التحقق إذا كان الطلب نشط (غير مسلم/ملغى)
                 const orderStatus = ordersData.order.status || '';
-                const activeStatuses = ['New', 'Processing', 'Preparing', 'Ready', 'On the way', 'Pending'];
-                const inactiveStatuses = ['Delivered', 'Cancelled', 'Rejected'];
+                const activeStatuses = ['جديد', 'New', 'Processing', 'Preparing', 'Ready', 'On the way', 'Pending', 'قيد المعالجة'];
+                const inactiveStatuses = ['مسلم', 'ملغى', 'Delivered', 'Cancelled', 'Rejected'];
                 
-                if (activeStatuses.includes(orderStatus) || !inactiveStatuses.includes(orderStatus)) {
+                const isActive = activeStatuses.includes(orderStatus) || 
+                                (!inactiveStatuses.includes(orderStatus) && orderStatus !== '');
+                
+                if (isActive) {
                   // طلب نشط موجود
                   hasPreviousActiveOrder = true;
                   previousOrderData = ordersData.order;
@@ -1005,27 +1080,88 @@
     }
   }
   
+  // ===== تنسيق تاريخ =====
+  function formatDateString(dateString) {
+    if (!dateString) return 'غير معروف';
+    
+    try {
+      // إزالة أي أحرف زائدة مثل "Z" أو "T"
+      const cleanDateString = dateString.replace('Z', '').replace('T', ' ');
+      
+      // إنشاء كائن تاريخ
+      const date = new Date(cleanDateString);
+      
+      // التحقق من صحة التاريخ
+      if (isNaN(date.getTime())) {
+        return 'غير معروف';
+      }
+      
+      // تنسيق التاريخ بالعربية
+      const optionsDate = { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        timeZone: 'Asia/Riyadh' // توقيت السعودية
+      };
+      
+      const optionsTime = {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZone: 'Asia/Riyadh',
+        hour12: false
+      };
+      
+      const arabicDate = date.toLocaleDateString('ar-SA', optionsDate);
+      const arabicTime = date.toLocaleTimeString('ar-SA', optionsTime);
+      
+      return {
+        date: arabicDate,
+        time: arabicTime
+      };
+      
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'غير معروف';
+    }
+  }
+  
   // ===== عرض تحذير الطلب السابق =====
   function showPreviousOrderAlert(order, customerName) {
     const alertSection = document.getElementById('previous-order-alert');
     const orderDetails = document.getElementById('previous-order-details');
     
     // تنسيق التاريخ والوقت
-    const orderDate = order.date || order.timestamp || 'غير معروف';
-    const orderTime = order.time || '';
+    let dateDisplay = 'غير معروف';
+    let timeDisplay = '';
+    
+    if (order.formattedDate) {
+      dateDisplay = order.formattedDate.date;
+      timeDisplay = order.formattedDate.time;
+    } else if (order.date) {
+      const formatted = formatDateString(order.date);
+      dateDisplay = formatted.date;
+      timeDisplay = formatted.time;
+    } else if (order.timestamp) {
+      const formatted = formatDateString(order.timestamp);
+      dateDisplay = formatted.date;
+      timeDisplay = formatted.time;
+    }
+    
     const orderStatus = order.status || 'قيد المعالجة';
     
     // تحديد لون الحالة
     let statusColor = '#ff9800'; // برتقالي افتراضي
-    if (orderStatus === 'Delivered') statusColor = '#4CAF50';
-    if (orderStatus === 'Cancelled') statusColor = '#f44336';
-    if (orderStatus === 'Processing') statusColor = '#2196F3';
+    if (orderStatus === 'مسلم' || orderStatus === 'Delivered') statusColor = '#4CAF50';
+    if (orderStatus === 'ملغى' || orderStatus === 'Cancelled') statusColor = '#f44336';
+    if (orderStatus === 'Processing' || orderStatus === 'قيد المعالجة') statusColor = '#2196F3';
     
     orderDetails.innerHTML = `
       <div class="order-info-grid">
         <div class="order-info-item">
-          <strong>📅 التاريخ:</strong> ${orderDate}
-          ${orderTime ? `<br><strong>⏰ الوقت:</strong> ${orderTime}` : ''}
+          <strong>📅 التاريخ:</strong> ${dateDisplay}
+          ${timeDisplay ? `<br><strong>⏰ الوقت:</strong> ${timeDisplay}` : ''}
         </div>
         <div class="order-info-item">
           <strong>📦 حالة الطلب:</strong> <span style="color: ${statusColor}">${orderStatus}</span>
@@ -1068,22 +1204,40 @@
     const viewSection = document.getElementById('view-order-section');
     const viewDetails = document.getElementById('view-order-details');
     
-    // تحديد لون الحالة
+    // تنسيق التاريخ والوقت
+    let dateDisplay = 'غير معروف';
+    let timeDisplay = '';
+    
+    if (previousOrderData.formattedDate) {
+      dateDisplay = previousOrderData.formattedDate.date;
+      timeDisplay = previousOrderData.formattedDate.time;
+    } else if (previousOrderData.date) {
+      const formatted = formatDateString(previousOrderData.date);
+      dateDisplay = formatted.date;
+      timeDisplay = formatted.time;
+    } else if (previousOrderData.timestamp) {
+      const formatted = formatDateString(previousOrderData.timestamp);
+      dateDisplay = formatted.date;
+      timeDisplay = formatted.time;
+    }
+    
     const orderStatus = previousOrderData.status || 'قيد المعالجة';
+    
+    // تحديد لون الحالة
     let statusColor = '#ff9800';
-    if (orderStatus === 'Delivered') statusColor = '#4CAF50';
-    if (orderStatus === 'Cancelled') statusColor = '#f44336';
-    if (orderStatus === 'Processing') statusColor = '#2196F3';
+    if (orderStatus === 'مسلم' || orderStatus === 'Delivered') statusColor = '#4CAF50';
+    if (orderStatus === 'ملغى' || orderStatus === 'Cancelled') statusColor = '#f44336';
+    if (orderStatus === 'Processing' || orderStatus === 'قيد المعالجة') statusColor = '#2196F3';
     
     viewDetails.innerHTML = `
       <div class="order-item">
         <h4>تفاصيل الطلب السابق</h4>
         <div class="order-info-grid">
           <div class="order-info-item">
-            <strong>📅 التاريخ:</strong> ${previousOrderData.date || previousOrderData.timestamp || 'غير معروف'}
+            <strong>📅 التاريخ:</strong> ${dateDisplay}
           </div>
           <div class="order-info-item">
-            <strong>⏰ الوقت:</strong> ${previousOrderData.time || 'غير محدد'}
+            <strong>⏰ الوقت:</strong> ${timeDisplay || 'غير محدد'}
           </div>
           <div class="order-info-item">
             <strong>📦 رقم الطلب:</strong> ${previousOrderData.id || 'غير معروف'}
@@ -1134,21 +1288,39 @@
     const editSection = document.getElementById('edit-order-section');
     const currentDetails = document.getElementById('current-order-details');
     
-    // تحديد لون الحالة
+    // تنسيق التاريخ والوقت
+    let dateDisplay = 'غير معروف';
+    let timeDisplay = '';
+    
+    if (previousOrderData.formattedDate) {
+      dateDisplay = previousOrderData.formattedDate.date;
+      timeDisplay = previousOrderData.formattedDate.time;
+    } else if (previousOrderData.date) {
+      const formatted = formatDateString(previousOrderData.date);
+      dateDisplay = formatted.date;
+      timeDisplay = formatted.time;
+    } else if (previousOrderData.timestamp) {
+      const formatted = formatDateString(previousOrderData.timestamp);
+      dateDisplay = formatted.date;
+      timeDisplay = formatted.time;
+    }
+    
     const orderStatus = previousOrderData.status || 'قيد المعالجة';
+    
+    // تحديد لون الحالة
     let statusColor = '#ff9800';
-    if (orderStatus === 'Delivered') statusColor = '#4CAF50';
-    if (orderStatus === 'Cancelled') statusColor = '#f44336';
-    if (orderStatus === 'Processing') statusColor = '#2196F3';
+    if (orderStatus === 'مسلم' || orderStatus === 'Delivered') statusColor = '#4CAF50';
+    if (orderStatus === 'ملغى' || orderStatus === 'Cancelled') statusColor = '#f44336';
+    if (orderStatus === 'Processing' || orderStatus === 'قيد المعالجة') statusColor = '#2196F3';
     
     currentDetails.innerHTML = `
       <div class="order-item">
         <div class="order-info-grid">
           <div class="order-info-item">
-            <strong>📅 التاريخ:</strong> ${previousOrderData.date || previousOrderData.timestamp || 'غير معروف'}
+            <strong>📅 التاريخ:</strong> ${dateDisplay}
           </div>
           <div class="order-info-item">
-            <strong>⏰ الوقت:</strong> ${previousOrderData.time || 'غير محدد'}
+            <strong>⏰ الوقت:</strong> ${timeDisplay || 'غير محدد'}
           </div>
           <div class="order-info-item">
             <strong>📦 رقم الطلب:</strong> ${previousOrderData.id || 'غير معروف'}
@@ -1279,11 +1451,7 @@
   function getUserLocation() {
     hideMessages();
     
-    // إذا لم تكن الخريطة مهيأة بعد، قم بتهيئتها أولاً
-    if (!mapInitialized) {
-      initializeMap();
-    }
-    
+    // عرض التحميل
     const locationBtn = document.getElementById('location-btn');
     const locationText = document.getElementById('location-btn-text');
     const locationLoading = document.getElementById('location-loading');
@@ -1294,15 +1462,15 @@
     // مسح الرسائل السابقة
     locationError.textContent = '';
     
-    // إخفاء الخريطة في البداية
-    document.getElementById('map-container').style.display = 'none';
+    // إخفاء المعلومات والتحكم في البداية
     locationInfo.style.display = 'none';
     mapControls.style.display = 'none';
+    document.getElementById('location-status').style.display = 'none';
     
     // عرض التحميل
     locationBtn.disabled = true;
     locationLoading.style.display = 'inline-block';
-    locationText.textContent = 'جاري تحديد الموقع بدقة...';
+    locationText.textContent = 'جاري تحديد الموقع بدقة عالية...';
     
     // التحقق من دعم تحديد الموقع الجغرافي
     if (!navigator.geolocation) {
@@ -1311,7 +1479,7 @@
       return;
     }
     
-    // الحصول على الموقع بدقة عالية
+    // الحصول على الموقع بدقة عالية جداً (5-15 متر)
     navigator.geolocation.getCurrentPosition(
       // Success callback
       async function(position) {
@@ -1326,7 +1494,7 @@
         currentLongitude = longitude;
         currentAccuracy = accuracy;
         
-        // عرض الخريطة
+        // تهيئة وعرض الخريطة
         showMapWithLocation(latitude, longitude, accuracy);
         
         // عرض معلومات الموقع
@@ -1339,7 +1507,7 @@
         
         // تحديد فئة الدقة
         let accuracyClass = 'accuracy-good';
-        let accuracyText = 'دقة ممتازة';
+        let accuracyText = 'دقة ممتازة (5-15 متر)';
         
         if (accuracy > 15) {
           accuracyClass = 'accuracy-poor';
@@ -1374,8 +1542,9 @@
               <p><strong>⚠️ الدقة الحالية ${Math.round(accuracy)} متر - المطلوبة 5-15 متر</strong></p>
               <p>لتحسين الدقة:</p>
               <ul style="text-align: right; margin-right: 15px;">
-                <li>تفعيل GPS عالي الدقة</li>
+                <li>تفعيل GPS عالي الدقة في إعدادات الهاتف</li>
                 <li>الانتقال إلى مكان مفتوح بعيد عن المباني</li>
+                <li>إغلاق التطبيقات التي تستخدم الموقع</li>
                 <li>سحب المؤشر لضبط الموقع الدقيق</li>
               </ul>
             </div>
@@ -1432,11 +1601,11 @@
         
         resetLocationButton();
       },
-      // Options - HIGH ACCURACY MODE
+      // Options - VERY HIGH ACCURACY MODE (5-15 متر)
       {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0
+        enableHighAccuracy: true, // تفعيل الدقة العالية جداً
+        timeout: 25000, // 25 ثانية مهلة
+        maximumAge: 0 // عدم استخدام مواقع مخزنة
       }
     );
   }
@@ -1446,13 +1615,13 @@
     const mapContainer = document.getElementById('map-container');
     mapContainer.style.display = 'block';
     
-    // تأكد أن الخريطة مهيأة
+    // تهيئة الخريطة إذا لم تكن مهيأة
     if (!mapInitialized || !map) {
       initializeMap(latitude, longitude);
+    } else {
+      // تحديث مركز الخريطة إذا كانت مهيأة
+      map.setView([latitude, longitude], 17);
     }
-    
-    // تعيين مركز الخريطة
-    map.setView([latitude, longitude], 18);
     
     // إزالة العلامات القديمة
     if (userMarker) {
@@ -1466,15 +1635,21 @@
       confirmedMarker = null;
     }
     
+    // إنشاء أيقونة مخصصة للموقع
+    const locationIcon = L.divIcon({
+      html: '<div class="location-marker">📍</div>',
+      iconSize: [24, 24],
+      iconAnchor: [12, 24],
+      popupAnchor: [0, -24],
+      className: 'custom-location-marker'
+    });
+    
     // إضافة علامة المستخدم مع خاصية السحب
     userMarker = L.marker([latitude, longitude], {
       draggable: true,
       title: 'موقعك الحالي - يمكنك سحبه لضبط الموقع الدقيق',
-      icon: L.divIcon({
-        html: '<div style="background: #2e5cff; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.3);">📍</div>',
-        iconSize: [24, 24],
-        className: 'user-marker'
-      })
+      icon: locationIcon,
+      zIndexOffset: 1000
     }).addTo(map);
     
     // إضافة دائرة توضح دقة الموقع
@@ -1482,11 +1657,16 @@
       accuracyCircle = L.circle([latitude, longitude], {
         radius: accuracy,
         color: accuracy <= 10 ? '#28a745' : accuracy <= 15 ? '#ffc107' : '#dc3545',
+        fillColor: accuracy <= 10 ? '#28a745' : accuracy <= 15 ? '#ffc107' : '#dc3545',
         fillOpacity: 0.1,
         weight: 2,
-        dashArray: accuracy > 15 ? '5,5' : null
+        dashArray: accuracy > 15 ? '5,5' : null,
+        className: 'accuracy-circle'
       }).addTo(map);
     }
+    
+    // تكبير الخريطة لرؤية أفضل
+    map.setView([latitude, longitude], 17);
     
     // حدث سحب العلامة
     userMarker.on('dragend', function(event) {
@@ -1517,6 +1697,11 @@
           ✅ تم تحريك المؤشر إلى الموقع الجديد. اضغط على "تأكيد هذا الموقع" لحفظه.
         </div>
       `;
+      
+      // تحديث دقة الدائرة
+      if (accuracyCircle) {
+        accuracyCircle.setLatLng([currentLatitude, currentLongitude]);
+      }
     });
     
     // تحديث العنوان
@@ -1587,12 +1772,17 @@
       map.removeLayer(confirmedMarker);
     }
     
+    const confirmedIcon = L.divIcon({
+      html: '<div class="confirmed-marker">✓</div>',
+      iconSize: [24, 24],
+      iconAnchor: [12, 24],
+      className: 'custom-confirmed-marker'
+    });
+    
     confirmedMarker = L.marker([currentLatitude, currentLongitude], {
-      icon: L.divIcon({
-        html: '<div style="background: #28a745; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 0 15px rgba(0,0,0,0.4); font-weight: bold;">✓</div>',
-        iconSize: [24, 24],
-        className: 'confirmed-marker'
-      })
+      icon: confirmedIcon,
+      title: 'الموقع المؤكد',
+      zIndexOffset: 2000
     }).addTo(map);
     
     // إظهار رسالة التأكيد
@@ -1638,7 +1828,7 @@
   // ===== العودة إلى الموقع الأصلي =====
   function recenterMap() {
     if (currentLatitude && currentLongitude && userMarker) {
-      map.setView([currentLatitude, currentLongitude], 18);
+      map.setView([currentLatitude, currentLongitude], 17);
       userMarker.setLatLng([currentLatitude, currentLongitude]);
       
       // إزالة علامة التأكيد
@@ -1662,7 +1852,7 @@
     
     locationBtn.disabled = false;
     locationLoading.style.display = 'none';
-    locationText.textContent = 'تحديث الموقع';
+    locationText.textContent = 'تحديد موقعي الحالي';
   }
   
   // ===== إعادة تعيين بيانات الموقع =====
@@ -1882,7 +2072,8 @@
       
       const response = await fetch(url, {
         method: 'GET',
-        cache: 'no-cache'
+        cache: 'no-cache',
+        mode: 'cors'
       });
       
       console.log('Save response status:', response.status);
@@ -2002,7 +2193,8 @@
       
       const response = await fetch(url, { 
         method: 'GET',
-        cache: 'no-cache'
+        cache: 'no-cache',
+        mode: 'cors'
       });
       
       console.log('Update response status:', response.status);
@@ -2122,7 +2314,6 @@
       // إضافة ملاحظة إذا كان لديه طلب سابق
       if (hasPreviousActiveOrder) {
         params.append('note', 'Customer placed another order');
-        // نستخدم حقل note بدلاً من isDuplicateOrder لأنه غير موجود في Google Apps Script
       }
       
       const url = `${SCRIPT_URL}?${params.toString()}`;
@@ -2130,7 +2321,8 @@
       
       const response = await fetch(url, { 
         method: 'GET',
-        cache: 'no-cache'
+        cache: 'no-cache',
+        mode: 'cors'
       });
       
       console.log('Submit response status:', response.status);
@@ -2194,7 +2386,8 @@
       const url = `${SCRIPT_URL}?action=getOrderStatus&_=${Date.now()}`;
       const response = await fetch(url, {
         method: 'GET',
-        cache: 'no-cache'
+        cache: 'no-cache',
+        mode: 'cors'
       });
       
       console.log('Response status:', response.status);
