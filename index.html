@@ -848,111 +848,152 @@
     try {
       console.log('🔍 Checking customer for phone:', mobileNumber);
       
-      // البحث عن العميل والطلب النشط
-      const url = `${SCRIPT_URL}?action=getCustomerAndActiveOrder&phone=${encodeURIComponent(mobileNumber)}&_=${Date.now()}`;
-      console.log('Fetch URL:', url);
+      // 1. البحث عن العميل أولاً
+      const customerUrl = `${SCRIPT_URL}?action=getCustomer&phone=${encodeURIComponent(mobileNumber)}&_=${Date.now()}`;
+      console.log('Customer Fetch URL:', customerUrl);
       
-      const response = await fetch(url, {
+      const customerResponse = await fetch(customerUrl, {
         method: 'GET',
         cache: 'no-cache'
       });
       
-      console.log('Response status:', response.status);
+      console.log('Customer response status:', customerResponse.status);
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!customerResponse.ok) {
+        throw new Error(`HTTP error! status: ${customerResponse.status}`);
       }
       
-      const data = await response.json();
-      console.log('📋 Customer and order response:', data);
+      const customerData = await customerResponse.json();
+      console.log('📋 Customer response:', customerData);
       
-      if (data.success) {
+      if (customerData.success && customerData.customer) {
         // ✅ العميل موجود
-        if (data.customer) {
-          currentCustomer = data.customer;
-          currentCustomerId = data.customer.id;
-          currentCustomerPhone = mobileNumber;
-          customerExists = true;
-          hasLocation = !!(data.customer.latitude && data.customer.longitude);
+        currentCustomer = customerData.customer;
+        currentCustomerId = customerData.customer.id;
+        currentCustomerPhone = mobileNumber;
+        customerExists = true;
+        hasLocation = !!(customerData.customer.latitude && customerData.customer.longitude);
+        
+        console.log('✅ Customer found:', customerData.customer);
+        console.log('📍 Has location:', hasLocation);
+        
+        // التحقق من حالة الحساب
+        if (customerData.customer.accountStatus === 'Inactive' || customerData.customer.isActive === false) {
+          isAccountActive = false;
+          warningElement.innerHTML = `
+            <p>⚠️ حسابك غير نشط حالياً</p>
+            <p>يرجى التواصل مع الإدارة لتفعيل الحساب</p>
+          `;
+          warningElement.style.display = 'block';
           
-          console.log('✅ Customer found:', data.customer);
-          console.log('📍 Has location:', hasLocation);
+          successElement.textContent = 'حساب غير نشط';
           
-          // التحقق من حالة الحساب
-          if (data.customer.accountStatus === 'Inactive' || data.customer.isActive === false) {
-            isAccountActive = false;
-            warningElement.innerHTML = `
-              <p>⚠️ حسابك غير نشط حالياً</p>
-              <p>يرجى التواصل مع الإدارة لتفعيل الحساب</p>
-            `;
-            warningElement.style.display = 'block';
+        } else {
+          // الحساب نشط
+          isAccountActive = true;
+          
+          // 2. البحث عن طلبات العميل
+          try {
+            const ordersUrl = `${SCRIPT_URL}?action=getOrderByCustomer&customerId=${encodeURIComponent(currentCustomerId)}&_=${Date.now()}`;
+            console.log('Orders Fetch URL:', ordersUrl);
             
-            successElement.textContent = 'حساب غير نشط';
+            const ordersResponse = await fetch(ordersUrl, {
+              method: 'GET',
+              cache: 'no-cache'
+            });
             
-          } else {
-            // الحساب نشط
-            isAccountActive = true;
-            successElement.textContent = `✅ مرحباً ${data.customer.name}`;
-            
-            // التحقق إذا كان هناك طلب سابق نشط
-            if (data.order && data.order.status && 
-                data.order.status !== 'Delivered' && 
-                data.order.status !== 'Cancelled') {
+            if (ordersResponse.ok) {
+              const ordersData = await ordersResponse.json();
+              console.log('📋 Orders response:', ordersData);
               
-              hasPreviousActiveOrder = true;
-              previousOrderData = data.order;
-              
-              // عرض قسم تحذير الطلب السابق
-              showPreviousOrderAlert(data.order, data.customer.name);
-              
+              if (ordersData.success && ordersData.order) {
+                // التحقق إذا كان الطلب نشط (غير مسلم/ملغى)
+                const orderStatus = ordersData.order.status || '';
+                const activeStatuses = ['New', 'Processing', 'Preparing', 'Ready', 'On the way', 'Pending'];
+                const inactiveStatuses = ['Delivered', 'Cancelled', 'Rejected'];
+                
+                if (activeStatuses.includes(orderStatus) || !inactiveStatuses.includes(orderStatus)) {
+                  // طلب نشط موجود
+                  hasPreviousActiveOrder = true;
+                  previousOrderData = ordersData.order;
+                  
+                  // عرض قسم تحذير الطلب السابق
+                  showPreviousOrderAlert(ordersData.order, customerData.customer.name);
+                  successElement.textContent = `✅ مرحباً ${customerData.customer.name} - لديك طلب نشط`;
+                } else {
+                  // طلب غير نشط
+                  hasPreviousActiveOrder = false;
+                  previousOrderData = null;
+                  
+                  // عرض القسم العادي
+                  document.getElementById('customer-name-display').textContent = customerData.customer.name;
+                  document.getElementById('customer-actions-section').style.display = 'block';
+                  successElement.textContent = `✅ مرحباً ${customerData.customer.name}`;
+                }
+              } else {
+                // لا يوجد طلبات
+                hasPreviousActiveOrder = false;
+                previousOrderData = null;
+                
+                document.getElementById('customer-name-display').textContent = customerData.customer.name;
+                document.getElementById('customer-actions-section').style.display = 'block';
+                successElement.textContent = `✅ مرحباً ${customerData.customer.name}`;
+              }
             } else {
-              // لا يوجد طلب سابق نشط - عرض القسم العادي
+              // خطأ في جلب الطلبات، عرض القسم العادي
               hasPreviousActiveOrder = false;
               previousOrderData = null;
               
-              document.getElementById('customer-name-display').textContent = data.customer.name;
+              document.getElementById('customer-name-display').textContent = customerData.customer.name;
               document.getElementById('customer-actions-section').style.display = 'block';
-              
-              // تعبئة بيانات العميل في الخلفية
-              fillCustomerForm(data.customer);
+              successElement.textContent = `✅ مرحباً ${customerData.customer.name}`;
             }
+          } catch (orderError) {
+            console.error('❌ Error fetching orders:', orderError);
+            // في حالة خطأ، نعاملها كأنه لا يوجد طلبات
+            hasPreviousActiveOrder = false;
+            previousOrderData = null;
+            
+            document.getElementById('customer-name-display').textContent = customerData.customer.name;
+            document.getElementById('customer-actions-section').style.display = 'block';
+            successElement.textContent = `✅ مرحباً ${customerData.customer.name}`;
           }
           
-        } else {
-          // 🆕 عميل جديد
-          currentCustomer = null;
-          currentCustomerId = '';
-          currentCustomerPhone = mobileNumber;
-          customerExists = false;
-          isAccountActive = true;
-          hasLocation = false;
-          locationConfirmed = false;
-          hasPreviousActiveOrder = false;
-          previousOrderData = null;
-          
-          console.log('🆕 New customer detected');
-          
-          successElement.textContent = '🆕 رقم جديد - سيتم إنشاء حساب جديد';
-          
-          // عرض نموذج العميل مباشرة للعميل الجديد
-          document.getElementById('customer-actions-section').style.display = 'none';
-          document.getElementById('customer-info-form').style.display = 'block';
-          document.getElementById('customer-form-title').textContent = 'معلومات العميل الجديد';
-          document.getElementById('cancel-btn').style.display = 'none';
-          
-          // تعبئة رقم الهاتف فقط
-          document.getElementById('customer-phone').value = mobileNumber;
-          document.getElementById('customer-whatsapp').value = mobileNumber;
-          document.getElementById('customer-name').value = '';
-          document.getElementById('customer-area').value = '';
-          document.getElementById('customer-address').value = '';
-          
-          // إعادة تعيين الموقع
-          resetLocation();
+          // تعبئة بيانات العميل في الخلفية
+          fillCustomerForm(customerData.customer);
         }
         
       } else {
-        throw new Error(data.message || 'فشل في التحقق من البيانات');
+        // 🆕 عميل جديد
+        currentCustomer = null;
+        currentCustomerId = '';
+        currentCustomerPhone = mobileNumber;
+        customerExists = false;
+        isAccountActive = true;
+        hasLocation = false;
+        locationConfirmed = false;
+        hasPreviousActiveOrder = false;
+        previousOrderData = null;
+        
+        console.log('🆕 New customer detected');
+        
+        successElement.textContent = '🆕 رقم جديد - سيتم إنشاء حساب جديد';
+        
+        // عرض نموذج العميل مباشرة للعميل الجديد
+        document.getElementById('customer-actions-section').style.display = 'none';
+        document.getElementById('customer-info-form').style.display = 'block';
+        document.getElementById('customer-form-title').textContent = 'معلومات العميل الجديد';
+        document.getElementById('cancel-btn').style.display = 'none';
+        
+        // تعبئة رقم الهاتف فقط
+        document.getElementById('customer-phone').value = mobileNumber;
+        document.getElementById('customer-whatsapp').value = mobileNumber;
+        document.getElementById('customer-name').value = '';
+        document.getElementById('customer-area').value = '';
+        document.getElementById('customer-address').value = '';
+        
+        // إعادة تعيين الموقع
+        resetLocation();
       }
       
       return true;
@@ -972,6 +1013,13 @@
     // تنسيق التاريخ والوقت
     const orderDate = order.date || order.timestamp || 'غير معروف';
     const orderTime = order.time || '';
+    const orderStatus = order.status || 'قيد المعالجة';
+    
+    // تحديد لون الحالة
+    let statusColor = '#ff9800'; // برتقالي افتراضي
+    if (orderStatus === 'Delivered') statusColor = '#4CAF50';
+    if (orderStatus === 'Cancelled') statusColor = '#f44336';
+    if (orderStatus === 'Processing') statusColor = '#2196F3';
     
     orderDetails.innerHTML = `
       <div class="order-info-grid">
@@ -980,10 +1028,10 @@
           ${orderTime ? `<br><strong>⏰ الوقت:</strong> ${orderTime}` : ''}
         </div>
         <div class="order-info-item">
-          <strong>📦 حالة الطلب:</strong> ${order.status || 'قيد المعالجة'}
+          <strong>📦 حالة الطلب:</strong> <span style="color: ${statusColor}">${orderStatus}</span>
         </div>
         <div class="order-info-item">
-          <strong>📍 العنوان:</strong> ${order.address || 'غير محدد'}
+          <strong>📍 العنوان:</strong> ${order.address || (currentCustomer ? currentCustomer.address : 'غير محدد')}
         </div>
       </div>
       <div class="order-info-item" style="margin-top: 10px;">
@@ -992,6 +1040,14 @@
           ${order.items || 'لا توجد تفاصيل'}
         </p>
       </div>
+      ${order.notes ? `
+      <div class="order-info-item" style="margin-top: 10px;">
+        <strong>📌 ملاحظات:</strong>
+        <p style="background: #fff; padding: 10px; border-radius: 5px; margin-top: 5px;">
+          ${order.notes}
+        </p>
+      </div>
+      ` : ''}
     `;
     
     alertSection.style.display = 'block';
@@ -1012,6 +1068,13 @@
     const viewSection = document.getElementById('view-order-section');
     const viewDetails = document.getElementById('view-order-details');
     
+    // تحديد لون الحالة
+    const orderStatus = previousOrderData.status || 'قيد المعالجة';
+    let statusColor = '#ff9800';
+    if (orderStatus === 'Delivered') statusColor = '#4CAF50';
+    if (orderStatus === 'Cancelled') statusColor = '#f44336';
+    if (orderStatus === 'Processing') statusColor = '#2196F3';
+    
     viewDetails.innerHTML = `
       <div class="order-item">
         <h4>تفاصيل الطلب السابق</h4>
@@ -1026,7 +1089,7 @@
             <strong>📦 رقم الطلب:</strong> ${previousOrderData.id || 'غير معروف'}
           </div>
           <div class="order-info-item">
-            <strong>📍 الحالة:</strong> ${previousOrderData.status || 'قيد المعالجة'}
+            <strong>📍 الحالة:</strong> <span style="color: ${statusColor}">${orderStatus}</span>
           </div>
         </div>
         <div style="margin-top: 15px;">
@@ -1038,7 +1101,7 @@
         <div style="margin-top: 15px;">
           <strong>📍 العنوان:</strong>
           <p style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin-top: 5px;">
-            ${previousOrderData.address || 'غير محدد'}
+            ${previousOrderData.address || (currentCustomer ? currentCustomer.address : 'غير محدد')}
           </p>
         </div>
         ${previousOrderData.notes ? `
@@ -1071,6 +1134,13 @@
     const editSection = document.getElementById('edit-order-section');
     const currentDetails = document.getElementById('current-order-details');
     
+    // تحديد لون الحالة
+    const orderStatus = previousOrderData.status || 'قيد المعالجة';
+    let statusColor = '#ff9800';
+    if (orderStatus === 'Delivered') statusColor = '#4CAF50';
+    if (orderStatus === 'Cancelled') statusColor = '#f44336';
+    if (orderStatus === 'Processing') statusColor = '#2196F3';
+    
     currentDetails.innerHTML = `
       <div class="order-item">
         <div class="order-info-grid">
@@ -1084,7 +1154,7 @@
             <strong>📦 رقم الطلب:</strong> ${previousOrderData.id || 'غير معروف'}
           </div>
           <div class="order-info-item">
-            <strong>📍 الحالة:</strong> ${previousOrderData.status || 'قيد المعالجة'}
+            <strong>📍 الحالة:</strong> <span style="color: ${statusColor}">${orderStatus}</span>
           </div>
         </div>
         <div style="margin-top: 10px;">
@@ -2052,7 +2122,7 @@
       // إضافة ملاحظة إذا كان لديه طلب سابق
       if (hasPreviousActiveOrder) {
         params.append('note', 'Customer placed another order');
-        params.append('isDuplicateOrder', 'true');
+        // نستخدم حقل note بدلاً من isDuplicateOrder لأنه غير موجود في Google Apps Script
       }
       
       const url = `${SCRIPT_URL}?${params.toString()}`;
