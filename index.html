@@ -696,11 +696,12 @@
         <div id="confirmed-location-info"></div>
       </div>
       
-      <!-- Hidden fields -->
-      <input type="hidden" id="customer-latitude">
-      <input type="hidden" id="customer-longitude">
+      <!-- HIDDEN LOCATION INPUTS - FIXED -->
+      <input type="hidden" id="lat" name="lat">
+      <input type="hidden" id="lng" name="lng">
       <input type="hidden" id="location-accuracy">
       <input type="hidden" id="location-confirmed" value="false">
+      <input type="hidden" id="maps-link">
     </div>
     
     <div style="text-align: center;">
@@ -766,13 +767,13 @@
   let hasPreviousActiveOrder = false;
   let previousOrderData = null;
   
-  // متغيرات الخريطة
+  // متغيرات الخريطة - FIXED: الآن نستخدم المتغيرات الصحيحة
   let map = null;
   let userMarker = null;
   let confirmedMarker = null;
   let accuracyCircle = null;
-  let currentLatitude = null;
-  let currentLongitude = null;
+  let currentLatitude = null;  // هذه المتغيرات ستخزن إحداثيات GPS الفعلية
+  let currentLongitude = null; // ليست من الخريطة، بل من position.coords
   let currentAccuracy = null;
   let mapInitialized = false;
   
@@ -1384,7 +1385,7 @@
     hideMessages();
   }
   
-  // ===== تحديد موقع المستخدم بدقة عالية جداً =====
+  // ===== تحديد موقع المستخدم - الإصدار المصلح =====
   function getUserLocation() {
     hideMessages();
     
@@ -1418,24 +1419,37 @@
     };
     
     navigator.geolocation.getCurrentPosition(
+      // ✅ الحصول على الإحداثيات مباشرة من GPS
       async function(position) {
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
+        // ✅ الإحداثيات الحقيقية من GPS
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
         const accuracy = position.coords.accuracy;
         
-        console.log('📍 Location obtained:', { latitude, longitude, accuracy });
+        console.log('📍 Location obtained from GPS:', { lat, lng, accuracy });
         
-        currentLatitude = latitude;
-        currentLongitude = longitude;
+        // ✅ تخزين الإحداثيات في المتغيرات
+        currentLatitude = lat;
+        currentLongitude = lng;
         currentAccuracy = accuracy;
         
-        showMapWithLocation(latitude, longitude, accuracy);
+        // ✅ تخزين الإحداثيات في الحقول المخفية - هذا هو الجزء المهم
+        document.getElementById('lat').value = lat;
+        document.getElementById('lng').value = lng;
+        document.getElementById('location-accuracy').value = accuracy;
+        
+        console.log('✅ Coordinates saved to hidden inputs:');
+        console.log('lat:', document.getElementById('lat').value);
+        console.log('lng:', document.getElementById('lng').value);
+        
+        // ✅ عرض الخريطة
+        showMapWithLocation(lat, lng, accuracy);
         
         locationInfo.style.display = 'block';
         mapControls.style.display = 'flex';
         
-        document.getElementById('latitude-display').textContent = latitude.toFixed(6);
-        document.getElementById('longitude-display').textContent = longitude.toFixed(6);
+        document.getElementById('latitude-display').textContent = lat.toFixed(6);
+        document.getElementById('longitude-display').textContent = lng.toFixed(6);
         
         let accuracyClass = 'accuracy-good';
         let accuracyText = 'دقة ممتازة (5-15 متر)';
@@ -1454,7 +1468,7 @@
         `;
         
         try {
-          const address = await getAddressFromCoordinates(latitude, longitude);
+          const address = await getAddressFromCoordinates(lat, lng);
           document.getElementById('location-address').textContent = `📍 ${address}`;
           document.getElementById('location-address').style.color = '#28a745';
           
@@ -1639,8 +1653,17 @@
       const marker = event.target;
       const position = marker.getLatLng();
       
+      // ✅ تحديث الإحداثيات عند سحب المؤشر
       currentLatitude = position.lat;
       currentLongitude = position.lng;
+      
+      // ✅ تحديث الحقول المخفية
+      document.getElementById('lat').value = currentLatitude;
+      document.getElementById('lng').value = currentLongitude;
+      
+      console.log('📍 Marker dragged, new coordinates:');
+      console.log('lat:', document.getElementById('lat').value);
+      console.log('lng:', document.getElementById('lng').value);
       
       document.getElementById('latitude-display').textContent = currentLatitude.toFixed(6);
       document.getElementById('longitude-display').textContent = currentLongitude.toFixed(6);
@@ -1687,12 +1710,20 @@
       return;
     }
     
-    document.getElementById('customer-latitude').value = currentLatitude;
-    document.getElementById('customer-longitude').value = currentLongitude;
+    // ✅ التأكد من أن الحقول المخفية مليئة بالإحداثيات
+    if (!document.getElementById('lat').value || !document.getElementById('lng').value) {
+      document.getElementById('lat').value = currentLatitude;
+      document.getElementById('lng').value = currentLongitude;
+    }
+    
     document.getElementById('location-accuracy').value = currentAccuracy || '';
     document.getElementById('location-confirmed').value = 'true';
     locationConfirmed = true;
     hasLocation = true;
+    
+    // ✅ إنشاء رابط خرائط Google
+    const mapsLink = `https://maps.google.com/?q=${currentLatitude},${currentLongitude}`;
+    document.getElementById('maps-link').value = mapsLink;
     
     const addressElement = document.getElementById('location-address');
     if (addressElement && addressElement.textContent) {
@@ -1725,6 +1756,7 @@
         <div style="margin-top: 8px; font-size: 14px;">
           <div><strong>الإحداثيات:</strong> ${currentLatitude.toFixed(6)}, ${currentLongitude.toFixed(6)}</div>
           <div><strong>الدقة:</strong> ${currentAccuracy ? Math.round(currentAccuracy) + ' متر' : 'غير معروفة'}</div>
+          <div><strong>رابط الخرائط:</strong> <a href="${mapsLink}" target="_blank" style="color: #1976d2;">عرض على خرائط Google</a></div>
           <button type="button" class="btn btn-warning" onclick="changeLocation()" style="padding: 6px 12px; font-size: 13px; margin-top: 8px;">
             تغيير الموقع
           </button>
@@ -1786,10 +1818,11 @@
   
   // ===== إعادة تعيين بيانات الموقع =====
   function resetLocation() {
-    document.getElementById('customer-latitude').value = '';
-    document.getElementById('customer-longitude').value = '';
+    document.getElementById('lat').value = '';
+    document.getElementById('lng').value = '';
     document.getElementById('location-accuracy').value = '';
     document.getElementById('location-confirmed').value = 'false';
+    document.getElementById('maps-link').value = '';
     document.getElementById('map-container').style.display = 'none';
     document.getElementById('location-info').style.display = 'none';
     document.getElementById('map-controls').style.display = 'none';
@@ -1834,8 +1867,8 @@
     document.getElementById('customer-address').value = customer.address || '';
     
     if (customer.latitude && customer.longitude) {
-      document.getElementById('customer-latitude').value = customer.latitude;
-      document.getElementById('customer-longitude').value = customer.longitude;
+      document.getElementById('lat').value = customer.latitude;
+      document.getElementById('lng').value = customer.longitude;
       document.getElementById('location-confirmed').value = 'true';
       locationConfirmed = true;
       hasLocation = true;
@@ -1904,12 +1937,19 @@
     const whatsapp = document.getElementById('customer-whatsapp').value.trim();
     const area = document.getElementById('customer-area').value.trim();
     const address = document.getElementById('customer-address').value.trim();
-    const latitude = document.getElementById('customer-latitude').value.trim();
-    const longitude = document.getElementById('customer-longitude').value.trim();
+    const lat = document.getElementById('lat').value.trim();
+    const lng = document.getElementById('lng').value.trim();
     const locationConfirmed = document.getElementById('location-confirmed').value === 'true';
     
     const locationAddress = document.getElementById('location-address').textContent;
     const locationText = locationAddress ? locationAddress.replace('📍 ', '') : address;
+    
+    // ✅ التحقق من وجود الإحداثيات
+    console.log('📊 Checking coordinates before save:');
+    console.log('lat:', lat);
+    console.log('lng:', lng);
+    console.log('lat element value:', document.getElementById('lat').value);
+    console.log('lng element value:', document.getElementById('lng').value);
     
     if (!name) {
       showError('الاسم مطلوب');
@@ -1953,7 +1993,8 @@
       return;
     }
     
-    if (!customerExists && (!latitude || !longitude)) {
+    // ✅ التحقق من وجود الإحداثيات (فقط للعملاء الجدد)
+    if (!customerExists && (!lat || !lng)) {
       showError('يرجى تحديد موقعك الجغرافي أولاً');
       return;
     }
@@ -1976,12 +2017,15 @@
       
       params.append('location', locationText);
       
-      if (latitude && longitude) {
-        params.append('latitude', latitude);
-        params.append('longitude', longitude);
+      // ✅ إضافة الإحداثيات (lat و lng)
+      if (lat && lng) {
+        params.append('latitude', lat);
+        params.append('longitude', lng);
+        console.log('✅ Sending coordinates:', lat, lng);
       } else if (currentCustomer && currentCustomer.latitude && currentCustomer.longitude) {
         params.append('latitude', currentCustomer.latitude);
         params.append('longitude', currentCustomer.longitude);
+        console.log('✅ Using stored coordinates:', currentCustomer.latitude, currentCustomer.longitude);
       }
       
       if (currentRound) params.append('round', currentRound);
@@ -2018,8 +2062,8 @@
           area: area,
           address: address,
           location: locationText,
-          latitude: latitude || (currentCustomer ? currentCustomer.latitude : ''),
-          longitude: longitude || (currentCustomer ? currentCustomer.longitude : '')
+          latitude: lat || (currentCustomer ? currentCustomer.latitude : ''),
+          longitude: lng || (currentCustomer ? currentCustomer.longitude : '')
         };
         
         showSuccess('✅ تم حفظ المعلومات بنجاح');
@@ -2100,8 +2144,17 @@
       params.append('orderText', orderText);
       if (currentRound) params.append('round', currentRound);
       params.append('replaceOrderId', existingOrderId);
-      params.append('latitude', currentCustomer.latitude || '');
-      params.append('longitude', currentCustomer.longitude || '');
+      
+      // ✅ إضافة الإحداثيات إذا كانت موجودة
+      const lat = document.getElementById('lat').value || currentCustomer.latitude || '';
+      const lng = document.getElementById('lng').value || currentCustomer.longitude || '';
+      
+      if (lat && lng) {
+        params.append('latitude', lat);
+        params.append('longitude', lng);
+        console.log('✅ Sending coordinates for order update:', lat, lng);
+      }
+      
       params.append('note', 'تم تعديل الطلب السابق');
       
       const url = `${SCRIPT_URL}?${params.toString()}`;
@@ -2173,15 +2226,22 @@
     const whatsapp = document.getElementById('customer-whatsapp').value.trim();
     const area = document.getElementById('customer-area').value.trim();
     const address = document.getElementById('customer-address').value.trim();
-    const latitude = document.getElementById('customer-latitude').value.trim();
-    const longitude = document.getElementById('customer-longitude').value.trim();
+    
+    // ✅ الحصول على الإحداثيات من الحقول المخفية
+    const lat = document.getElementById('lat').value.trim();
+    const lng = document.getElementById('lng').value.trim();
+    
+    console.log('📊 Coordinates before submitting order:');
+    console.log('lat:', lat);
+    console.log('lng:', lng);
     
     if (!name || !phone || !whatsapp || !area || !address) {
       alert('من فضلك أكمل معلومات العميل أولاً ثم اضغط على "حفظ المعلومات"');
       return;
     }
     
-    if (!customerExists && (!latitude || !longitude)) {
+    // ✅ التحقق من الإحداثيات (فقط للعملاء الجدد)
+    if (!customerExists && (!lat || !lng)) {
       alert('يرجى تحديد موقعك الجغرافي أولاً');
       return;
     }
@@ -2203,10 +2263,8 @@
     submitText.textContent = 'جاري الإرسال...';
     
     try {
-      const finalLatitude = latitude || (currentCustomer && currentCustomer.latitude) || '';
-      const finalLongitude = longitude || (currentCustomer && currentCustomer.longitude) || '';
-      
       console.log('📤 Submitting new order with location:', locationText);
+      console.log('📤 Coordinates being sent:', lat, lng);
       
       const params = new URLSearchParams();
       params.append('action', 'submitOrder');
@@ -2221,9 +2279,11 @@
       params.append('orderText', orderText);
       if (currentRound) params.append('round', currentRound);
       
-      if (finalLatitude && finalLongitude) {
-        params.append('latitude', finalLatitude);
-        params.append('longitude', finalLongitude);
+      // ✅ إضافة الإحداثيات إلى الطلب
+      if (lat && lng) {
+        params.append('latitude', lat);
+        params.append('longitude', lng);
+        console.log('✅ Coordinates added to request:', lat, lng);
       }
       
       if (hasPreviousActiveOrder) {
@@ -2258,8 +2318,8 @@
           ${result.orderId ? `<p><strong>رقم الطلب:</strong> ${result.orderId}</p>` : ''}
           ${result.customerId ? `<p><strong>رقم العميل:</strong> ${result.customerId}</p>` : ''}
           <p>📍 <strong>موقع التسليم:</strong> ${address}</p>
-          ${finalLatitude && finalLongitude ? 
-            `<p>📍 <strong>الإحداثيات:</strong> ${parseFloat(finalLatitude).toFixed(6)}, ${parseFloat(finalLongitude).toFixed(6)}</p>` : ''}
+          ${lat && lng ? 
+            `<p>📍 <strong>الإحداثيات:</strong> ${parseFloat(lat).toFixed(6)}, ${parseFloat(lng).toFixed(6)}</p>` : ''}
           ${hasPreviousActiveOrder ? `<p>📌 <strong>ملاحظة:</strong> تم ربط هذا الطلب بنفس رقم عميلك</p>` : ''}
           <p>عزيزي/عزيزتي <strong>${name}</strong>، سيتم التواصل معك على واتساب للتأكيد.</p>
           <p>شكراً لاستخدامك HomiCart! 💙</p>
