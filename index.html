@@ -645,7 +645,7 @@
       </div>
     </div>
     
-    <!-- Updated Location Section -->
+    <!-- ✅ FIXED: Location Section with verification -->
     <div class="form-group location-group" id="location-group">
       <label class="required">📍 تأكيد موقعك الجغرافي</label>
       <div id="location-warning" class="warning-message" style="margin-top: 10px; display: block;">
@@ -696,16 +696,22 @@
         <div id="confirmed-location-info"></div>
       </div>
       
-      <!-- ✅ FIXED: Hidden Inputs with correct names -->
+      <!-- ✅ FIXED: Hidden Inputs with verification -->
       <input type="hidden" id="latitude" name="latitude">
       <input type="hidden" id="longitude" name="longitude">
       <input type="hidden" id="location-accuracy" name="location-accuracy">
       <input type="hidden" id="location-confirmed" name="location-confirmed" value="false">
       <input type="hidden" id="maps-link" name="maps-link">
+      
+      <!-- ✅ FIXED: Location verification message -->
+      <div id="location-verification" class="info-message" style="display: none; margin-top: 15px;">
+        ✅ تم حفظ الإحداثيات بنجاح. يمكنك الآن إرسال الطلب.
+      </div>
     </div>
     
     <div style="text-align: center;">
-      <button class="btn" onclick="saveCustomerInfo()" id="save-customer-btn">
+      <!-- ✅ FIXED: Single button that handles location and save -->
+      <button class="btn" onclick="saveCustomerInfoWithLocation()" id="save-customer-btn">
         <span id="save-customer-text">حفظ المعلومات</span>
         <span id="save-customer-loading" class="loading" style="display: none;"></span>
       </button>
@@ -732,7 +738,8 @@
     </div>
     
     <div style="text-align: center;">
-      <button class="btn" onclick="submitNewOrder()" id="submit-new-btn">
+      <!-- ✅ FIXED: Single button that handles location and submission -->
+      <button class="btn" onclick="submitNewOrderWithLocation()" id="submit-new-btn">
         <span id="submit-new-text">إرسال الطلب الجديد</span>
         <span id="submit-new-loading" class="loading" style="display: none;"></span>
       </button>
@@ -772,17 +779,21 @@
   let userMarker = null;
   let confirmedMarker = null;
   let accuracyCircle = null;
-  let currentLatitude = null;  // ✅ متغيرات لحفظ الإحداثيات
-  let currentLongitude = null; // ✅ استخدم هذه لتخزين الإحداثيات
+  let currentLatitude = null;
+  let currentLongitude = null;
   let currentAccuracy = null;
   let mapInitialized = false;
+  
+  // ✅ FIXED: Flags for tracking location process
+  let locationPromise = null;
+  let isGettingLocation = false;
   
   // مؤقت لتأخير الطلبات
   let phoneCheckTimer = null;
   
   // ===== تهيئة عند تحميل الصفحة =====
   document.addEventListener('DOMContentLoaded', function() {
-    console.log('✅ HomiCart System Initialized - Fixed Location Version');
+    console.log('✅ HomiCart System Initialized - Fixed Async Location Version');
     checkOrderStatus();
     document.getElementById('mobile-number').focus();
   });
@@ -1385,169 +1396,311 @@
     hideMessages();
   }
   
-  // ===== تحديد موقع المستخدم - الإصدار المصحح =====
+  // ===== ✅ FIXED: تحديد موقع المستخدم مع Promise =====
   function getUserLocation() {
+    return new Promise((resolve, reject) => {
+      if (isGettingLocation) {
+        console.log('📍 Location request already in progress');
+        reject(new Error('Location request already in progress'));
+        return;
+      }
+      
+      hideMessages();
+      
+      const locationBtn = document.getElementById('location-btn');
+      const locationText = document.getElementById('location-btn-text');
+      const locationLoading = document.getElementById('location-loading');
+      const locationError = document.getElementById('location-error');
+      const locationInfo = document.getElementById('location-info');
+      const mapControls = document.getElementById('map-controls');
+      
+      locationError.textContent = '';
+      
+      locationInfo.style.display = 'none';
+      mapControls.style.display = 'none';
+      document.getElementById('location-status').style.display = 'none';
+      
+      isGettingLocation = true;
+      locationBtn.disabled = true;
+      locationLoading.style.display = 'inline-block';
+      locationText.textContent = 'جاري تحديد الموقع بدقة عالية جداً...';
+      
+      if (!navigator.geolocation) {
+        locationError.textContent = 'متصفحك لا يدعم تحديد الموقع الجغرافي. يرجى استخدام متصفح حديث.';
+        resetLocationButton();
+        isGettingLocation = false;
+        reject(new Error('Geolocation not supported'));
+        return;
+      }
+      
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 30000,
+        maximumAge: 0,
+      };
+      
+      navigator.geolocation.getCurrentPosition(
+        async function(position) {
+          try {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
+            
+            console.log('📍 Location obtained from GPS:', { latitude, longitude, accuracy });
+            
+            // ✅ حفظ الإحداثيات في المتغيرات والحقول المخفية
+            currentLatitude = latitude;
+            currentLongitude = longitude;
+            currentAccuracy = accuracy;
+            
+            document.getElementById('latitude').value = latitude;
+            document.getElementById('longitude').value = longitude;
+            document.getElementById('location-accuracy').value = accuracy;
+            
+            console.log('✅ Coordinates saved to hidden inputs:');
+            console.log('latitude:', document.getElementById('latitude').value);
+            console.log('longitude:', document.getElementById('longitude').value);
+            
+            // ✅ عرض الخريطة
+            showMapWithLocation(latitude, longitude, accuracy);
+            
+            locationInfo.style.display = 'block';
+            mapControls.style.display = 'flex';
+            
+            document.getElementById('latitude-display').textContent = latitude.toFixed(6);
+            document.getElementById('longitude-display').textContent = longitude.toFixed(6);
+            
+            let accuracyClass = 'accuracy-good';
+            let accuracyText = 'دقة ممتازة (5-15 متر)';
+            
+            if (accuracy > 15) {
+              accuracyClass = 'accuracy-poor';
+              accuracyText = 'دقة منخفضة';
+            } else if (accuracy > 10) {
+              accuracyClass = 'accuracy-fair';
+              accuracyText = 'دقة جيدة';
+            }
+            
+            document.getElementById('accuracy-info').innerHTML = `
+              <span class="${accuracyClass}">📍 الدقة: ${Math.round(accuracy)} متر (${accuracyText})</span>
+              ${accuracy > 15 ? '<br><small>يرجى سحب المؤشر لضبط الموقع الدقيق</small>' : ''}
+            `;
+            
+            try {
+              const address = await getAddressFromCoordinates(latitude, longitude);
+              document.getElementById('location-address').textContent = `📍 ${address}`;
+              document.getElementById('location-address').style.color = '#28a745';
+              
+              // تحديث حقل العنوان تلقائياً
+              document.getElementById('customer-address').value = address;
+            } catch (error) {
+              console.warn('Could not get address:', error);
+              document.getElementById('location-address').textContent = '📍 تم تحديد موقعك على الخريطة';
+              document.getElementById('location-address').style.color = '#1976d2';
+            }
+            
+            resetLocationButton();
+            isGettingLocation = false;
+            
+            if (accuracy > 15) {
+              locationError.innerHTML = `
+                <div class="warning-message" style="text-align: right; margin: 10px 0;">
+                  <p><strong>⚠️ الدقة الحالية ${Math.round(accuracy)} متر - المطلوبة 5-15 متر</strong></p>
+                  <p>لتحسين الدقة:</p>
+                  <ul style="text-align: right; margin-right: 15px;">
+                    <li>تفعيل GPS عالي الدقة في إعدادات الهاتف</li>
+                    <li>الانتقال إلى مكان مفتوح بعيد عن المباني</li>
+                    <li>إغلاق التطبيقات التي تستخدم الموقع</li>
+                    <li>سحب المؤشر لضبط الموقع الدقيق</li>
+                  </ul>
+                </div>
+              `;
+            }
+            
+            resolve({ latitude, longitude, accuracy });
+            
+          } catch (error) {
+            resetLocationButton();
+            isGettingLocation = false;
+            reject(error);
+          }
+        },
+        function(error) {
+          let errorMessage = '';
+          let showRetry = true;
+          
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = `
+                <div class="error-message" style="text-align: right;">
+                  <p><strong>تم رفض صلاحية تحديد الموقع</strong></p>
+                  <p>يجب تفعيل صلاحيات الموقع للمتابعة:</p>
+                  <ol style="text-align: right; margin-right: 20px;">
+                    <li>اضغط على رمز القفل 🔒 بجانب عنوان الموقع</li>
+                    <li>اختر "السماح" لتحديد الموقع</li>
+                    <li>أعد تحميل الصفحة</li>
+                  </ol>
+                  <p style="margin-top: 10px;">
+                    <button class="btn" onclick="location.reload()" style="background: #dc3545; color: white;">
+                      إعادة تحميل الصفحة
+                    </button>
+                  </p>
+                </div>
+              `;
+              showRetry = false;
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'معلومات الموقع غير متاحة. تأكد من تفعيل GPS عالي الدقة على هاتفك.';
+              break;
+            case error.TIMEOUT:
+              errorMessage = 'انتهت مهلة طلب الموقع. يرجى التأكد من اتصال الإنترنت والمحاولة مرة أخرى.';
+              break;
+            default:
+              errorMessage = 'حدث خطأ غير معروف في تحديد الموقع.';
+          }
+          
+          locationError.innerHTML = errorMessage;
+          console.error('Location error:', error);
+          
+          if (showRetry) {
+            locationError.innerHTML += `
+              <p style="margin-top: 10px;">
+                <button class="btn btn-warning" onclick="getUserLocation()" style="padding: 8px 16px;">
+                  المحاولة مرة أخرى
+                </button>
+              </p>
+            `;
+          }
+          
+          resetLocationButton();
+          isGettingLocation = false;
+          reject(error);
+        },
+        options
+      );
+    });
+  }
+  
+  // ===== ✅ FIXED: حفظ معلومات العميل مع الموقع =====
+  async function saveCustomerInfoWithLocation() {
     hideMessages();
     
-    const locationBtn = document.getElementById('location-btn');
-    const locationText = document.getElementById('location-btn-text');
-    const locationLoading = document.getElementById('location-loading');
-    const locationError = document.getElementById('location-error');
-    const locationInfo = document.getElementById('location-info');
-    const mapControls = document.getElementById('map-controls');
+    // ✅ التحقق من وجود إحداثيات أولاً
+    const latitude = document.getElementById('latitude').value.trim();
+    const longitude = document.getElementById('longitude').value.trim();
+    const locationConfirmed = document.getElementById('location-confirmed').value === 'true';
     
-    locationError.textContent = '';
+    console.log('📊 Checking coordinates before save:');
+    console.log('latitude:', latitude);
+    console.log('longitude:', longitude);
+    console.log('locationConfirmed:', locationConfirmed);
     
-    locationInfo.style.display = 'none';
-    mapControls.style.display = 'none';
-    document.getElementById('location-status').style.display = 'none';
-    
-    locationBtn.disabled = true;
-    locationLoading.style.display = 'inline-block';
-    locationText.textContent = 'جاري تحديد الموقع بدقة عالية جداً...';
-    
-    if (!navigator.geolocation) {
-      locationError.textContent = 'متصفحك لا يدعم تحديد الموقع الجغرافي. يرجى استخدام متصفح حديث.';
-      resetLocationButton();
+    // إذا لم يكن هناك إحداثيات، نجلبها أولاً
+    if ((!latitude || !longitude) && !customerExists) {
+      console.log('📍 No coordinates found, getting location...');
+      
+      const saveBtn = document.getElementById('save-customer-btn');
+      const saveText = document.getElementById('save-customer-text');
+      const saveLoading = document.getElementById('save-customer-loading');
+      
+      // تغيير حالة الزر
+      saveBtn.disabled = true;
+      saveLoading.style.display = 'inline-block';
+      saveText.textContent = 'جاري تحديد الموقع...';
+      
+      try {
+        // ✅ الحصول على الموقع أولاً
+        const location = await getUserLocation();
+        
+        // ✅ تأكيد الموقع على الخريطة
+        confirmMapLocation();
+        
+        // ✅ الانتظار قليلاً لضمان حفظ الإحداثيات
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // ✅ الآن نستدعي saveCustomerInfo بعد تأكيد الموقع
+        saveCustomerInfo();
+        
+      } catch (error) {
+        console.error('❌ Failed to get location:', error);
+        showError('فشل تحديد الموقع. يرجى المحاولة مرة أخرى.');
+      } finally {
+        saveBtn.disabled = false;
+        saveLoading.style.display = 'none';
+        saveText.textContent = 'حفظ المعلومات';
+      }
+      
       return;
     }
     
-    const options = {
-      enableHighAccuracy: true,
-      timeout: 30000,
-      maximumAge: 0,
-    };
+    // إذا كانت الإحداثيات موجودة، نستمر بشكل طبيعي
+    saveCustomerInfo();
+  }
+  
+  // ===== ✅ FIXED: إرسال طلب جديد مع الموقع =====
+  async function submitNewOrderWithLocation() {
+    hideMessages();
     
-    navigator.geolocation.getCurrentPosition(
-      // ✅ الإصدار المصحح: استخدام الأسماء الصحيحة
-      async function(position) {
-        // ✅ الإحداثيات الحقيقية من GPS
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
-        const accuracy = position.coords.accuracy;
+    if (currentOrderStatus.toLowerCase() !== 'active') {
+      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
+      return;
+    }
+    
+    if (!isAccountActive && customerExists) {
+      alert('حسابك غير نشط. يرجى التواصل مع الإدارة لتفعيل الحساب.');
+      return;
+    }
+    
+    // ✅ التحقق من وجود إحداثيات أولاً
+    const latitude = document.getElementById('latitude').value.trim();
+    const longitude = document.getElementById('longitude').value.trim();
+    const locationConfirmed = document.getElementById('location-confirmed').value === 'true';
+    
+    console.log('📊 Checking coordinates before submit:');
+    console.log('latitude:', latitude);
+    console.log('longitude:', longitude);
+    console.log('customerExists:', customerExists);
+    
+    // إذا لم يكن هناك إحداثيات (ولم يكن هناك عميل سابق)، نجلبها أولاً
+    if ((!latitude || !longitude) && !customerExists) {
+      console.log('📍 No coordinates found, getting location...');
+      
+      const submitBtn = document.getElementById('submit-new-btn');
+      const submitText = document.getElementById('submit-new-text');
+      const submitLoading = document.getElementById('submit-new-loading');
+      
+      // تغيير حالة الزر
+      submitBtn.disabled = true;
+      submitLoading.style.display = 'inline-block';
+      submitText.textContent = 'جاري تحديد الموقع...';
+      
+      try {
+        // ✅ الحصول على الموقع أولاً
+        const location = await getUserLocation();
         
-        console.log('📍 Location obtained from GPS:', { latitude, longitude, accuracy });
+        // ✅ تأكيد الموقع على الخريطة
+        confirmMapLocation();
         
-        // ✅ تخزين الإحداثيات في المتغيرات
-        currentLatitude = latitude;
-        currentLongitude = longitude;
-        currentAccuracy = accuracy;
+        // ✅ الانتظار قليلاً لضمان حفظ الإحداثيات
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // ✅ تخزين الإحداثيات في الحقول المخفية - باستخدام الأسماء الصحيحة
-        document.getElementById('latitude').value = latitude;
-        document.getElementById('longitude').value = longitude;
-        document.getElementById('location-accuracy').value = accuracy;
+        // ✅ الآن نستدعي submitNewOrder بعد تأكيد الموقع
+        submitNewOrder();
         
-        console.log('✅ Coordinates saved to hidden inputs:');
-        console.log('latitude:', document.getElementById('latitude').value);
-        console.log('longitude:', document.getElementById('longitude').value);
-        
-        // ✅ عرض الخريطة
-        showMapWithLocation(latitude, longitude, accuracy);
-        
-        locationInfo.style.display = 'block';
-        mapControls.style.display = 'flex';
-        
-        document.getElementById('latitude-display').textContent = latitude.toFixed(6);
-        document.getElementById('longitude-display').textContent = longitude.toFixed(6);
-        
-        let accuracyClass = 'accuracy-good';
-        let accuracyText = 'دقة ممتازة (5-15 متر)';
-        
-        if (accuracy > 15) {
-          accuracyClass = 'accuracy-poor';
-          accuracyText = 'دقة منخفضة';
-        } else if (accuracy > 10) {
-          accuracyClass = 'accuracy-fair';
-          accuracyText = 'دقة جيدة';
-        }
-        
-        document.getElementById('accuracy-info').innerHTML = `
-          <span class="${accuracyClass}">📍 الدقة: ${Math.round(accuracy)} متر (${accuracyText})</span>
-          ${accuracy > 15 ? '<br><small>يرجى سحب المؤشر لضبط الموقع الدقيق</small>' : ''}
-        `;
-        
-        try {
-          const address = await getAddressFromCoordinates(latitude, longitude);
-          document.getElementById('location-address').textContent = `📍 ${address}`;
-          document.getElementById('location-address').style.color = '#28a745';
-          
-          // تحديث حقل العنوان تلقائياً
-          document.getElementById('customer-address').value = address;
-        } catch (error) {
-          console.warn('Could not get address:', error);
-          document.getElementById('location-address').textContent = '📍 تم تحديد موقعك على الخريطة';
-          document.getElementById('location-address').style.color = '#1976d2';
-        }
-        
-        resetLocationButton();
-        
-        if (accuracy > 15) {
-          locationError.innerHTML = `
-            <div class="warning-message" style="text-align: right; margin: 10px 0;">
-              <p><strong>⚠️ الدقة الحالية ${Math.round(accuracy)} متر - المطلوبة 5-15 متر</strong></p>
-              <p>لتحسين الدقة:</p>
-              <ul style="text-align: right; margin-right: 15px;">
-                <li>تفعيل GPS عالي الدقة في إعدادات الهاتف</li>
-                <li>الانتقال إلى مكان مفتوح بعيد عن المباني</li>
-                <li>إغلاق التطبيقات التي تستخدم الموقع</li>
-                <li>سحب المؤشر لضبط الموقع الدقيق</li>
-              </ul>
-            </div>
-          `;
-        }
-      },
-      function(error) {
-        let errorMessage = '';
-        let showRetry = true;
-        
-        switch(error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = `
-              <div class="error-message" style="text-align: right;">
-                <p><strong>تم رفض صلاحية تحديد الموقع</strong></p>
-                <p>يجب تفعيل صلاحيات الموقع للمتابعة:</p>
-                <ol style="text-align: right; margin-right: 20px;">
-                  <li>اضغط على رمز القفل 🔒 بجانب عنوان الموقع</li>
-                  <li>اختر "السماح" لتحديد الموقع</li>
-                  <li>أعد تحميل الصفحة</li>
-                </ol>
-                <p style="margin-top: 10px;">
-                  <button class="btn" onclick="location.reload()" style="background: #dc3545; color: white;">
-                    إعادة تحميل الصفحة
-                  </button>
-                </p>
-              </div>
-            `;
-            showRetry = false;
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'معلومات الموقع غير متاحة. تأكد من تفعيل GPS عالي الدقة على هاتفك.';
-            break;
-          case error.TIMEOUT:
-            errorMessage = 'انتهت مهلة طلب الموقع. يرجى التأكد من اتصال الإنترنت والمحاولة مرة أخرى.';
-            break;
-          default:
-            errorMessage = 'حدث خطأ غير معروف في تحديد الموقع.';
-        }
-        
-        locationError.innerHTML = errorMessage;
-        console.error('Location error:', error);
-        
-        if (showRetry) {
-          locationError.innerHTML += `
-            <p style="margin-top: 10px;">
-              <button class="btn btn-warning" onclick="getUserLocation()" style="padding: 8px 16px;">
-                المحاولة مرة أخرى
-              </button>
-            </p>
-          `;
-        }
-        
-        resetLocationButton();
-      },
-      options
-    );
+      } catch (error) {
+        console.error('❌ Failed to get location:', error);
+        showError('فشل تحديد الموقع. يرجى المحاولة مرة أخرى.');
+      } finally {
+        submitBtn.disabled = false;
+        submitLoading.style.display = 'none';
+        submitText.textContent = 'إرسال الطلب الجديد';
+      }
+      
+      return;
+    }
+    
+    // إذا كانت الإحداثيات موجودة، نستمر بشكل طبيعي
+    submitNewOrder();
   }
   
   // ===== الحصول على العنوان من الإحداثيات =====
@@ -1657,7 +1810,7 @@
       currentLatitude = position.lat;
       currentLongitude = position.lng;
       
-      // ✅ تحديث الحقول المخفية - باستخدام الأسماء الصحيحة
+      // ✅ تحديث الحقول المخفية
       document.getElementById('latitude').value = currentLatitude;
       document.getElementById('longitude').value = currentLongitude;
       
@@ -1767,7 +1920,14 @@
     document.getElementById('map-controls').style.display = 'none';
     document.getElementById('location-warning').style.display = 'none';
     
+    // ✅ إظهار رسالة تأكيد
+    document.getElementById('location-verification').style.display = 'block';
+    
     showSuccess('✅ تم تأكيد موقعك بنجاح');
+    
+    // ✅ حفظ الإحداثيات في localStorage للمستخدمين القادمين
+    localStorage.setItem('homicart_last_latitude', currentLatitude);
+    localStorage.setItem('homicart_last_longitude', currentLongitude);
   }
   
   // ===== تغيير الموقع =====
@@ -1778,6 +1938,7 @@
     document.getElementById('location-status').style.display = 'none';
     document.getElementById('map-controls').style.display = 'flex';
     document.getElementById('location-warning').style.display = 'block';
+    document.getElementById('location-verification').style.display = 'none';
     
     if (confirmedMarker) {
       map.removeLayer(confirmedMarker);
@@ -1829,6 +1990,7 @@
     document.getElementById('location-status').style.display = 'none';
     document.getElementById('location-error').textContent = '';
     document.getElementById('location-warning').style.display = 'block';
+    document.getElementById('location-verification').style.display = 'none';
     
     if (userMarker) {
       map.removeLayer(userMarker);
@@ -1890,8 +2052,23 @@
       `;
       
       document.getElementById('location-warning').style.display = 'none';
+      document.getElementById('location-verification').style.display = 'block';
     } else {
       resetLocation();
+      
+      // ✅ محاولة تحميل الإحداثيات من localStorage
+      try {
+        const lastLat = localStorage.getItem('homicart_last_latitude');
+        const lastLng = localStorage.getItem('homicart_last_longitude');
+        
+        if (lastLat && lastLng) {
+          document.getElementById('latitude').value = lastLat;
+          document.getElementById('longitude').value = lastLng;
+          showInfo('تم تحميل آخر موقع تم تحديده');
+        }
+      } catch (e) {
+        console.log('No previous location in localStorage');
+      }
     }
   }
   
@@ -1928,12 +2105,9 @@
     hideMessages();
   }
   
-  // ===== حفظ معلومات العميل =====
+  // ===== حفظ معلومات العميل (الدالة الأصلية) =====
   async function saveCustomerInfo() {
     hideMessages();
-    
-    // ✅ إنشاء FormData للتأكد من إرسال جميع الحقول
-    const formData = new FormData();
     
     const name = document.getElementById('customer-name').value.trim();
     const phone = document.getElementById('customer-phone').value.trim();
@@ -1948,7 +2122,7 @@
     const locationText = locationAddress ? locationAddress.replace('📍 ', '') : address;
     
     // ✅ التحقق من وجود الإحداثيات
-    console.log('📊 Checking coordinates before save:');
+    console.log('📊 Final check before save:');
     console.log('latitude:', latitude);
     console.log('longitude:', longitude);
     
@@ -2008,7 +2182,8 @@
     saveText.textContent = 'جاري الحفظ...';
     
     try {
-      // ✅ إضافة البيانات إلى FormData
+      // ✅ استخدام FormData
+      const formData = new FormData();
       formData.append('action', 'createOrUpdateCustomer');
       formData.append('phone', phone);
       formData.append('whatsapp', whatsapp);
@@ -2017,7 +2192,7 @@
       formData.append('address', address);
       formData.append('location', locationText);
       
-      // ✅ إضافة الإحداثيات - باستخدام الأسماء الصحيحة
+      // ✅ إضافة الإحداثيات
       if (latitude && longitude) {
         formData.append('latitude', latitude);
         formData.append('longitude', longitude);
@@ -2149,7 +2324,7 @@
       if (currentRound) formData.append('round', currentRound);
       formData.append('replaceOrderId', existingOrderId);
       
-      // ✅ إضافة الإحداثيات باستخدام الأسماء الصحيحة
+      // ✅ إضافة الإحداثيات
       const latitude = document.getElementById('latitude').value || currentCustomer.latitude || '';
       const longitude = document.getElementById('longitude').value || currentCustomer.longitude || '';
       
@@ -2210,19 +2385,9 @@
     }
   }
   
-  // ===== إرسال طلب جديد =====
+  // ===== إرسال طلب جديد (الدالة الأصلية) =====
   async function submitNewOrder() {
     hideMessages();
-    
-    if (currentOrderStatus.toLowerCase() !== 'active') {
-      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
-      return;
-    }
-    
-    if (!isAccountActive && customerExists) {
-      alert('حسابك غير نشط. يرجى التواصل مع الإدارة لتفعيل الحساب.');
-      return;
-    }
     
     const name = document.getElementById('customer-name').value.trim();
     const phone = document.getElementById('customer-phone').value.trim();
@@ -2230,11 +2395,11 @@
     const area = document.getElementById('customer-area').value.trim();
     const address = document.getElementById('customer-address').value.trim();
     
-    // ✅ الحصول على الإحداثيات من الحقول المخفية باستخدام الأسماء الصحيحة
+    // ✅ الحصول على الإحداثيات
     const latitude = document.getElementById('latitude').value.trim();
     const longitude = document.getElementById('longitude').value.trim();
     
-    console.log('📊 Coordinates before submitting order:');
+    console.log('📊 Final coordinates check:');
     console.log('latitude:', latitude);
     console.log('longitude:', longitude);
     
@@ -2281,7 +2446,7 @@
       formData.append('orderText', orderText);
       if (currentRound) formData.append('round', currentRound);
       
-      // ✅ إضافة الإحداثيات باستخدام الأسماء الصحيحة
+      // ✅ إضافة الإحداثيات
       if (latitude && longitude) {
         formData.append('latitude', latitude);
         formData.append('longitude', longitude);
@@ -2330,6 +2495,12 @@
         currentCustomerId = result.customerId;
         customerExists = true;
         hasPreviousActiveOrder = true;
+        
+        // ✅ حفظ الإحداثيات في localStorage للمستخدم القادم
+        if (latitude && longitude) {
+          localStorage.setItem('homicart_last_latitude', latitude);
+          localStorage.setItem('homicart_last_longitude', longitude);
+        }
         
         setTimeout(() => {
           resetForm();
@@ -2515,6 +2686,9 @@
     currentLatitude = null;
     currentLongitude = null;
     currentAccuracy = null;
+    
+    isGettingLocation = false;
+    locationPromise = null;
     
     mapInitialized = false;
     if (map) {
