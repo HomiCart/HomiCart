@@ -2496,7 +2496,7 @@
             `<p>📍 <strong>الإحداثيات:</strong> ${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</p>` : ''}
           ${googleMapsLink ? `<p>🗺️ <strong>رابط الخرائط:</strong> <a href="${googleMapsLink}" target="_blank">عرض الموقع</a></p>` : ''}
           ${hasPreviousActiveOrder ? `<p>📌 <strong>ملاحظة:</strong> تم ربط هذا الطلب بنفس رقم عميلك</p>` : ''}
-          <p>عزيزي/عزيزتي <strong>${name}</strong>، سيتم التواصل معك على واتساب للتأكيد.</p>
+          <p>عزيزي/عزيزتي <strong>${name}</strong></p>
           <p>شكراً لاستخدامك HomiCart! 💙</p>
         `;
         successMessage.style.display = 'block';
@@ -2703,4 +2703,5 @@
 </script>
 </body>
 </html>
+
 
