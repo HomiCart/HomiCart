@@ -590,7 +590,7 @@
         <span>✏️</span> تعديل بياناتي
       </button>
       <button class="btn" onclick="createNewOrderAnyway()" id="new-order-anyway-btn">
-        طلب جديد مرة أخرى
+        طلب جديد أخر
       </button>
     </div>
   </div>
@@ -1257,8 +1257,8 @@
           timeZone: 'UTC'
         };
         
-        const formattedDate = date.toLocaleDateString('ar-SA', optionsDate);
-        const formattedTime = date.toLocaleTimeString('ar-SA', optionsTime);
+        const formattedDate = date.toLocaleDateString('en-GB', optionsDate);
+        const formattedTime = date.toLocaleTimeString('en-GB', optionsTime);
         
         return {
           date: formattedDate,
