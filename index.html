@@ -773,6 +773,7 @@
       <input type="hidden" id="location-confirmed" name="location-confirmed" value="false">
       <input type="hidden" id="maps-link" name="maps-link">
       <input type="hidden" id="google-maps-link" name="google-maps-link">
+      <input type="hidden" id="user-timezone" name="user-timezone">
     </div>
     
     <div style="text-align: center;">
@@ -854,9 +855,58 @@
   // ===== تهيئة عند تحميل الصفحة =====
   document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ HomiCart System Initialized - Updated Version');
+    
+    // ✅ اكتشاف توقيت المستخدم وتخزينه
+    detectUserTimezone();
+    
     checkOrderStatus();
     document.getElementById('mobile-number').focus();
   });
+  
+  // ===== اكتشاف توقيت المستخدم =====
+  function detectUserTimezone() {
+    try {
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      document.getElementById('user-timezone').value = userTimezone;
+      console.log('🌍 User Timezone:', userTimezone);
+      return userTimezone;
+    } catch (error) {
+      console.warn('Could not detect user timezone:', error);
+      // استخدام توقيت السعودية كافتراضي
+      document.getElementById('user-timezone').value = 'Asia/Riyadh';
+      return 'Asia/Riyadh';
+    }
+  }
+  
+  // ===== الحصول على توقيت المستخدم الحالي =====
+  function getUserLocalTimestamp() {
+    try {
+      const now = new Date();
+      const userTimezone = document.getElementById('user-timezone').value || 'Asia/Riyadh';
+      
+      // استخدام toLocaleString مع توقيت المستخدم
+      const localDate = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+      
+      // تنسيق التاريخ
+      const year = localDate.getFullYear();
+      const month = String(localDate.getMonth() + 1).padStart(2, '0');
+      const day = String(localDate.getDate()).padStart(2, '0');
+      const hours = String(localDate.getHours()).padStart(2, '0');
+      const minutes = String(localDate.getMinutes()).padStart(2, '0');
+      const seconds = String(localDate.getSeconds()).padStart(2, '0');
+      
+      const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      
+      console.log('🕒 User Local Time:', timestamp, 'Timezone:', userTimezone);
+      return timestamp;
+    } catch (error) {
+      console.error('Error getting user local time:', error);
+      // استخدام التاريخ الحالي كبديل
+      const now = new Date();
+      const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
+      return timestamp;
+    }
+  }
   
   // ===== تهيئة الخريطة =====
   function initializeMap(latitude = 24.4539, longitude = 54.3773) {
@@ -1182,7 +1232,7 @@
     hideMessages();
   }
   
-  // ===== تنسيق تاريخ (ميلادي) =====
+  // ===== تنسيق تاريخ =====
   function formatDateString(dateString) {
     if (!dateString) return 'غير معروف';
     
@@ -1195,35 +1245,30 @@
           weekday: 'long', 
           year: 'numeric', 
           month: 'long', 
-          day: 'numeric'
+          day: 'numeric',
+          timeZone: 'UTC'
         };
         
         const optionsTime = {
           hour: '2-digit',
           minute: '2-digit',
           second: '2-digit',
-          hour12: false
+          hour12: false,
+          timeZone: 'UTC'
         };
         
         const formattedDate = date.toLocaleDateString('ar-SA', optionsDate);
         const formattedTime = date.toLocaleTimeString('ar-SA', optionsTime);
         
-        // تحويل إلى ميلادي
-        const gregorianDate = date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
-        
         return {
-          date: gregorianDate, // تاريخ ميلادي
+          date: formattedDate,
           time: formattedTime
         };
       }
       
       // إذا كان نصاً
       const cleanDateString = dateString.replace('Z', '').replace('T', ' ');
-      const date = new Date(cleanDateString);
+      const date = new Date(cleanDateString + 'Z'); // إضافة Z لتعيين UTC
       
       if (isNaN(date.getTime())) {
         return 'غير معروف';
@@ -1233,28 +1278,23 @@
         weekday: 'long', 
         year: 'numeric', 
         month: 'long', 
-        day: 'numeric'
+        day: 'numeric',
+        timeZone: 'UTC'
       };
       
       const optionsTime = {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        hour12: false
+        hour12: false,
+        timeZone: 'UTC'
       };
       
       const formattedDate = date.toLocaleDateString('ar-SA', optionsDate);
       const formattedTime = date.toLocaleTimeString('ar-SA', optionsTime);
       
-      // تحويل إلى ميلادي
-      const gregorianDate = date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-      
       return {
-        date: gregorianDate, // تاريخ ميلادي
+        date: formattedDate,
         time: formattedTime
       };
       
@@ -1322,86 +1362,6 @@
     `;
     
     alertSection.style.display = 'block';
-  }
-  
-  // ===== عرض الطلب السابق =====
-  function viewPreviousOrder() {
-    if (!previousOrderData) return;
-    
-    document.getElementById('previous-order-alert').style.display = 'none';
-    document.getElementById('customer-data-section').style.display = 'none';
-    document.getElementById('customer-info-form').style.display = 'none';
-    document.getElementById('edit-order-section').style.display = 'none';
-    document.getElementById('new-order-section').style.display = 'none';
-    
-    const viewSection = document.getElementById('view-order-section');
-    const viewDetails = document.getElementById('view-order-details');
-    
-    let dateDisplay = 'غير معروف';
-    let timeDisplay = '';
-    
-    if (previousOrderData.formattedDate) {
-      dateDisplay = previousOrderData.formattedDate.date;
-      timeDisplay = previousOrderData.formattedDate.time;
-    } else if (previousOrderData.date) {
-      const formatted = formatDateString(previousOrderData.date);
-      dateDisplay = formatted.date;
-      timeDisplay = formatted.time;
-    } else if (previousOrderData.timestamp) {
-      const formatted = formatDateString(previousOrderData.timestamp);
-      dateDisplay = formatted.date;
-      timeDisplay = formatted.time;
-    }
-    
-    const orderStatus = previousOrderData.status || 'قيد المعالجة';
-    
-    let statusColor = '#ff9800';
-    if (orderStatus === 'مسلم' || orderStatus === 'Delivered') statusColor = '#4CAF50';
-    if (orderStatus === 'ملغى' || orderStatus === 'Cancelled') statusColor = '#f44336';
-    if (orderStatus === 'Processing' || orderStatus === 'قيد المعالجة') statusColor = '#2196F3';
-    
-    viewDetails.innerHTML = `
-      <div class="order-item">
-        <h4>تفاصيل الطلب السابق</h4>
-        <div class="order-info-grid">
-          <div class="order-info-item">
-            <strong>📅 التاريخ:</strong> ${dateDisplay}
-          </div>
-          <div class="order-info-item">
-            <strong>⏰ الوقت:</strong> ${timeDisplay || 'غير محدد'}
-          </div>
-          <div class="order-info-item">
-            <strong>📦 رقم الطلب:</strong> ${previousOrderData.id || 'غير معروف'}
-          </div>
-          <div class="order-info-item">
-            <strong>📍 الحالة:</strong> <span style="color: ${statusColor}">${orderStatus}</span>
-          </div>
-        </div>
-        <div style="margin-top: 15px;">
-          <strong>📝 تفاصيل الطلب:</strong>
-          <p style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 8px; white-space: pre-wrap; line-height: 1.6;">
-            ${previousOrderData.items || 'لا توجد تفاصيل'}
-          </p>
-        </div>
-        <div style="margin-top: 15px;">
-          <strong>📍 العنوان:</strong>
-          <p style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin-top: 5px;">
-            ${previousOrderData.address || (currentCustomer ? currentCustomer.address : 'غير محدد')}
-          </p>
-        </div>
-        ${previousOrderData.notes ? `
-        <div style="margin-top: 15px;">
-          <strong>📌 ملاحظات:</strong>
-          <p style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin-top: 5px;">
-            ${previousOrderData.notes}
-          </p>
-        </div>
-        ` : ''}
-      </div>
-    `;
-    
-    viewSection.style.display = 'block';
-    hideMessages();
   }
   
   // ===== تعديل الطلب السابق =====
@@ -1559,7 +1519,7 @@
     hideMessages();
   }
   
-  // ===== تحديد موقع المستخدم - الإصدار المحسن =====
+  // ===== تحديد موقع المستخدم =====
   function getUserLocation() {
     hideMessages();
     
@@ -1596,30 +1556,24 @@
     
     navigator.geolocation.getCurrentPosition(
       async function(position) {
-        // ✅ الحصول على الإحداثيات الحقيقية
         const latitude = position.coords.latitude;
         const longitude = position.coords.longitude;
         const accuracy = position.coords.accuracy;
         
         console.log('📍 تم الحصول على الموقع من GPS:', { latitude, longitude, accuracy });
         
-        // ✅ حفظ الإحداثيات في المتغيرات العامة
         currentLatitude = latitude;
         currentLongitude = longitude;
         currentAccuracy = accuracy;
         
-        // ✅ عرض الإحداثيات مباشرة تحت الخريطة كما في الصورة
         showMapWithLocation(latitude, longitude, accuracy);
         
-        // ✅ عرض المعلومات
         locationInfo.style.display = 'block';
         mapControls.style.display = 'flex';
         
-        // ✅ عرض الإحداثيات بنفس شكل الصورة المرفقة
         document.getElementById('latitude-display').textContent = latitude.toFixed(6);
         document.getElementById('longitude-display').textContent = longitude.toFixed(6);
         
-        // ✅ عرض معلومات الدقة
         let accuracyClass = 'accuracy-poor';
         let accuracyText = `دقة منخفضة (${Math.round(accuracy)} متر)`;
         
@@ -1633,7 +1587,6 @@
           ${accuracy > 15 ? '<br><small>يرجى سحب المؤشر لضبط الموقع الدقيق</small>' : ''}
         `;
         
-        // ✅ الحصول على العنوان
         try {
           const address = await getAddressFromCoordinates(latitude, longitude);
           document.getElementById('location-address').innerHTML = `
@@ -1648,7 +1601,6 @@
         
         resetLocationButton();
         
-        // ✅ إظهار تعليمات تحسين الدقة
         if (accuracy > 15) {
           locationError.innerHTML = `
             <div class="warning-message" style="text-align: right; margin: 10px 0;">
@@ -1764,7 +1716,7 @@
     }
   }
   
-  // ===== عرض الخريطة مع الموقع - الإصدار المصحح مع الدائرة المتحركة =====
+  // ===== عرض الخريطة مع الموقع =====
   function showMapWithLocation(latitude, longitude, accuracy) {
     const mapContainer = document.getElementById('map-container');
     mapContainer.style.display = 'block';
@@ -1775,7 +1727,6 @@
       map.setView([latitude, longitude], 17);
     }
     
-    // ✅ إزالة جميع العناصر السابقة
     if (userMarker) {
       map.removeLayer(userMarker);
     }
@@ -1787,7 +1738,6 @@
       confirmedMarker = null;
     }
     
-    // ✅ إنشاء علامة الموقع
     const locationIcon = L.divIcon({
       html: '<div class="location-marker">📍</div>',
       iconSize: [24, 24],
@@ -1803,7 +1753,6 @@
       zIndexOffset: 1000
     }).addTo(map);
     
-    // ✅ إنشاء دائرة الدقة المتحركة مع المستخدم
     if (accuracy) {
       accuracyCircle = L.circle([latitude, longitude], {
         radius: accuracy,
@@ -1820,12 +1769,10 @@
     
     map.setView([latitude, longitude], 17);
     
-    // ✅ إضافة حدث السحب للعلامة مع تحريك الدائرة
     userMarker.on('drag', function(event) {
       const marker = event.target;
       const position = marker.getLatLng();
       
-      // ✅ تحريك الدائرة مع العلامة
       if (accuracyCircle) {
         accuracyCircle.setLatLng([position.lat, position.lng]);
       }
@@ -1835,25 +1782,20 @@
       const marker = event.target;
       const position = marker.getLatLng();
       
-      // ✅ تحديث الإحداثيات
       currentLatitude = position.lat;
       currentLongitude = position.lng;
       
-      // ✅ تحديث العرض تحت الخريطة مباشرة
       document.getElementById('latitude-display').textContent = currentLatitude.toFixed(6);
       document.getElementById('longitude-display').textContent = currentLongitude.toFixed(6);
       
-      // ✅ إزالة علامة التأكيد السابقة
       if (confirmedMarker) {
         map.removeLayer(confirmedMarker);
         confirmedMarker = null;
         document.getElementById('location-confirmed').value = 'false';
       }
       
-      // ✅ تحديث العنوان
       updateAddressFromCoordinates(currentLatitude, currentLongitude);
       
-      // ✅ إظهار رسالة للمستخدم
       const locationError = document.getElementById('location-error');
       locationError.innerHTML = `
         <div class="info-message" style="margin: 10px 0; padding: 10px;">
@@ -1864,10 +1806,8 @@
       console.log('📍 تم تحديث الإحداثيات بعد السحب:', currentLatitude, currentLongitude);
     });
     
-    // ✅ التأكد من أن الإحداثيات معروضة مباشرة
     console.log('📍 الإحداثيات المعروضة:', latitude.toFixed(6), longitude.toFixed(6));
     
-    // ✅ تحديث العنوان
     updateAddressFromCoordinates(latitude, longitude);
   }
   
@@ -1884,7 +1824,7 @@
     }
   }
   
-  // ===== تأكيد الموقع على الخريطة - الإصدار المصحح تماماً =====
+  // ===== تأكيد الموقع على الخريطة =====
   function confirmMapLocation() {
     if (!currentLatitude || !currentLongitude) {
       showError('يرجى تحديد موقعك أولاً');
@@ -1893,23 +1833,20 @@
     
     console.log('📍 تأكيد الموقع - الإحداثيات الحالية:', currentLatitude, currentLongitude);
     
-    // ✅ 1. تعبئة الحقول المخفية الأساسية
     document.getElementById('latitude').value = currentLatitude;
     document.getElementById('longitude').value = currentLongitude;
     document.getElementById('location-accuracy').value = currentAccuracy || '18';
     document.getElementById('location-confirmed').value = 'true';
     
-    // ✅ 2. إنشاء رابط خرائط Google
     const googleMapsLink = `https://www.google.com/maps?q=${currentLatitude},${currentLongitude}`;
     document.getElementById('maps-link').value = googleMapsLink;
     document.getElementById('google-maps-link').value = googleMapsLink;
     
     console.log('✅ رابط خرائط Google:', googleMapsLink);
     
-    // ✅ 3. نسخ العنوان تلقائياً إلى حقل العنوان
+    // ✅ الحصول على العنوان من العنصر الموجود
     const addressElement = document.getElementById('location-address');
     if (addressElement && addressElement.textContent) {
-      // استخراج العنوان النصي فقط
       let addressText = addressElement.textContent;
       if (addressText.includes('📍 العنوان:')) {
         addressText = addressText.replace('📍 العنوان:', '').trim();
@@ -1917,20 +1854,15 @@
         addressText = addressText.replace('📍 الموقع:', '').trim();
       }
       
-      // ✅ وضع رابط الخرائط في العمود G
-      const locationValue = `${addressText}\n${googleMapsLink}`;
+      // ✅ عدم نسخ العنوان تلقائياً إلى حقل العنوان الرئيسي
+      // ❌ تم إزالة هذا السطر: document.getElementById('customer-address').value = addressText;
       
-      // ✅ تحديث حقل العنوان بالنص ورابط الخرائط
-      document.getElementById('customer-address').value = addressText;
-      
-      console.log('✅ العنوان المنسوخ:', addressText);
-      console.log('✅ قيمة العمود G:', locationValue);
+      console.log('✅ العنوان المستخرج:', addressText);
     }
     
     locationConfirmed = true;
     hasLocation = true;
     
-    // ✅ 4. تحديث الخريطة بإضافة علامة التأكيد
     if (confirmedMarker) {
       map.removeLayer(confirmedMarker);
     }
@@ -1948,7 +1880,6 @@
       zIndexOffset: 2000
     }).addTo(map);
     
-    // ✅ 5. عرض حالة الموقع المؤكد مع رابط الخرائط
     const locationStatus = document.getElementById('location-status');
     locationStatus.style.display = 'block';
     locationStatus.innerHTML = `
@@ -1959,7 +1890,6 @@
           <div><strong>الدقة:</strong> ${currentAccuracy ? Math.round(currentAccuracy) + ' متر' : 'غير معروفة'}</div>
           <div><strong>رابط الخرائط:</strong> 
             <a href="${googleMapsLink}" target="_blank" style="color: #1976d2;">عرض على خرائط Google</a>
-            <br><small style="color: #666; font-size: 12px;">سيتم حفظ هذا الرابط في العمود G</small>
           </div>
           <button type="button" class="btn btn-warning" onclick="changeLocation()" style="padding: 6px 12px; font-size: 13px; margin-top: 8px;">
             تغيير الموقع
@@ -1973,7 +1903,6 @@
     
     showSuccess('✅ تم تأكيد موقعك بنجاح');
     
-    // ✅ 6. إظهار رسالة توضيحية للمستخدم
     setTimeout(() => {
       showInfo('سيتم حفظ الإحداثيات ورابط الخرائط مع باقي بياناتك عند الضغط على "حفظ المعلومات"');
     }, 1500);
@@ -2144,30 +2073,29 @@
     hideMessages();
   }
   
-  // ===== حفظ معلومات العميل - الإصدار المصحح تماماً =====
+  // ===== حفظ معلومات العميل - تم التحديث لمنع تعديل Location =====
   async function saveCustomerInfo() {
     hideMessages();
     
-    // ✅ جمع جميع القيم من الحقول
     const name = document.getElementById('customer-name').value.trim();
     const phone = document.getElementById('customer-phone').value.trim();
     const whatsapp = document.getElementById('customer-whatsapp').value.trim();
     const area = document.getElementById('customer-area').value.trim();
     const address = document.getElementById('customer-address').value.trim();
     
-    // ✅ الحصول على الإحداثيات
     const latitude = document.getElementById('latitude').value.trim();
     const longitude = document.getElementById('longitude').value.trim();
     const locationConfirmed = document.getElementById('location-confirmed').value === 'true';
     const googleMapsLink = document.getElementById('google-maps-link').value.trim();
+    const userTimezone = document.getElementById('user-timezone').value;
     
     console.log('📊 بيانات الموقع قبل الحفظ:');
     console.log('latitude:', latitude);
     console.log('longitude:', longitude);
     console.log('locationConfirmed:', locationConfirmed);
     console.log('googleMapsLink:', googleMapsLink);
+    console.log('userTimezone:', userTimezone);
     
-    // ✅ التحقق من البيانات الأساسية
     if (!name) {
       showError('الاسم مطلوب');
       return;
@@ -2205,7 +2133,6 @@
       return;
     }
     
-    // ✅ التحقق من الموقع للعملاء الجدد
     if (!customerExists && !locationConfirmed) {
       showError('يرجى تأكيد موقعك الجغرافي أولاً');
       return;
@@ -2224,7 +2151,6 @@
     saveText.textContent = 'جاري الحفظ...';
     
     try {
-      // ✅ إنشاء FormData مع جميع البيانات بما فيها الإحداثيات
       const formData = new FormData();
       formData.append('action', 'createOrUpdateCustomer');
       formData.append('phone', phone);
@@ -2232,21 +2158,33 @@
       formData.append('name', name);
       formData.append('area', area);
       formData.append('address', address);
+      formData.append('userTimezone', userTimezone);
       
-      // ✅ إضافة بيانات الموقع والإحداثيات
-      if (latitude && longitude) {
-        formData.append('latitude', latitude);
-        formData.append('longitude', longitude);
-        console.log('✅ إرسال الإحداثيات:', latitude, longitude);
-      }
-      
-      // ✅ إضافة رابط خرائط Google للعمود G
-      if (googleMapsLink) {
-        formData.append('location', googleMapsLink);
-        console.log('✅ إرسال رابط الخرائط للعمود G:', googleMapsLink);
+      // ✅ إرسال البيانات فقط إذا كان العميل جديداً أو قام بتأكيد الموقع يدوياً
+      if (customerExists) {
+        // للعملاء الموجودين: إرسال الإحداثيات فقط إذا تم تأكيد الموقع يدوياً
+        if (locationConfirmed && latitude && longitude) {
+          formData.append('latitude', latitude);
+          formData.append('longitude', longitude);
+          console.log('✅ إرسال إحداثيات موقع جديد للعميل الموجود');
+        }
+        // ❌ لا يتم إرسال رابط الخرائط إلا إذا تم تأكيد الموقع يدوياً
+        if (locationConfirmed && googleMapsLink) {
+          formData.append('location', googleMapsLink);
+          console.log('✅ إرسال رابط خرائط جديد للعميل الموجود');
+        }
       } else {
-        // إذا لم يكن هناك رابط خرائط، أرسل العنوان فقط
-        formData.append('location', address);
+        // للعملاء الجدد: إرسال جميع بيانات الموقع
+        if (latitude && longitude) {
+          formData.append('latitude', latitude);
+          formData.append('longitude', longitude);
+          console.log('✅ إرسال إحداثيات موقع للعميل الجديد');
+        }
+        
+        if (googleMapsLink) {
+          formData.append('location', googleMapsLink);
+          console.log('✅ إرسال رابط خرائط للعميل الجديد');
+        }
       }
       
       console.log('📤 إرسال البيانات إلى Apps Script...');
@@ -2272,7 +2210,6 @@
           customerExists = true;
         }
         
-        // ✅ تحديث بيانات العميل المحلية
         currentCustomer = {
           id: currentCustomerId,
           name: name,
@@ -2287,7 +2224,6 @@
         
         showSuccess('✅ تم حفظ المعلومات بنجاح');
         
-        // ✅ عرض تفاصيل الموقع المحفوظة
         setTimeout(() => {
           if (latitude && longitude) {
             showInfo(`تم حفظ موقعك: ${latitude}, ${longitude}`);
@@ -2297,10 +2233,8 @@
           }
         }, 500);
         
-        // ✅ الانتقال إلى الخطوة التالية
         setTimeout(() => {
           if (isEditingCustomer) {
-            // عرض بيانات العميل بعد التعديل
             displayCustomerData(currentCustomer);
             document.getElementById('customer-info-form').style.display = 'none';
             document.getElementById('customer-data-section').style.display = 'block';
@@ -2324,7 +2258,7 @@
     }
   }
   
-  // ===== تحديث الطلب الحالي =====
+  // ===== تحديث الطلب الحالي - تم التحديث =====
   async function updateExistingOrder() {
     hideMessages();
     
@@ -2358,7 +2292,6 @@
       
       console.log('✏️ Updating existing order:', existingOrderId);
       
-      // ✅ استخدام FormData
       const formData = new FormData();
       formData.append('action', 'submitOrder');
       formData.append('phone', currentCustomer.phone);
@@ -2370,19 +2303,29 @@
       if (currentRound) formData.append('round', currentRound);
       formData.append('replaceOrderId', existingOrderId);
       
-      // ✅ إضافة الإحداثيات
+      // ✅ إرسال توقيت المستخدم
+      const userTimezone = document.getElementById('user-timezone').value;
+      const userTimestamp = getUserLocalTimestamp();
+      formData.append('userTimezone', userTimezone);
+      formData.append('userTimestamp', userTimestamp);
+      
+      // ✅ إرسال البيانات فقط إذا كان هناك إحداثيات جديدة
       const latitude = document.getElementById('latitude').value || currentCustomer.latitude || '';
       const longitude = document.getElementById('longitude').value || currentCustomer.longitude || '';
+      const locationConfirmed = document.getElementById('location-confirmed').value === 'true';
       const googleMapsLink = document.getElementById('google-maps-link').value || '';
       
-      if (latitude && longitude) {
+      // ❌ لا يتم إرسال بيانات الموقع عند تعديل الطلب إلا إذا تم تأكيد الموقع يدوياً
+      if (locationConfirmed && latitude && longitude) {
         formData.append('latitude', latitude);
         formData.append('longitude', longitude);
-        console.log('✅ Sending coordinates for order update:', latitude, longitude);
+        console.log('✅ Sending new coordinates for order update');
       }
       
-      if (googleMapsLink) {
+      // ❌ لا يتم إرسال رابط الخرائط إلا إذا تم تأكيد الموقع يدوياً
+      if (locationConfirmed && googleMapsLink) {
         formData.append('location', googleMapsLink);
+        console.log('✅ Sending new location link for order update');
       }
       
       formData.append('note', 'تم تعديل الطلب السابق');
@@ -2436,7 +2379,7 @@
     }
   }
   
-  // ===== إرسال طلب جديد =====
+  // ===== إرسال طلب جديد - تم التحديث =====
   async function submitNewOrder() {
     hideMessages();
     
@@ -2456,24 +2399,21 @@
     const area = document.getElementById('customer-area').value.trim();
     const address = document.getElementById('customer-address').value.trim();
     
-    // ✅ الحصول على الإحداثيات من الحقول المخفية
     const latitude = document.getElementById('latitude').value.trim();
     const longitude = document.getElementById('longitude').value.trim();
     const googleMapsLink = document.getElementById('google-maps-link').value.trim();
+    const userTimezone = document.getElementById('user-timezone').value;
+    const userTimestamp = getUserLocalTimestamp();
     
     console.log('📊 Coordinates before submitting order:');
     console.log('latitude:', latitude);
     console.log('longitude:', longitude);
     console.log('googleMapsLink:', googleMapsLink);
+    console.log('userTimezone:', userTimezone);
+    console.log('userTimestamp:', userTimestamp);
     
     if (!name || !phone || !whatsapp || !area || !address) {
       alert('من فضلك أكمل معلومات العميل أولاً ثم اضغط على "حفظ المعلومات"');
-      return;
-    }
-    
-    // ✅ التحقق من الإحداثيات (فقط للعملاء الجدد)
-    if (!customerExists && (!latitude || !longitude)) {
-      alert('يرجى تحديد موقعك الجغرافي أولاً');
       return;
     }
     
@@ -2491,9 +2431,8 @@
     submitText.textContent = 'جاري الإرسال...';
     
     try {
-      console.log('📤 Submitting new order with coordinates:', latitude, longitude);
+      console.log('📤 Submitting new order');
       
-      // ✅ استخدام FormData
       const formData = new FormData();
       formData.append('action', 'submitOrder');
       formData.append('phone', phone);
@@ -2502,21 +2441,23 @@
       formData.append('area', area);
       formData.append('address', address);
       formData.append('orderText', orderText);
+      formData.append('userTimezone', userTimezone);
+      formData.append('userTimestamp', userTimestamp);
+      
       if (currentRound) formData.append('round', currentRound);
       
-      // ✅ إضافة الإحداثيات
-      if (latitude && longitude) {
-        formData.append('latitude', latitude);
-        formData.append('longitude', longitude);
-        console.log('✅ Coordinates added to FormData:', latitude, longitude);
-      }
-      
-      // ✅ إضافة رابط خرائط Google للعمود G
-      if (googleMapsLink) {
-        formData.append('location', googleMapsLink);
-        console.log('✅ Google Maps link added to FormData:', googleMapsLink);
-      } else {
-        formData.append('location', address);
+      // ❌ لا يتم إرسال بيانات الموقع إلا إذا كان العميل جديداً
+      if (!customerExists) {
+        if (latitude && longitude) {
+          formData.append('latitude', latitude);
+          formData.append('longitude', longitude);
+          console.log('✅ Coordinates added for new customer');
+        }
+        
+        if (googleMapsLink) {
+          formData.append('location', googleMapsLink);
+          console.log('✅ Google Maps link added for new customer');
+        }
       }
       
       if (hasPreviousActiveOrder) {
@@ -2550,6 +2491,7 @@
           ${result.orderId ? `<p><strong>رقم الطلب:</strong> ${result.orderId}</p>` : ''}
           ${result.customerId ? `<p><strong>رقم العميل:</strong> ${result.customerId}</p>` : ''}
           <p>📍 <strong>موقع التسليم:</strong> ${address}</p>
+          <p>🕒 <strong>وقت الطلب:</strong> ${userTimestamp}</p>
           ${latitude && longitude ? 
             `<p>📍 <strong>الإحداثيات:</strong> ${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</p>` : ''}
           ${googleMapsLink ? `<p>🗺️ <strong>رابط الخرائط:</strong> <a href="${googleMapsLink}" target="_blank">عرض الموقع</a></p>` : ''}
