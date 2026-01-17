@@ -309,6 +309,21 @@
     box-shadow: 0 6px 15px rgba(220, 53, 69, 0.25);
   }
   
+  .btn-edit-info {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    padding: 10px 20px;
+    font-size: 14px;
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .btn-edit-info:hover {
+    background: linear-gradient(135deg, #138496, #117a8b);
+    box-shadow: 0 6px 15px rgba(23, 162, 184, 0.25);
+  }
+  
   .error { 
     color: #dc3545; 
     margin-top: 5px; 
@@ -451,6 +466,43 @@
     box-shadow: 0 0 15px rgba(0,0,0,0.4);
   }
   
+  .customer-data-display {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 2px solid #e3f2fd;
+    position: relative;
+  }
+  
+  .customer-data-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #2e5cff;
+  }
+  
+  .customer-data-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+  }
+  
+  .data-item {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+  }
+  
+  .data-item strong {
+    color: #2e5cff;
+    display: block;
+    margin-bottom: 5px;
+  }
+  
   @media (max-width: 768px) {
     .container {
       padding: 20px;
@@ -477,6 +529,16 @@
     
     .order-info-grid {
       grid-template-columns: 1fr;
+    }
+    
+    .customer-data-content {
+      grid-template-columns: 1fr;
+    }
+    
+    .customer-data-header {
+      flex-direction: column;
+      gap: 10px;
+      text-align: center;
     }
   }
 </style>
@@ -521,14 +583,36 @@
     <h4>📦 لقد لاحظنا أن لديك طلب سابق</h4>
     <div id="previous-order-details"></div>
     <div class="order-type-buttons">
-      <button class="btn btn-success" onclick="viewPreviousOrder()" id="view-order-btn">
-        عرض الطلب
-      </button>
       <button class="btn btn-warning" onclick="editPreviousOrder()" id="edit-order-btn">
         تعديل الطلب الحالي
       </button>
+      <button class="btn btn-edit-info" onclick="editCustomerInfo()" id="edit-customer-info-btn">
+        <span>✏️</span> تعديل بياناتي
+      </button>
       <button class="btn" onclick="createNewOrderAnyway()" id="new-order-anyway-btn">
         طلب جديد مرة أخرى
+      </button>
+    </div>
+  </div>
+
+  <!-- Customer Data Display Section -->
+  <div id="customer-data-section" class="section" style="display: none;">
+    <div class="customer-data-display">
+      <div class="customer-data-header">
+        <h3>👤 بيانات العميل</h3>
+        <button class="btn btn-edit-info" onclick="editCustomerInfo()">
+          <span>✏️</span> تعديل البيانات
+        </button>
+      </div>
+      
+      <div id="customer-data-details" class="customer-data-content">
+        <!-- سيتم ملء البيانات هنا تلقائياً -->
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 20px;">
+      <button class="btn btn-success" onclick="startNewOrder()" id="start-new-order-btn">
+        بدء طلب جديد
       </button>
     </div>
   </div>
@@ -538,7 +622,7 @@
     <h3 class="section-title">عرض الطلب السابق</h3>
     <div id="view-order-details" class="previous-orders"></div>
     <div style="text-align: center; margin-top: 20px;">
-      <button class="btn btn-secondary" onclick="goBackToMain()">العودة للصفحة الرئيسية</button>
+      <button class="btn btn-secondary" onclick="goBackToMain()">العودة</button>
     </div>
   </div>
 
@@ -566,20 +650,6 @@
         <span id="update-order-loading" class="loading" style="display: none;"></span>
       </button>
       <button class="btn btn-secondary" onclick="goBackToMain()">إلغاء والعودة</button>
-    </div>
-  </div>
-
-  <!-- Customer Actions (for new customers or when no previous order) -->
-  <div id="customer-actions-section" class="section" style="display: none;">
-    <h2 class="section-title">مرحباً <span id="customer-name-display"></span></h2>
-    
-    <div class="customer-actions">
-      <button class="btn btn-warning" onclick="editCustomerInfo()" id="edit-customer-btn">
-        تعديل بياناتي
-      </button>
-      <button class="type-btn" onclick="selectOrderType('new')" id="new-order-btn">
-        طلب جديد
-      </button>
     </div>
   </div>
 
@@ -783,7 +853,7 @@
   
   // ===== تهيئة عند تحميل الصفحة =====
   document.addEventListener('DOMContentLoaded', function() {
-    console.log('✅ HomiCart System Initialized - Fixed Location Version');
+    console.log('✅ HomiCart System Initialized - Updated Version');
     checkOrderStatus();
     document.getElementById('mobile-number').focus();
   });
@@ -872,7 +942,7 @@
     hideMessages();
     
     document.getElementById('previous-order-alert').style.display = 'none';
-    document.getElementById('customer-actions-section').style.display = 'none';
+    document.getElementById('customer-data-section').style.display = 'none';
     document.getElementById('customer-info-form').style.display = 'none';
     document.getElementById('view-order-section').style.display = 'none';
     document.getElementById('edit-order-section').style.display = 'none';
@@ -978,24 +1048,21 @@
                   hasPreviousActiveOrder = false;
                   previousOrderData = null;
                   
-                  document.getElementById('customer-name-display').textContent = customerData.customer.name;
-                  document.getElementById('customer-actions-section').style.display = 'block';
+                  displayCustomerData(customerData.customer);
                   successElement.textContent = `✅ مرحباً ${customerData.customer.name}`;
                 }
               } else {
                 hasPreviousActiveOrder = false;
                 previousOrderData = null;
                 
-                document.getElementById('customer-name-display').textContent = customerData.customer.name;
-                document.getElementById('customer-actions-section').style.display = 'block';
+                displayCustomerData(customerData.customer);
                 successElement.textContent = `✅ مرحباً ${customerData.customer.name}`;
               }
             } else {
               hasPreviousActiveOrder = false;
               previousOrderData = null;
               
-              document.getElementById('customer-name-display').textContent = customerData.customer.name;
-              document.getElementById('customer-actions-section').style.display = 'block';
+              displayCustomerData(customerData.customer);
               successElement.textContent = `✅ مرحباً ${customerData.customer.name}`;
             }
           } catch (orderError) {
@@ -1003,8 +1070,7 @@
             hasPreviousActiveOrder = false;
             previousOrderData = null;
             
-            document.getElementById('customer-name-display').textContent = customerData.customer.name;
-            document.getElementById('customer-actions-section').style.display = 'block';
+            displayCustomerData(customerData.customer);
             successElement.textContent = `✅ مرحباً ${customerData.customer.name}`;
           }
           
@@ -1026,7 +1092,7 @@
         
         successElement.textContent = '🆕 رقم جديد - سيتم إنشاء حساب جديد';
         
-        document.getElementById('customer-actions-section').style.display = 'none';
+        document.getElementById('customer-data-section').style.display = 'none';
         document.getElementById('customer-info-form').style.display = 'block';
         document.getElementById('customer-form-title').textContent = 'معلومات العميل الجديد';
         document.getElementById('cancel-btn').style.display = 'none';
@@ -1049,11 +1115,113 @@
     }
   }
   
-  // ===== تنسيق تاريخ =====
+  // ===== عرض بيانات العميل =====
+  function displayCustomerData(customer) {
+    const customerDataSection = document.getElementById('customer-data-section');
+    const customerDataDetails = document.getElementById('customer-data-details');
+    
+    if (!customerDataSection || !customerDataDetails) return;
+    
+    customerDataDetails.innerHTML = `
+      <div class="data-item">
+        <strong>👤 الاسم:</strong>
+        <span>${customer.name || 'غير محدد'}</span>
+      </div>
+      <div class="data-item">
+        <strong>📱 رقم الموبايل:</strong>
+        <span>${customer.phone || 'غير محدد'}</span>
+      </div>
+      <div class="data-item">
+        <strong>💬 رقم الواتساب:</strong>
+        <span>${customer.whatsapp || customer.phone || 'غير محدد'}</span>
+      </div>
+      <div class="data-item">
+        <strong>📍 المنطقة:</strong>
+        <span>${customer.area || 'غير محدد'}</span>
+      </div>
+      <div class="data-item">
+        <strong>🏠 العنوان:</strong>
+        <span>${customer.address || 'غير محدد'}</span>
+      </div>
+      ${customer.latitude && customer.longitude ? `
+      <div class="data-item">
+        <strong>📍 الموقع:</strong>
+        <span>${parseFloat(customer.latitude).toFixed(6)}, ${parseFloat(customer.longitude).toFixed(6)}</span>
+        ${customer.mapsLink ? `<br><a href="${customer.mapsLink}" target="_blank" style="color: #2e5cff; font-size: 14px;">عرض على الخريطة</a>` : ''}
+      </div>
+      ` : ''}
+    `;
+    
+    customerDataSection.style.display = 'block';
+  }
+  
+  // ===== بدء طلب جديد =====
+  function startNewOrder() {
+    if (currentOrderStatus.toLowerCase() !== 'active') {
+      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
+      return;
+    }
+    
+    if (!isAccountActive && customerExists) {
+      alert('حسابك غير نشط. يرجى التواصل مع الإدارة لتفعيل الحساب.');
+      return;
+    }
+    
+    selectedOrderType = 'new';
+    isEditingCustomer = false;
+    
+    document.getElementById('customer-data-section').style.display = 'none';
+    
+    if (customerExists && hasPreviousActiveOrder) {
+      document.getElementById('duplicate-order-warning').style.display = 'block';
+    }
+    
+    document.getElementById('new-order-section').style.display = 'block';
+    document.getElementById('new-order-text').value = '';
+    
+    hideMessages();
+  }
+  
+  // ===== تنسيق تاريخ (ميلادي) =====
   function formatDateString(dateString) {
     if (!dateString) return 'غير معروف';
     
     try {
+      // إذا كان التاريخ بالفعل كائن Date
+      if (dateString instanceof Date) {
+        const date = dateString;
+        
+        const optionsDate = { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric'
+        };
+        
+        const optionsTime = {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        };
+        
+        const formattedDate = date.toLocaleDateString('ar-SA', optionsDate);
+        const formattedTime = date.toLocaleTimeString('ar-SA', optionsTime);
+        
+        // تحويل إلى ميلادي
+        const gregorianDate = date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        
+        return {
+          date: gregorianDate, // تاريخ ميلادي
+          time: formattedTime
+        };
+      }
+      
+      // إذا كان نصاً
       const cleanDateString = dateString.replace('Z', '').replace('T', ' ');
       const date = new Date(cleanDateString);
       
@@ -1065,24 +1233,29 @@
         weekday: 'long', 
         year: 'numeric', 
         month: 'long', 
-        day: 'numeric',
-        timeZone: 'Asia/Riyadh'
+        day: 'numeric'
       };
       
       const optionsTime = {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        timeZone: 'Asia/Riyadh',
         hour12: false
       };
       
-      const arabicDate = date.toLocaleDateString('ar-SA', optionsDate);
-      const arabicTime = date.toLocaleTimeString('ar-SA', optionsTime);
+      const formattedDate = date.toLocaleDateString('ar-SA', optionsDate);
+      const formattedTime = date.toLocaleTimeString('ar-SA', optionsTime);
+      
+      // تحويل إلى ميلادي
+      const gregorianDate = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
       
       return {
-        date: arabicDate,
-        time: arabicTime
+        date: gregorianDate, // تاريخ ميلادي
+        time: formattedTime
       };
       
     } catch (error) {
@@ -1156,7 +1329,7 @@
     if (!previousOrderData) return;
     
     document.getElementById('previous-order-alert').style.display = 'none';
-    document.getElementById('customer-actions-section').style.display = 'none';
+    document.getElementById('customer-data-section').style.display = 'none';
     document.getElementById('customer-info-form').style.display = 'none';
     document.getElementById('edit-order-section').style.display = 'none';
     document.getElementById('new-order-section').style.display = 'none';
@@ -1236,7 +1409,7 @@
     if (!previousOrderData) return;
     
     document.getElementById('previous-order-alert').style.display = 'none';
-    document.getElementById('customer-actions-section').style.display = 'none';
+    document.getElementById('customer-data-section').style.display = 'none';
     document.getElementById('customer-info-form').style.display = 'none';
     document.getElementById('view-order-section').style.display = 'none';
     document.getElementById('new-order-section').style.display = 'none';
@@ -1310,7 +1483,7 @@
   // ===== إنشاء طلب جديد رغم وجود طلب سابق =====
   function createNewOrderAnyway() {
     document.getElementById('previous-order-alert').style.display = 'none';
-    document.getElementById('customer-actions-section').style.display = 'none';
+    document.getElementById('customer-data-section').style.display = 'none';
     document.getElementById('edit-order-section').style.display = 'none';
     document.getElementById('view-order-section').style.display = 'none';
     
@@ -1351,7 +1524,7 @@
     selectedOrderType = type;
     isEditingCustomer = false;
     
-    document.getElementById('customer-actions-section').style.display = 'none';
+    document.getElementById('customer-data-section').style.display = 'none';
     
     document.getElementById('customer-info-form').style.display = 'block';
     document.getElementById('customer-form-title').textContent = 'معلومات العميل';
@@ -1380,7 +1553,7 @@
     if (hasPreviousActiveOrder && previousOrderData) {
       document.getElementById('previous-order-alert').style.display = 'block';
     } else if (customerExists && currentCustomer && isAccountActive) {
-      document.getElementById('customer-actions-section').style.display = 'block';
+      document.getElementById('customer-data-section').style.display = 'block';
     }
     
     hideMessages();
@@ -1943,7 +2116,8 @@
     
     isEditingCustomer = true;
     
-    document.getElementById('customer-actions-section').style.display = 'none';
+    document.getElementById('previous-order-alert').style.display = 'none';
+    document.getElementById('customer-data-section').style.display = 'none';
     
     document.getElementById('customer-info-form').style.display = 'block';
     document.getElementById('customer-form-title').textContent = 'تعديل بياناتي';
@@ -1964,7 +2138,7 @@
     if (hasPreviousActiveOrder && previousOrderData) {
       document.getElementById('previous-order-alert').style.display = 'block';
     } else if (customerExists && currentCustomer) {
-      document.getElementById('customer-actions-section').style.display = 'block';
+      document.getElementById('customer-data-section').style.display = 'block';
     }
     
     hideMessages();
@@ -2126,7 +2300,10 @@
         // ✅ الانتقال إلى الخطوة التالية
         setTimeout(() => {
           if (isEditingCustomer) {
-            cancelEdit();
+            // عرض بيانات العميل بعد التعديل
+            displayCustomerData(currentCustomer);
+            document.getElementById('customer-info-form').style.display = 'none';
+            document.getElementById('customer-data-section').style.display = 'block';
           } else {
             document.getElementById('customer-info-form').style.display = 'none';
             document.getElementById('new-order-section').style.display = 'block';
@@ -2543,7 +2720,7 @@
     });
     
     document.getElementById('previous-order-alert').style.display = 'none';
-    document.getElementById('customer-actions-section').style.display = 'none';
+    document.getElementById('customer-data-section').style.display = 'none';
     document.getElementById('customer-info-form').style.display = 'none';
     document.getElementById('view-order-section').style.display = 'none';
     document.getElementById('edit-order-section').style.display = 'none';
