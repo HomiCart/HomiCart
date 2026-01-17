@@ -194,14 +194,6 @@
     margin: 15px 0;
     border: 1px solid #ddd;
     display: none;
-    position: relative;
-    z-index: 1;
-  }
-  
-  #map {
-    height: 100%;
-    width: 100%;
-    border-radius: 8px;
   }
   
   .map-controls {
@@ -421,34 +413,6 @@
     padding: 10px;
     border-radius: 6px;
     border: 1px solid #ffcc80;
-  }
-  
-  .location-marker {
-    background: #2e5cff;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    border: 3px solid white;
-    box-shadow: 0 0 10px rgba(0,0,0,0.3);
-  }
-  
-  .confirmed-marker {
-    background: #28a745;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    border: 3px solid white;
-    box-shadow: 0 0 15px rgba(0,0,0,0.4);
   }
   
   @media (max-width: 768px) {
@@ -696,13 +660,11 @@
         <div id="confirmed-location-info"></div>
       </div>
       
-      <!-- ✅ الحقول المخفية لتخزين الإحداثيات -->
-      <input type="hidden" id="latitude" name="latitude">
-      <input type="hidden" id="longitude" name="longitude">
-      <input type="hidden" id="location-accuracy" name="location-accuracy">
-      <input type="hidden" id="location-confirmed" name="location-confirmed" value="false">
-      <input type="hidden" id="maps-link" name="maps-link">
-      <input type="hidden" id="google-maps-link" name="google-maps-link">
+      <!-- Hidden fields -->
+      <input type="hidden" id="customer-latitude">
+      <input type="hidden" id="customer-longitude">
+      <input type="hidden" id="location-accuracy">
+      <input type="hidden" id="location-confirmed" value="false">
     </div>
     
     <div style="text-align: center;">
@@ -783,62 +745,49 @@
   
   // ===== تهيئة عند تحميل الصفحة =====
   document.addEventListener('DOMContentLoaded', function() {
-    console.log('✅ HomiCart System Initialized - Fixed Location Version');
+    console.log('✅ HomiCart System Initialized - Enhanced Location System');
     checkOrderStatus();
     document.getElementById('mobile-number').focus();
   });
   
   // ===== تهيئة الخريطة =====
-  function initializeMap(latitude = 24.4539, longitude = 54.3773) {
+  function initializeMap(latitude = 24.4539, longitude = 54.3773) { // أبوظبي كمركز افتراضي
     const mapContainer = document.getElementById('map-container');
-    const mapElement = document.getElementById('map');
+    if (!mapContainer) return;
     
-    if (!mapContainer || !mapElement) {
-      console.error('❌ Map container or element not found');
-      return;
-    }
-    
+    // إذا كانت الخريطة مهيأة بالفعل، لا تقم بإعادة التهيئة
     if (map) {
-      console.log('🗺️ Map already initialized');
-      return;
+      map.remove();
     }
     
-    try {
-      map = L.map('map', {
-        attributionControl: false
-      });
-      
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19
-      }).addTo(map);
-      
-      map.setView([latitude, longitude], 15);
-      mapInitialized = true;
-      
-      console.log('🗺️ Map initialized successfully with center:', latitude, longitude);
-      
-      L.control.attribution({
-        position: 'bottomright',
-        prefix: '© OpenStreetMap'
-      }).addTo(map);
-      
-    } catch (error) {
-      console.error('❌ Error initializing map:', error);
-      mapInitialized = false;
-    }
+    // إنشاء الخريطة
+    map = L.map('map');
+    
+    // إضافة طبقة الخريطة من OpenStreetMap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+    
+    // تعيين مركز افتراضي (أبوظبي)
+    map.setView([latitude, longitude], 13);
+    mapInitialized = true;
+    
+    console.log('🗺️ Map initialized with center:', latitude, longitude);
   }
   
   // ===== تنسيق رقم الهاتف =====
   function formatMobileNumber(input) {
     let value = input.value.replace(/\D/g, '');
     
+    // الحد الأقصى 10 أرقام فقط
     if (value.length > 10) {
       value = value.substring(0, 10);
     }
     
     input.value = value;
     
+    // عرض رسالة تلميح إذا لم يبدأ بـ 05
     const errorElement = document.getElementById('mobile-error');
     if (value.length > 0 && !value.startsWith('05') && value.length >= 2) {
       errorElement.textContent = 'الرقم يجب أن يبدأ بـ 05';
@@ -866,11 +815,13 @@
     const successElement = document.getElementById('mobile-success');
     const warningElement = document.getElementById('mobile-warning');
     
+    // إعادة تعيين الرسائل
     errorElement.textContent = '';
     successElement.textContent = '';
     warningElement.style.display = 'none';
     hideMessages();
     
+    // إخفاء جميع الأقسام
     document.getElementById('previous-order-alert').style.display = 'none';
     document.getElementById('customer-actions-section').style.display = 'none';
     document.getElementById('customer-info-form').style.display = 'none';
@@ -878,29 +829,32 @@
     document.getElementById('edit-order-section').style.display = 'none';
     document.getElementById('new-order-section').style.display = 'none';
     
+    // التحقق الأساسي
     if (!mobileNumber) {
       errorElement.textContent = 'رقم الهاتف مطلوب';
       return false;
     }
     
+    // التحقق من الصيغة الصحيحة
     const mobileRegex = /^05\d{8}$/;
     if (!mobileRegex.test(mobileNumber)) {
       errorElement.textContent = 'رقم الهاتف يجب أن يبدأ بـ 05 ويحتوي على 10 أرقام';
       return false;
     }
     
+    // عرض جاري التحميل
     successElement.textContent = 'جاري التحقق من قاعدة البيانات...';
     
     try {
       console.log('🔍 Checking customer for phone:', mobileNumber);
       
+      // 1. البحث عن العميل أولاً
       const customerUrl = `${SCRIPT_URL}?action=getCustomer&phone=${encodeURIComponent(mobileNumber)}&_=${Date.now()}`;
       console.log('Customer Fetch URL:', customerUrl);
       
       const customerResponse = await fetch(customerUrl, {
         method: 'GET',
-        cache: 'no-cache',
-        mode: 'cors'
+        cache: 'no-cache'
       });
       
       console.log('Customer response status:', customerResponse.status);
@@ -913,6 +867,7 @@
       console.log('📋 Customer response:', customerData);
       
       if (customerData.success && customerData.customer) {
+        // ✅ العميل موجود
         currentCustomer = customerData.customer;
         currentCustomerId = customerData.customer.id;
         currentCustomerPhone = mobileNumber;
@@ -922,10 +877,7 @@
         console.log('✅ Customer found:', customerData.customer);
         console.log('📍 Has location:', hasLocation);
         
-        if (customerData.customer.timestamp) {
-          customerData.customer.formattedDate = formatDateString(customerData.customer.timestamp);
-        }
-        
+        // التحقق من حالة الحساب
         if (customerData.customer.accountStatus === 'Inactive' || customerData.customer.isActive === false) {
           isAccountActive = false;
           warningElement.innerHTML = `
@@ -937,16 +889,17 @@
           successElement.textContent = 'حساب غير نشط';
           
         } else {
+          // الحساب نشط
           isAccountActive = true;
           
+          // 2. البحث عن طلبات العميل
           try {
             const ordersUrl = `${SCRIPT_URL}?action=getOrderByCustomer&customerId=${encodeURIComponent(currentCustomerId)}&_=${Date.now()}`;
             console.log('Orders Fetch URL:', ordersUrl);
             
             const ordersResponse = await fetch(ordersUrl, {
               method: 'GET',
-              cache: 'no-cache',
-              mode: 'cors'
+              cache: 'no-cache'
             });
             
             if (ordersResponse.ok) {
@@ -954,35 +907,31 @@
               console.log('📋 Orders response:', ordersData);
               
               if (ordersData.success && ordersData.order) {
-                if (ordersData.order.timestamp) {
-                  ordersData.order.formattedDate = formatDateString(ordersData.order.timestamp);
-                }
-                if (ordersData.order.date) {
-                  ordersData.order.formattedDate = formatDateString(ordersData.order.date);
-                }
-                
+                // التحقق إذا كان الطلب نشط (غير مسلم/ملغى)
                 const orderStatus = ordersData.order.status || '';
-                const activeStatuses = ['جديد', 'New', 'Processing', 'Preparing', 'Ready', 'On the way', 'Pending', 'قيد المعالجة'];
-                const inactiveStatuses = ['مسلم', 'ملغى', 'Delivered', 'Cancelled', 'Rejected'];
+                const activeStatuses = ['New', 'Processing', 'Preparing', 'Ready', 'On the way', 'Pending'];
+                const inactiveStatuses = ['Delivered', 'Cancelled', 'Rejected'];
                 
-                const isActive = activeStatuses.includes(orderStatus) || 
-                                (!inactiveStatuses.includes(orderStatus) && orderStatus !== '');
-                
-                if (isActive) {
+                if (activeStatuses.includes(orderStatus) || !inactiveStatuses.includes(orderStatus)) {
+                  // طلب نشط موجود
                   hasPreviousActiveOrder = true;
                   previousOrderData = ordersData.order;
                   
+                  // عرض قسم تحذير الطلب السابق
                   showPreviousOrderAlert(ordersData.order, customerData.customer.name);
                   successElement.textContent = `✅ مرحباً ${customerData.customer.name} - لديك طلب نشط`;
                 } else {
+                  // طلب غير نشط
                   hasPreviousActiveOrder = false;
                   previousOrderData = null;
                   
+                  // عرض القسم العادي
                   document.getElementById('customer-name-display').textContent = customerData.customer.name;
                   document.getElementById('customer-actions-section').style.display = 'block';
                   successElement.textContent = `✅ مرحباً ${customerData.customer.name}`;
                 }
               } else {
+                // لا يوجد طلبات
                 hasPreviousActiveOrder = false;
                 previousOrderData = null;
                 
@@ -991,6 +940,7 @@
                 successElement.textContent = `✅ مرحباً ${customerData.customer.name}`;
               }
             } else {
+              // خطأ في جلب الطلبات، عرض القسم العادي
               hasPreviousActiveOrder = false;
               previousOrderData = null;
               
@@ -1000,6 +950,7 @@
             }
           } catch (orderError) {
             console.error('❌ Error fetching orders:', orderError);
+            // في حالة خطأ، نعاملها كأنه لا يوجد طلبات
             hasPreviousActiveOrder = false;
             previousOrderData = null;
             
@@ -1008,10 +959,12 @@
             successElement.textContent = `✅ مرحباً ${customerData.customer.name}`;
           }
           
+          // تعبئة بيانات العميل في الخلفية
           fillCustomerForm(customerData.customer);
         }
         
       } else {
+        // 🆕 عميل جديد
         currentCustomer = null;
         currentCustomerId = '';
         currentCustomerPhone = mobileNumber;
@@ -1026,17 +979,20 @@
         
         successElement.textContent = '🆕 رقم جديد - سيتم إنشاء حساب جديد';
         
+        // عرض نموذج العميل مباشرة للعميل الجديد
         document.getElementById('customer-actions-section').style.display = 'none';
         document.getElementById('customer-info-form').style.display = 'block';
         document.getElementById('customer-form-title').textContent = 'معلومات العميل الجديد';
         document.getElementById('cancel-btn').style.display = 'none';
         
+        // تعبئة رقم الهاتف فقط
         document.getElementById('customer-phone').value = mobileNumber;
         document.getElementById('customer-whatsapp').value = mobileNumber;
         document.getElementById('customer-name').value = '';
         document.getElementById('customer-area').value = '';
         document.getElementById('customer-address').value = '';
         
+        // إعادة تعيين الموقع
         resetLocation();
       }
       
@@ -1049,81 +1005,27 @@
     }
   }
   
-  // ===== تنسيق تاريخ =====
-  function formatDateString(dateString) {
-    if (!dateString) return 'غير معروف';
-    
-    try {
-      const cleanDateString = dateString.replace('Z', '').replace('T', ' ');
-      const date = new Date(cleanDateString);
-      
-      if (isNaN(date.getTime())) {
-        return 'غير معروف';
-      }
-      
-      const optionsDate = { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        timeZone: 'Asia/Riyadh'
-      };
-      
-      const optionsTime = {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZone: 'Asia/Riyadh',
-        hour12: false
-      };
-      
-      const arabicDate = date.toLocaleDateString('ar-SA', optionsDate);
-      const arabicTime = date.toLocaleTimeString('ar-SA', optionsTime);
-      
-      return {
-        date: arabicDate,
-        time: arabicTime
-      };
-      
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return 'غير معروف';
-    }
-  }
-  
   // ===== عرض تحذير الطلب السابق =====
   function showPreviousOrderAlert(order, customerName) {
     const alertSection = document.getElementById('previous-order-alert');
     const orderDetails = document.getElementById('previous-order-details');
     
-    let dateDisplay = 'غير معروف';
-    let timeDisplay = '';
-    
-    if (order.formattedDate) {
-      dateDisplay = order.formattedDate.date;
-      timeDisplay = order.formattedDate.time;
-    } else if (order.date) {
-      const formatted = formatDateString(order.date);
-      dateDisplay = formatted.date;
-      timeDisplay = formatted.time;
-    } else if (order.timestamp) {
-      const formatted = formatDateString(order.timestamp);
-      dateDisplay = formatted.date;
-      timeDisplay = formatted.time;
-    }
-    
+    // تنسيق التاريخ والوقت
+    const orderDate = order.date || order.timestamp || 'غير معروف';
+    const orderTime = order.time || '';
     const orderStatus = order.status || 'قيد المعالجة';
     
-    let statusColor = '#ff9800';
-    if (orderStatus === 'مسلم' || orderStatus === 'Delivered') statusColor = '#4CAF50';
-    if (orderStatus === 'ملغى' || orderStatus === 'Cancelled') statusColor = '#f44336';
-    if (orderStatus === 'Processing' || orderStatus === 'قيد المعالجة') statusColor = '#2196F3';
+    // تحديد لون الحالة
+    let statusColor = '#ff9800'; // برتقالي افتراضي
+    if (orderStatus === 'Delivered') statusColor = '#4CAF50';
+    if (orderStatus === 'Cancelled') statusColor = '#f44336';
+    if (orderStatus === 'Processing') statusColor = '#2196F3';
     
     orderDetails.innerHTML = `
       <div class="order-info-grid">
         <div class="order-info-item">
-          <strong>📅 التاريخ:</strong> ${dateDisplay}
-          ${timeDisplay ? `<br><strong>⏰ الوقت:</strong> ${timeDisplay}` : ''}
+          <strong>📅 التاريخ:</strong> ${orderDate}
+          ${orderTime ? `<br><strong>⏰ الوقت:</strong> ${orderTime}` : ''}
         </div>
         <div class="order-info-item">
           <strong>📦 حالة الطلب:</strong> <span style="color: ${statusColor}">${orderStatus}</span>
@@ -1155,47 +1057,33 @@
   function viewPreviousOrder() {
     if (!previousOrderData) return;
     
+    // إخفاء جميع الأقسام الأخرى
     document.getElementById('previous-order-alert').style.display = 'none';
     document.getElementById('customer-actions-section').style.display = 'none';
     document.getElementById('customer-info-form').style.display = 'none';
     document.getElementById('edit-order-section').style.display = 'none';
     document.getElementById('new-order-section').style.display = 'none';
     
+    // عرض قسم عرض الطلب
     const viewSection = document.getElementById('view-order-section');
     const viewDetails = document.getElementById('view-order-details');
     
-    let dateDisplay = 'غير معروف';
-    let timeDisplay = '';
-    
-    if (previousOrderData.formattedDate) {
-      dateDisplay = previousOrderData.formattedDate.date;
-      timeDisplay = previousOrderData.formattedDate.time;
-    } else if (previousOrderData.date) {
-      const formatted = formatDateString(previousOrderData.date);
-      dateDisplay = formatted.date;
-      timeDisplay = formatted.time;
-    } else if (previousOrderData.timestamp) {
-      const formatted = formatDateString(previousOrderData.timestamp);
-      dateDisplay = formatted.date;
-      timeDisplay = formatted.time;
-    }
-    
+    // تحديد لون الحالة
     const orderStatus = previousOrderData.status || 'قيد المعالجة';
-    
     let statusColor = '#ff9800';
-    if (orderStatus === 'مسلم' || orderStatus === 'Delivered') statusColor = '#4CAF50';
-    if (orderStatus === 'ملغى' || orderStatus === 'Cancelled') statusColor = '#f44336';
-    if (orderStatus === 'Processing' || orderStatus === 'قيد المعالجة') statusColor = '#2196F3';
+    if (orderStatus === 'Delivered') statusColor = '#4CAF50';
+    if (orderStatus === 'Cancelled') statusColor = '#f44336';
+    if (orderStatus === 'Processing') statusColor = '#2196F3';
     
     viewDetails.innerHTML = `
       <div class="order-item">
         <h4>تفاصيل الطلب السابق</h4>
         <div class="order-info-grid">
           <div class="order-info-item">
-            <strong>📅 التاريخ:</strong> ${dateDisplay}
+            <strong>📅 التاريخ:</strong> ${previousOrderData.date || previousOrderData.timestamp || 'غير معروف'}
           </div>
           <div class="order-info-item">
-            <strong>⏰ الوقت:</strong> ${timeDisplay || 'غير محدد'}
+            <strong>⏰ الوقت:</strong> ${previousOrderData.time || 'غير محدد'}
           </div>
           <div class="order-info-item">
             <strong>📦 رقم الطلب:</strong> ${previousOrderData.id || 'غير معروف'}
@@ -1235,46 +1123,32 @@
   function editPreviousOrder() {
     if (!previousOrderData) return;
     
+    // إخفاء جميع الأقسام الأخرى
     document.getElementById('previous-order-alert').style.display = 'none';
     document.getElementById('customer-actions-section').style.display = 'none';
     document.getElementById('customer-info-form').style.display = 'none';
     document.getElementById('view-order-section').style.display = 'none';
     document.getElementById('new-order-section').style.display = 'none';
     
+    // عرض قسم تعديل الطلب
     const editSection = document.getElementById('edit-order-section');
     const currentDetails = document.getElementById('current-order-details');
     
-    let dateDisplay = 'غير معروف';
-    let timeDisplay = '';
-    
-    if (previousOrderData.formattedDate) {
-      dateDisplay = previousOrderData.formattedDate.date;
-      timeDisplay = previousOrderData.formattedDate.time;
-    } else if (previousOrderData.date) {
-      const formatted = formatDateString(previousOrderData.date);
-      dateDisplay = formatted.date;
-      timeDisplay = formatted.time;
-    } else if (previousOrderData.timestamp) {
-      const formatted = formatDateString(previousOrderData.timestamp);
-      dateDisplay = formatted.date;
-      timeDisplay = formatted.time;
-    }
-    
+    // تحديد لون الحالة
     const orderStatus = previousOrderData.status || 'قيد المعالجة';
-    
     let statusColor = '#ff9800';
-    if (orderStatus === 'مسلم' || orderStatus === 'Delivered') statusColor = '#4CAF50';
-    if (orderStatus === 'ملغى' || orderStatus === 'Cancelled') statusColor = '#f44336';
-    if (orderStatus === 'Processing' || orderStatus === 'قيد المعالجة') statusColor = '#2196F3';
+    if (orderStatus === 'Delivered') statusColor = '#4CAF50';
+    if (orderStatus === 'Cancelled') statusColor = '#f44336';
+    if (orderStatus === 'Processing') statusColor = '#2196F3';
     
     currentDetails.innerHTML = `
       <div class="order-item">
         <div class="order-info-grid">
           <div class="order-info-item">
-            <strong>📅 التاريخ:</strong> ${dateDisplay}
+            <strong>📅 التاريخ:</strong> ${previousOrderData.date || previousOrderData.timestamp || 'غير معروف'}
           </div>
           <div class="order-info-item">
-            <strong>⏰ الوقت:</strong> ${timeDisplay || 'غير محدد'}
+            <strong>⏰ الوقت:</strong> ${previousOrderData.time || 'غير محدد'}
           </div>
           <div class="order-info-item">
             <strong>📦 رقم الطلب:</strong> ${previousOrderData.id || 'غير معروف'}
@@ -1295,6 +1169,7 @@
       </p>
     `;
     
+    // تعبئة نص الطلب في حقل التعديل
     if (previousOrderData.items) {
       document.getElementById('edit-order-text').value = previousOrderData.items;
     } else {
@@ -1309,34 +1184,40 @@
   
   // ===== إنشاء طلب جديد رغم وجود طلب سابق =====
   function createNewOrderAnyway() {
+    // إخفاء جميع الأقسام
     document.getElementById('previous-order-alert').style.display = 'none';
     document.getElementById('customer-actions-section').style.display = 'none';
     document.getElementById('edit-order-section').style.display = 'none';
     document.getElementById('view-order-section').style.display = 'none';
     
+    // إظهار تحذير الطلب المكرر
     document.getElementById('duplicate-order-warning').style.display = 'block';
     
+    // تعبئة بيانات العميل إذا كان موجوداً
     if (currentCustomer) {
       document.getElementById('customer-info-form').style.display = 'block';
       document.getElementById('customer-form-title').textContent = 'تأكيد المعلومات';
       document.getElementById('cancel-btn').style.display = 'inline-block';
       fillCustomerForm(currentCustomer);
       
+      // إخفاء قسم الموقع إذا كان موجوداً بالفعل
       if (hasLocation && locationConfirmed) {
         document.getElementById('location-group').style.display = 'none';
       }
     } else {
+      // إذا كان عميل جديد (غير متوقع في هذه الحالة)
       document.getElementById('customer-info-form').style.display = 'block';
       document.getElementById('customer-form-title').textContent = 'معلومات العميل';
       document.getElementById('cancel-btn').style.display = 'inline-block';
     }
     
+    // إظهار قسم الطلب الجديد
     document.getElementById('new-order-section').style.display = 'block';
     document.getElementById('new-order-text').value = '';
     hideMessages();
   }
   
-  // ===== اختيار نوع الطلب =====
+  // ===== اختيار نوع الطلب (للعملاء الجدد أو بدون طلبات سابقة) =====
   function selectOrderType(type) {
     if (currentOrderStatus.toLowerCase() !== 'active') {
       alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
@@ -1351,17 +1232,22 @@
     selectedOrderType = type;
     isEditingCustomer = false;
     
+    // إخفاء قسم الإجراءات
     document.getElementById('customer-actions-section').style.display = 'none';
     
+    // عرض نموذج معلومات العميل
     document.getElementById('customer-info-form').style.display = 'block';
     document.getElementById('customer-form-title').textContent = 'معلومات العميل';
     document.getElementById('cancel-btn').style.display = 'inline-block';
     
+    // تعبئة النموذج ببيانات العميل الحالية
     fillCustomerForm(currentCustomer);
     
+    // إظهار قسم الطلب الجديد
     document.getElementById('new-order-section').style.display = 'block';
     document.getElementById('new-order-text').value = '';
     
+    // إخفاء تحذير الطلب المكرر
     document.getElementById('duplicate-order-warning').style.display = 'none';
     
     hideMessages();
@@ -1369,14 +1255,17 @@
   
   // ===== العودة للصفحة الرئيسية =====
   function goBackToMain() {
+    // إخفاء جميع الأقسام
     document.getElementById('view-order-section').style.display = 'none';
     document.getElementById('edit-order-section').style.display = 'none';
     document.getElementById('new-order-section').style.display = 'none';
     document.getElementById('customer-info-form').style.display = 'none';
     
+    // إعادة تعيين بعض المتغيرات
     selectedOrderType = null;
     isEditingCustomer = false;
     
+    // إعادة عرض الأقسام المناسبة
     if (hasPreviousActiveOrder && previousOrderData) {
       document.getElementById('previous-order-alert').style.display = 'block';
     } else if (customerExists && currentCustomer && isAccountActive) {
@@ -1386,9 +1275,14 @@
     hideMessages();
   }
   
-  // ===== تحديد موقع المستخدم - الإصدار المحسن =====
+  // ===== تحديد موقع المستخدم بدقة عالية =====
   function getUserLocation() {
     hideMessages();
+    
+    // إذا لم تكن الخريطة مهيأة بعد، قم بتهيئتها أولاً
+    if (!mapInitialized) {
+      initializeMap();
+    }
     
     const locationBtn = document.getElementById('location-btn');
     const locationText = document.getElementById('location-btn-text');
@@ -1397,62 +1291,62 @@
     const locationInfo = document.getElementById('location-info');
     const mapControls = document.getElementById('map-controls');
     
+    // مسح الرسائل السابقة
     locationError.textContent = '';
     
-    // ✅ إظهار الخريطة والفروع
+    // إخفاء الخريطة في البداية
+    document.getElementById('map-container').style.display = 'none';
     locationInfo.style.display = 'none';
     mapControls.style.display = 'none';
-    document.getElementById('location-status').style.display = 'none';
-    document.getElementById('map-container').style.display = 'block';
     
+    // عرض التحميل
     locationBtn.disabled = true;
     locationLoading.style.display = 'inline-block';
-    locationText.textContent = 'جاري تحديد الموقع...';
+    locationText.textContent = 'جاري تحديد الموقع بدقة...';
     
+    // التحقق من دعم تحديد الموقع الجغرافي
     if (!navigator.geolocation) {
-      locationError.textContent = 'متصفحك لا يدعم تحديد الموقع الجغرافي.';
+      locationError.textContent = 'متصفحك لا يدعم تحديد الموقع الجغرافي. يرجى استخدام متصفح حديث.';
       resetLocationButton();
       return;
     }
     
-    const options = {
-      enableHighAccuracy: true,
-      timeout: 30000,
-      maximumAge: 0,
-    };
-    
+    // الحصول على الموقع بدقة عالية
     navigator.geolocation.getCurrentPosition(
+      // Success callback
       async function(position) {
-        // ✅ الحصول على الإحداثيات الحقيقية
         const latitude = position.coords.latitude;
         const longitude = position.coords.longitude;
         const accuracy = position.coords.accuracy;
         
-        console.log('📍 تم الحصول على الموقع من GPS:', { latitude, longitude, accuracy });
+        console.log('📍 Location obtained:', { latitude, longitude, accuracy });
         
-        // ✅ حفظ الإحداثيات في المتغيرات العامة
+        // تخزين الإحداثيات الحالية
         currentLatitude = latitude;
         currentLongitude = longitude;
         currentAccuracy = accuracy;
         
-        // ✅ عرض الإحداثيات مباشرة تحت الخريطة كما في الصورة
+        // عرض الخريطة
         showMapWithLocation(latitude, longitude, accuracy);
         
-        // ✅ عرض المعلومات
+        // عرض معلومات الموقع
         locationInfo.style.display = 'block';
         mapControls.style.display = 'flex';
         
-        // ✅ عرض الإحداثيات بنفس شكل الصورة المرفقة
+        // تحديث عرض الإحداثيات والدقة
         document.getElementById('latitude-display').textContent = latitude.toFixed(6);
         document.getElementById('longitude-display').textContent = longitude.toFixed(6);
         
-        // ✅ عرض معلومات الدقة
-        let accuracyClass = 'accuracy-poor';
-        let accuracyText = `دقة منخفضة (${Math.round(accuracy)} متر)`;
+        // تحديد فئة الدقة
+        let accuracyClass = 'accuracy-good';
+        let accuracyText = 'دقة ممتازة';
         
-        if (accuracy <= 15) {
-          accuracyClass = accuracy <= 10 ? 'accuracy-good' : 'accuracy-fair';
-          accuracyText = accuracy <= 10 ? 'دقة ممتازة' : 'دقة جيدة';
+        if (accuracy > 15) {
+          accuracyClass = 'accuracy-poor';
+          accuracyText = 'دقة منخفضة';
+        } else if (accuracy > 10) {
+          accuracyClass = 'accuracy-fair';
+          accuracyText = 'دقة جيدة';
         }
         
         document.getElementById('accuracy-info').innerHTML = `
@@ -1460,29 +1354,27 @@
           ${accuracy > 15 ? '<br><small>يرجى سحب المؤشر لضبط الموقع الدقيق</small>' : ''}
         `;
         
-        // ✅ الحصول على العنوان
+        // محاولة الحصول على العنوان
         try {
           const address = await getAddressFromCoordinates(latitude, longitude);
-          document.getElementById('location-address').innerHTML = `
-            <strong>📍 العنوان:</strong> ${address}
-          `;
+          document.getElementById('location-address').textContent = `📍 ${address}`;
           document.getElementById('location-address').style.color = '#28a745';
         } catch (error) {
-          console.warn('لا يمكن الحصول على العنوان:', error);
+          console.warn('Could not get address:', error);
           document.getElementById('location-address').textContent = '📍 تم تحديد موقعك على الخريطة';
           document.getElementById('location-address').style.color = '#1976d2';
         }
         
         resetLocationButton();
         
-        // ✅ إظهار تعليمات تحسين الدقة
+        // تحذير إذا كانت الدقة منخفضة
         if (accuracy > 15) {
           locationError.innerHTML = `
             <div class="warning-message" style="text-align: right; margin: 10px 0;">
               <p><strong>⚠️ الدقة الحالية ${Math.round(accuracy)} متر - المطلوبة 5-15 متر</strong></p>
               <p>لتحسين الدقة:</p>
               <ul style="text-align: right; margin-right: 15px;">
-                <li>تفعيل GPS عالي الدقة في إعدادات الهاتف</li>
+                <li>تفعيل GPS عالي الدقة</li>
                 <li>الانتقال إلى مكان مفتوح بعيد عن المباني</li>
                 <li>سحب المؤشر لضبط الموقع الدقيق</li>
               </ul>
@@ -1490,6 +1382,7 @@
           `;
         }
       },
+      // Error callback
       function(error) {
         let errorMessage = '';
         let showRetry = true;
@@ -1539,15 +1432,115 @@
         
         resetLocationButton();
       },
-      options
+      // Options - HIGH ACCURACY MODE
+      {
+        enableHighAccuracy: true,
+        timeout: 20000,
+        maximumAge: 0
+      }
     );
   }
   
+  // ===== عرض الخريطة مع الموقع =====
+  function showMapWithLocation(latitude, longitude, accuracy) {
+    const mapContainer = document.getElementById('map-container');
+    mapContainer.style.display = 'block';
+    
+    // تأكد أن الخريطة مهيأة
+    if (!mapInitialized || !map) {
+      initializeMap(latitude, longitude);
+    }
+    
+    // تعيين مركز الخريطة
+    map.setView([latitude, longitude], 18);
+    
+    // إزالة العلامات القديمة
+    if (userMarker) {
+      map.removeLayer(userMarker);
+    }
+    if (accuracyCircle) {
+      map.removeLayer(accuracyCircle);
+    }
+    if (confirmedMarker) {
+      map.removeLayer(confirmedMarker);
+      confirmedMarker = null;
+    }
+    
+    // إضافة علامة المستخدم مع خاصية السحب
+    userMarker = L.marker([latitude, longitude], {
+      draggable: true,
+      title: 'موقعك الحالي - يمكنك سحبه لضبط الموقع الدقيق',
+      icon: L.divIcon({
+        html: '<div style="background: #2e5cff; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.3);">📍</div>',
+        iconSize: [24, 24],
+        className: 'user-marker'
+      })
+    }).addTo(map);
+    
+    // إضافة دائرة توضح دقة الموقع
+    if (accuracy) {
+      accuracyCircle = L.circle([latitude, longitude], {
+        radius: accuracy,
+        color: accuracy <= 10 ? '#28a745' : accuracy <= 15 ? '#ffc107' : '#dc3545',
+        fillOpacity: 0.1,
+        weight: 2,
+        dashArray: accuracy > 15 ? '5,5' : null
+      }).addTo(map);
+    }
+    
+    // حدث سحب العلامة
+    userMarker.on('dragend', function(event) {
+      const marker = event.target;
+      const position = marker.getLatLng();
+      
+      // تحديث الإحداثيات
+      currentLatitude = position.lat;
+      currentLongitude = position.lng;
+      
+      // تحديث العرض
+      document.getElementById('latitude-display').textContent = currentLatitude.toFixed(6);
+      document.getElementById('longitude-display').textContent = currentLongitude.toFixed(6);
+      
+      // إزالة علامة التأكيد إذا كانت موجودة
+      if (confirmedMarker) {
+        map.removeLayer(confirmedMarker);
+        confirmedMarker = null;
+      }
+      
+      // تحديث العنوان
+      updateAddressFromCoordinates(currentLatitude, currentLongitude);
+      
+      // إظهار رسالة
+      const locationError = document.getElementById('location-error');
+      locationError.innerHTML = `
+        <div class="info-message" style="margin: 10px 0; padding: 10px;">
+          ✅ تم تحريك المؤشر إلى الموقع الجديد. اضغط على "تأكيد هذا الموقع" لحفظه.
+        </div>
+      `;
+    });
+    
+    // تحديث العنوان
+    updateAddressFromCoordinates(latitude, longitude);
+  }
+  
+  // ===== تحديث العنوان من الإحداثيات =====
+  async function updateAddressFromCoordinates(lat, lng) {
+    try {
+      const address = await getAddressFromCoordinates(lat, lng);
+      document.getElementById('location-address').textContent = `📍 ${address}`;
+      document.getElementById('location-address').style.color = '#28a745';
+    } catch (error) {
+      console.warn('Reverse geocoding failed:', error);
+      document.getElementById('location-address').textContent = `📍 الموقع: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      document.getElementById('location-address').style.color = '#1976d2';
+    }
+  }
+  
   // ===== الحصول على العنوان من الإحداثيات =====
-  async function getAddressFromCoordinates(latitude, longitude) {
+  async function getAddressFromCoordinates(lat, lng) {
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1&accept-language=ar`,
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=ar`,
         {
           method: 'GET',
           headers: {
@@ -1564,218 +1557,45 @@
       const data = await response.json();
       
       if (data && data.display_name) {
-        const addressParts = [];
-        
-        if (data.address) {
-          if (data.address.road) addressParts.push(data.address.road);
-          if (data.address.neighbourhood) addressParts.push(data.address.neighbourhood);
-          if (data.address.suburb) addressParts.push(data.address.suburb);
-          if (data.address.city_district) addressParts.push(data.address.city_district);
-          if (data.address.city) addressParts.push(data.address.city);
-        }
-        
-        if (addressParts.length === 0 && data.display_name) {
-          return data.display_name.length > 100 
-            ? data.display_name.substring(0, 100) + '...'
-            : data.display_name;
-        }
-        
-        const shortAddress = addressParts.join('، ');
-        return shortAddress || data.display_name;
+        return data.display_name;
       }
       
       throw new Error('No address found');
     } catch (error) {
       console.warn('Reverse geocoding failed:', error);
-      return `إحداثيات الموقع: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+      throw error;
     }
   }
   
-  // ===== عرض الخريطة مع الموقع - الإصدار المصحح مع الدائرة المتحركة =====
-  function showMapWithLocation(latitude, longitude, accuracy) {
-    const mapContainer = document.getElementById('map-container');
-    mapContainer.style.display = 'block';
-    
-    if (!mapInitialized || !map) {
-      initializeMap(latitude, longitude);
-    } else {
-      map.setView([latitude, longitude], 17);
-    }
-    
-    // ✅ إزالة جميع العناصر السابقة
-    if (userMarker) {
-      map.removeLayer(userMarker);
-    }
-    if (accuracyCircle) {
-      map.removeLayer(accuracyCircle);
-    }
-    if (confirmedMarker) {
-      map.removeLayer(confirmedMarker);
-      confirmedMarker = null;
-    }
-    
-    // ✅ إنشاء علامة الموقع
-    const locationIcon = L.divIcon({
-      html: '<div class="location-marker">📍</div>',
-      iconSize: [24, 24],
-      iconAnchor: [12, 24],
-      popupAnchor: [0, -24],
-      className: 'custom-location-marker'
-    });
-    
-    userMarker = L.marker([latitude, longitude], {
-      draggable: true,
-      title: 'موقعك الحالي - يمكنك سحبه لضبط الموقع الدقيق',
-      icon: locationIcon,
-      zIndexOffset: 1000
-    }).addTo(map);
-    
-    // ✅ إنشاء دائرة الدقة المتحركة مع المستخدم
-    if (accuracy) {
-      accuracyCircle = L.circle([latitude, longitude], {
-        radius: accuracy,
-        color: accuracy <= 10 ? '#28a745' : accuracy <= 15 ? '#ffc107' : '#dc3545',
-        fillColor: accuracy <= 10 ? '#28a745' : accuracy <= 15 ? '#ffc107' : '#dc3545',
-        fillOpacity: 0.1,
-        weight: 2,
-        dashArray: accuracy > 15 ? '5,5' : null,
-        className: 'accuracy-circle'
-      }).addTo(map);
-      
-      console.log('📍 دائرة الدقة تم إنشاؤها بنصف قطر:', accuracy, 'متر');
-    }
-    
-    map.setView([latitude, longitude], 17);
-    
-    // ✅ إضافة حدث السحب للعلامة مع تحريك الدائرة
-    userMarker.on('drag', function(event) {
-      const marker = event.target;
-      const position = marker.getLatLng();
-      
-      // ✅ تحريك الدائرة مع العلامة
-      if (accuracyCircle) {
-        accuracyCircle.setLatLng([position.lat, position.lng]);
-      }
-    });
-    
-    userMarker.on('dragend', function(event) {
-      const marker = event.target;
-      const position = marker.getLatLng();
-      
-      // ✅ تحديث الإحداثيات
-      currentLatitude = position.lat;
-      currentLongitude = position.lng;
-      
-      // ✅ تحديث العرض تحت الخريطة مباشرة
-      document.getElementById('latitude-display').textContent = currentLatitude.toFixed(6);
-      document.getElementById('longitude-display').textContent = currentLongitude.toFixed(6);
-      
-      // ✅ إزالة علامة التأكيد السابقة
-      if (confirmedMarker) {
-        map.removeLayer(confirmedMarker);
-        confirmedMarker = null;
-        document.getElementById('location-confirmed').value = 'false';
-      }
-      
-      // ✅ تحديث العنوان
-      updateAddressFromCoordinates(currentLatitude, currentLongitude);
-      
-      // ✅ إظهار رسالة للمستخدم
-      const locationError = document.getElementById('location-error');
-      locationError.innerHTML = `
-        <div class="info-message" style="margin: 10px 0; padding: 10px;">
-          ✅ تم تحريك المؤشر إلى الموقع الجديد. اضغط على "تأكيد هذا الموقع" لحفظه.
-        </div>
-      `;
-      
-      console.log('📍 تم تحديث الإحداثيات بعد السحب:', currentLatitude, currentLongitude);
-    });
-    
-    // ✅ التأكد من أن الإحداثيات معروضة مباشرة
-    console.log('📍 الإحداثيات المعروضة:', latitude.toFixed(6), longitude.toFixed(6));
-    
-    // ✅ تحديث العنوان
-    updateAddressFromCoordinates(latitude, longitude);
-  }
-  
-  // ===== تحديث العنوان من الإحداثيات =====
-  async function updateAddressFromCoordinates(latitude, longitude) {
-    try {
-      const address = await getAddressFromCoordinates(latitude, longitude);
-      document.getElementById('location-address').innerHTML = `<strong>📍 العنوان:</strong> ${address}`;
-      document.getElementById('location-address').style.color = '#28a745';
-    } catch (error) {
-      console.warn('Reverse geocoding failed:', error);
-      document.getElementById('location-address').textContent = `📍 الموقع: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-      document.getElementById('location-address').style.color = '#1976d2';
-    }
-  }
-  
-  // ===== تأكيد الموقع على الخريطة - الإصدار المصحح تماماً =====
+  // ===== تأكيد الموقع على الخريطة =====
   function confirmMapLocation() {
     if (!currentLatitude || !currentLongitude) {
       showError('يرجى تحديد موقعك أولاً');
       return;
     }
     
-    console.log('📍 تأكيد الموقع - الإحداثيات الحالية:', currentLatitude, currentLongitude);
-    
-    // ✅ 1. تعبئة الحقول المخفية الأساسية
-    document.getElementById('latitude').value = currentLatitude;
-    document.getElementById('longitude').value = currentLongitude;
-    document.getElementById('location-accuracy').value = currentAccuracy || '18';
+    // تخزين الإحداثيات المؤكدة
+    document.getElementById('customer-latitude').value = currentLatitude;
+    document.getElementById('customer-longitude').value = currentLongitude;
+    document.getElementById('location-accuracy').value = currentAccuracy || '';
     document.getElementById('location-confirmed').value = 'true';
-    
-    // ✅ 2. إنشاء رابط خرائط Google
-    const googleMapsLink = `https://www.google.com/maps?q=${currentLatitude},${currentLongitude}`;
-    document.getElementById('maps-link').value = googleMapsLink;
-    document.getElementById('google-maps-link').value = googleMapsLink;
-    
-    console.log('✅ رابط خرائط Google:', googleMapsLink);
-    
-    // ✅ 3. نسخ العنوان تلقائياً إلى حقل العنوان
-    const addressElement = document.getElementById('location-address');
-    if (addressElement && addressElement.textContent) {
-      // استخراج العنوان النصي فقط
-      let addressText = addressElement.textContent;
-      if (addressText.includes('📍 العنوان:')) {
-        addressText = addressText.replace('📍 العنوان:', '').trim();
-      } else if (addressText.includes('📍 الموقع:')) {
-        addressText = addressText.replace('📍 الموقع:', '').trim();
-      }
-      
-      // ✅ وضع رابط الخرائط في العمود G
-      const locationValue = `${addressText}\n${googleMapsLink}`;
-      
-      // ✅ تحديث حقل العنوان بالنص ورابط الخرائط
-      document.getElementById('customer-address').value = addressText;
-      
-      console.log('✅ العنوان المنسوخ:', addressText);
-      console.log('✅ قيمة العمود G:', locationValue);
-    }
-    
     locationConfirmed = true;
     hasLocation = true;
     
-    // ✅ 4. تحديث الخريطة بإضافة علامة التأكيد
+    // إضافة علامة التأكيد
     if (confirmedMarker) {
       map.removeLayer(confirmedMarker);
     }
     
-    const confirmedIcon = L.divIcon({
-      html: '<div class="confirmed-marker">✓</div>',
-      iconSize: [24, 24],
-      iconAnchor: [12, 24],
-      className: 'custom-confirmed-marker'
-    });
-    
     confirmedMarker = L.marker([currentLatitude, currentLongitude], {
-      icon: confirmedIcon,
-      title: 'الموقع المؤكد',
-      zIndexOffset: 2000
+      icon: L.divIcon({
+        html: '<div style="background: #28a745; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 0 15px rgba(0,0,0,0.4); font-weight: bold;">✓</div>',
+        iconSize: [24, 24],
+        className: 'confirmed-marker'
+      })
     }).addTo(map);
     
-    // ✅ 5. عرض حالة الموقع المؤكد مع رابط الخرائط
+    // إظهار رسالة التأكيد
     const locationStatus = document.getElementById('location-status');
     locationStatus.style.display = 'block';
     locationStatus.innerHTML = `
@@ -1784,10 +1604,6 @@
         <div style="margin-top: 8px; font-size: 14px;">
           <div><strong>الإحداثيات:</strong> ${currentLatitude.toFixed(6)}, ${currentLongitude.toFixed(6)}</div>
           <div><strong>الدقة:</strong> ${currentAccuracy ? Math.round(currentAccuracy) + ' متر' : 'غير معروفة'}</div>
-          <div><strong>رابط الخرائط:</strong> 
-            <a href="${googleMapsLink}" target="_blank" style="color: #1976d2;">عرض على خرائط Google</a>
-            <br><small style="color: #666; font-size: 12px;">سيتم حفظ هذا الرابط في العمود G</small>
-          </div>
           <button type="button" class="btn btn-warning" onclick="changeLocation()" style="padding: 6px 12px; font-size: 13px; margin-top: 8px;">
             تغيير الموقع
           </button>
@@ -1795,15 +1611,11 @@
       </div>
     `;
     
+    // إخفاء عناصر التحكم
     document.getElementById('map-controls').style.display = 'none';
     document.getElementById('location-warning').style.display = 'none';
     
     showSuccess('✅ تم تأكيد موقعك بنجاح');
-    
-    // ✅ 6. إظهار رسالة توضيحية للمستخدم
-    setTimeout(() => {
-      showInfo('سيتم حفظ الإحداثيات ورابط الخرائط مع باقي بياناتك عند الضغط على "حفظ المعلومات"');
-    }, 1500);
   }
   
   // ===== تغيير الموقع =====
@@ -1826,13 +1638,10 @@
   // ===== العودة إلى الموقع الأصلي =====
   function recenterMap() {
     if (currentLatitude && currentLongitude && userMarker) {
-      map.setView([currentLatitude, currentLongitude], 17);
+      map.setView([currentLatitude, currentLongitude], 18);
       userMarker.setLatLng([currentLatitude, currentLongitude]);
       
-      if (accuracyCircle) {
-        accuracyCircle.setLatLng([currentLatitude, currentLongitude]);
-      }
-      
+      // إزالة علامة التأكيد
       if (confirmedMarker) {
         map.removeLayer(confirmedMarker);
         confirmedMarker = null;
@@ -1853,17 +1662,15 @@
     
     locationBtn.disabled = false;
     locationLoading.style.display = 'none';
-    locationText.textContent = 'تحديد موقعي الحالي';
+    locationText.textContent = 'تحديث الموقع';
   }
   
   // ===== إعادة تعيين بيانات الموقع =====
   function resetLocation() {
-    document.getElementById('latitude').value = '';
-    document.getElementById('longitude').value = '';
+    document.getElementById('customer-latitude').value = '';
+    document.getElementById('customer-longitude').value = '';
     document.getElementById('location-accuracy').value = '';
     document.getElementById('location-confirmed').value = 'false';
-    document.getElementById('maps-link').value = '';
-    document.getElementById('google-maps-link').value = '';
     document.getElementById('map-container').style.display = 'none';
     document.getElementById('location-info').style.display = 'none';
     document.getElementById('map-controls').style.display = 'none';
@@ -1871,6 +1678,7 @@
     document.getElementById('location-error').textContent = '';
     document.getElementById('location-warning').style.display = 'block';
     
+    // إزالة العلامات من الخريطة
     if (userMarker) {
       map.removeLayer(userMarker);
       userMarker = null;
@@ -1884,6 +1692,7 @@
       accuracyCircle = null;
     }
     
+    // إعادة تعيين الخريطة
     if (map) {
       map.remove();
       map = null;
@@ -1907,13 +1716,15 @@
     document.getElementById('customer-area').value = customer.area || '';
     document.getElementById('customer-address').value = customer.address || '';
     
+    // إذا كان هناك موقع محفوظ
     if (customer.latitude && customer.longitude) {
-      document.getElementById('latitude').value = customer.latitude;
-      document.getElementById('longitude').value = customer.longitude;
+      document.getElementById('customer-latitude').value = customer.latitude;
+      document.getElementById('customer-longitude').value = customer.longitude;
       document.getElementById('location-confirmed').value = 'true';
       locationConfirmed = true;
       hasLocation = true;
       
+      // عرض معلومات الموقع المخزن
       const locationStatus = document.getElementById('location-status');
       locationStatus.style.display = 'block';
       locationStatus.innerHTML = `
@@ -1921,7 +1732,6 @@
           <strong>📍 موقعك المخزن</strong>
           <div style="margin-top: 8px; font-size: 14px;">
             <div><strong>الإحداثيات:</strong> ${parseFloat(customer.latitude).toFixed(6)}, ${parseFloat(customer.longitude).toFixed(6)}</div>
-            ${customer.mapsLink ? `<div><strong>رابط الخرائط:</strong> <a href="${customer.mapsLink}" target="_blank" style="color: #1976d2;">عرض على خرائط Google</a></div>` : ''}
             <div style="margin-top: 5px;">
               <button type="button" class="btn btn-warning" onclick="getUserLocation()" style="padding: 6px 12px; font-size: 13px;">
                 تحديث الموقع
@@ -1943,12 +1753,15 @@
     
     isEditingCustomer = true;
     
+    // إخفاء قسم الإجراءات
     document.getElementById('customer-actions-section').style.display = 'none';
     
+    // عرض نموذج تعديل البيانات
     document.getElementById('customer-info-form').style.display = 'block';
     document.getElementById('customer-form-title').textContent = 'تعديل بياناتي';
     document.getElementById('cancel-btn').style.display = 'inline-block';
     
+    // تعبئة النموذج بالبيانات الحالية
     fillCustomerForm(currentCustomer);
     
     hideMessages();
@@ -1958,9 +1771,11 @@
   function cancelEdit() {
     isEditingCustomer = false;
     
+    // إخفاء نموذج البيانات
     document.getElementById('customer-info-form').style.display = 'none';
     document.getElementById('new-order-section').style.display = 'none';
     
+    // إعادة عرض الأقسام المناسبة
     if (hasPreviousActiveOrder && previousOrderData) {
       document.getElementById('previous-order-alert').style.display = 'block';
     } else if (customerExists && currentCustomer) {
@@ -1970,30 +1785,20 @@
     hideMessages();
   }
   
-  // ===== حفظ معلومات العميل - الإصدار المصحح تماماً =====
+  // ===== حفظ معلومات العميل =====
   async function saveCustomerInfo() {
     hideMessages();
     
-    // ✅ جمع جميع القيم من الحقول
+    // التحقق من الحقول المطلوبة
     const name = document.getElementById('customer-name').value.trim();
     const phone = document.getElementById('customer-phone').value.trim();
     const whatsapp = document.getElementById('customer-whatsapp').value.trim();
     const area = document.getElementById('customer-area').value.trim();
     const address = document.getElementById('customer-address').value.trim();
-    
-    // ✅ الحصول على الإحداثيات
-    const latitude = document.getElementById('latitude').value.trim();
-    const longitude = document.getElementById('longitude').value.trim();
+    const latitude = document.getElementById('customer-latitude').value.trim();
+    const longitude = document.getElementById('customer-longitude').value.trim();
     const locationConfirmed = document.getElementById('location-confirmed').value === 'true';
-    const googleMapsLink = document.getElementById('google-maps-link').value.trim();
     
-    console.log('📊 بيانات الموقع قبل الحفظ:');
-    console.log('latitude:', latitude);
-    console.log('longitude:', longitude);
-    console.log('locationConfirmed:', locationConfirmed);
-    console.log('googleMapsLink:', googleMapsLink);
-    
-    // ✅ التحقق من البيانات الأساسية
     if (!name) {
       showError('الاسم مطلوب');
       return;
@@ -2031,17 +1836,19 @@
       return;
     }
     
-    // ✅ التحقق من الموقع للعملاء الجدد
+    // التحقق من تأكيد الموقع (فقط للعملاء الجدد)
     if (!customerExists && !locationConfirmed) {
       showError('يرجى تأكيد موقعك الجغرافي أولاً');
       return;
     }
     
+    // التحقق من وجود الإحداثيات (فقط للعملاء الجدد)
     if (!customerExists && (!latitude || !longitude)) {
       showError('يرجى تحديد موقعك الجغرافي أولاً');
       return;
     }
     
+    // عرض جاري التحميل
     const saveBtn = document.getElementById('save-customer-btn');
     const saveLoading = document.getElementById('save-customer-loading');
     const saveText = document.getElementById('save-customer-text');
@@ -2050,55 +1857,51 @@
     saveText.textContent = 'جاري الحفظ...';
     
     try {
-      // ✅ إنشاء FormData مع جميع البيانات بما فيها الإحداثيات
-      const formData = new FormData();
-      formData.append('action', 'createOrUpdateCustomer');
-      formData.append('phone', phone);
-      formData.append('whatsapp', whatsapp);
-      formData.append('name', name);
-      formData.append('area', area);
-      formData.append('address', address);
+      // بناء رابط GET
+      const params = new URLSearchParams();
+      params.append('action', 'createOrUpdateCustomer');
+      params.append('phone', phone);
+      params.append('whatsapp', whatsapp);
+      params.append('name', name);
+      params.append('area', area);
+      params.append('address', address);
+      if (currentRound) params.append('round', currentRound);
       
-      // ✅ إضافة بيانات الموقع والإحداثيات
+      // إضافة الإحداثيات إذا كانت موجودة
       if (latitude && longitude) {
-        formData.append('latitude', latitude);
-        formData.append('longitude', longitude);
-        console.log('✅ إرسال الإحداثيات:', latitude, longitude);
+        params.append('latitude', latitude);
+        params.append('longitude', longitude);
+      } else if (currentCustomer && currentCustomer.latitude && currentCustomer.longitude) {
+        // استخدام الإحداثيات المخزنة إذا لم تكن جديدة
+        params.append('latitude', currentCustomer.latitude);
+        params.append('longitude', currentCustomer.longitude);
       }
       
-      // ✅ إضافة رابط خرائط Google للعمود G
-      if (googleMapsLink) {
-        formData.append('location', googleMapsLink);
-        console.log('✅ إرسال رابط الخرائط للعمود G:', googleMapsLink);
-      } else {
-        // إذا لم يكن هناك رابط خرائط، أرسل العنوان فقط
-        formData.append('location', address);
-      }
+      const url = `${SCRIPT_URL}?${params.toString()}`;
+      console.log('💾 Save customer URL:', url);
       
-      console.log('📤 إرسال البيانات إلى Apps Script...');
-      
-      const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        body: formData,
-        mode: 'cors'
+      const response = await fetch(url, {
+        method: 'GET',
+        cache: 'no-cache'
       });
       
-      console.log('✅ حالة الاستجابة:', response.status);
+      console.log('Save response status:', response.status);
       
       if (!response.ok) {
-        throw new Error(`خطأ HTTP! الحالة: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
-      console.log('💾 نتيجة الحفظ:', data);
+      console.log('💾 Save result:', data);
       
       if (data.success) {
+        // تحديث بيانات العميل المحلية
         if (data.customerId) {
           currentCustomerId = data.customerId;
           customerExists = true;
         }
         
-        // ✅ تحديث بيانات العميل المحلية
+        // تحديث كائن العميل الحالي
         currentCustomer = {
           id: currentCustomerId,
           name: name,
@@ -2106,39 +1909,38 @@
           whatsapp: whatsapp,
           area: area,
           address: address,
-          latitude: latitude,
-          longitude: longitude,
-          mapsLink: googleMapsLink
+          latitude: latitude || (currentCustomer ? currentCustomer.latitude : ''),
+          longitude: longitude || (currentCustomer ? currentCustomer.longitude : '')
         };
         
         showSuccess('✅ تم حفظ المعلومات بنجاح');
         
-        // ✅ عرض تفاصيل الموقع المحفوظة
-        setTimeout(() => {
-          if (latitude && longitude) {
-            showInfo(`تم حفظ موقعك: ${latitude}, ${longitude}`);
-          }
-          if (googleMapsLink) {
-            console.log('✅ تم حفظ رابط الخرائط في العمود G:', googleMapsLink);
-          }
-        }, 500);
-        
-        // ✅ الانتقال إلى الخطوة التالية
-        setTimeout(() => {
-          if (isEditingCustomer) {
+        // إذا كان مجرد تعديل بيانات، العودة لقسم الإجراءات
+        if (isEditingCustomer) {
+          setTimeout(() => {
             cancelEdit();
-          } else {
+            if (hasPreviousActiveOrder && previousOrderData) {
+              document.getElementById('previous-order-alert').style.display = 'block';
+            } else {
+              document.getElementById('customer-actions-section').style.display = 'block';
+            }
+            document.getElementById('customer-name-display').textContent = name;
+          }, 1500);
+        } else {
+          // إذا كان حفظ معلومات للطلب الجديد، استمر
+          setTimeout(() => {
             document.getElementById('customer-info-form').style.display = 'none';
             document.getElementById('new-order-section').style.display = 'block';
-          }
-        }, 1500);
+            document.getElementById('mobile-success').textContent = `✅ مرحباً ${name}`;
+          }, 1500);
+        }
         
       } else {
         throw new Error(data.message || 'فشل حفظ المعلومات');
       }
       
     } catch (error) {
-      console.error('❌ خطأ في حفظ العميل:', error);
+      console.error('❌ Error saving customer:', error);
       showError('حدث خطأ أثناء حفظ المعلومات: ' + error.message);
     } finally {
       saveBtn.disabled = false;
@@ -2181,41 +1983,26 @@
       
       console.log('✏️ Updating existing order:', existingOrderId);
       
-      // ✅ استخدام FormData
-      const formData = new FormData();
-      formData.append('action', 'submitOrder');
-      formData.append('phone', currentCustomer.phone);
-      formData.append('whatsapp', currentCustomer.whatsapp || currentCustomer.phone);
-      formData.append('name', currentCustomer.name);
-      formData.append('area', currentCustomer.area);
-      formData.append('address', currentCustomer.address);
-      formData.append('orderText', orderText);
-      if (currentRound) formData.append('round', currentRound);
-      formData.append('replaceOrderId', existingOrderId);
+      const params = new URLSearchParams();
+      params.append('action', 'submitOrder');
+      params.append('phone', currentCustomer.phone);
+      params.append('whatsapp', currentCustomer.whatsapp || currentCustomer.phone);
+      params.append('name', currentCustomer.name);
+      params.append('area', currentCustomer.area);
+      params.append('address', currentCustomer.address);
+      params.append('orderText', orderText);
+      if (currentRound) params.append('round', currentRound);
+      params.append('replaceOrderId', existingOrderId);
+      params.append('latitude', currentCustomer.latitude || '');
+      params.append('longitude', currentCustomer.longitude || '');
+      params.append('note', 'تم تعديل الطلب السابق');
       
-      // ✅ إضافة الإحداثيات
-      const latitude = document.getElementById('latitude').value || currentCustomer.latitude || '';
-      const longitude = document.getElementById('longitude').value || currentCustomer.longitude || '';
-      const googleMapsLink = document.getElementById('google-maps-link').value || '';
+      const url = `${SCRIPT_URL}?${params.toString()}`;
+      console.log('Update order URL:', url);
       
-      if (latitude && longitude) {
-        formData.append('latitude', latitude);
-        formData.append('longitude', longitude);
-        console.log('✅ Sending coordinates for order update:', latitude, longitude);
-      }
-      
-      if (googleMapsLink) {
-        formData.append('location', googleMapsLink);
-      }
-      
-      formData.append('note', 'تم تعديل الطلب السابق');
-      
-      console.log('📤 Sending update with FormData');
-      
-      const response = await fetch(SCRIPT_URL, { 
-        method: 'POST',
-        body: formData,
-        mode: 'cors'
+      const response = await fetch(url, { 
+        method: 'GET',
+        cache: 'no-cache'
       });
       
       console.log('Update response status:', response.status);
@@ -2228,8 +2015,10 @@
       console.log('✏️ Update order result:', result);
       
       if (result.success) {
+        // إخفاء جميع الأقسام
         document.getElementById('edit-order-section').style.display = 'none';
         
+        // عرض رسالة النجاح فقط
         const successMessage = document.getElementById('success-message');
         successMessage.innerHTML = `
           <h3>✅ تم تحديث الطلب بنجاح!</h3>
@@ -2239,6 +2028,7 @@
         `;
         successMessage.style.display = 'block';
         
+        // إعادة تعيين البيانات
         hasPreviousActiveOrder = false;
         previousOrderData = null;
         
@@ -2273,28 +2063,21 @@
       return;
     }
     
+    // التحقق من حفظ معلومات العميل أولاً
     const name = document.getElementById('customer-name').value.trim();
     const phone = document.getElementById('customer-phone').value.trim();
     const whatsapp = document.getElementById('customer-whatsapp').value.trim();
     const area = document.getElementById('customer-area').value.trim();
     const address = document.getElementById('customer-address').value.trim();
-    
-    // ✅ الحصول على الإحداثيات من الحقول المخفية
-    const latitude = document.getElementById('latitude').value.trim();
-    const longitude = document.getElementById('longitude').value.trim();
-    const googleMapsLink = document.getElementById('google-maps-link').value.trim();
-    
-    console.log('📊 Coordinates before submitting order:');
-    console.log('latitude:', latitude);
-    console.log('longitude:', longitude);
-    console.log('googleMapsLink:', googleMapsLink);
+    const latitude = document.getElementById('customer-latitude').value.trim();
+    const longitude = document.getElementById('customer-longitude').value.trim();
     
     if (!name || !phone || !whatsapp || !area || !address) {
       alert('من فضلك أكمل معلومات العميل أولاً ثم اضغط على "حفظ المعلومات"');
       return;
     }
     
-    // ✅ التحقق من الإحداثيات (فقط للعملاء الجدد)
+    // التحقق من الموقع (فقط للعملاء الجدد)
     if (!customerExists && (!latitude || !longitude)) {
       alert('يرجى تحديد موقعك الجغرافي أولاً');
       return;
@@ -2314,44 +2097,40 @@
     submitText.textContent = 'جاري الإرسال...';
     
     try {
-      console.log('📤 Submitting new order with coordinates:', latitude, longitude);
+      // استخدام الإحداثيات المخزنة إذا كانت موجودة
+      const finalLatitude = latitude || (currentCustomer && currentCustomer.latitude) || '';
+      const finalLongitude = longitude || (currentCustomer && currentCustomer.longitude) || '';
       
-      // ✅ استخدام FormData
-      const formData = new FormData();
-      formData.append('action', 'submitOrder');
-      formData.append('phone', phone);
-      formData.append('whatsapp', whatsapp);
-      formData.append('name', name);
-      formData.append('area', area);
-      formData.append('address', address);
-      formData.append('orderText', orderText);
-      if (currentRound) formData.append('round', currentRound);
+      console.log('📤 Submitting new order...');
       
-      // ✅ إضافة الإحداثيات
-      if (latitude && longitude) {
-        formData.append('latitude', latitude);
-        formData.append('longitude', longitude);
-        console.log('✅ Coordinates added to FormData:', latitude, longitude);
+      const params = new URLSearchParams();
+      params.append('action', 'submitOrder');
+      params.append('phone', phone);
+      params.append('whatsapp', whatsapp);
+      params.append('name', name);
+      params.append('area', area);
+      params.append('address', address);
+      params.append('orderText', orderText);
+      if (currentRound) params.append('round', currentRound);
+      
+      // إضافة الإحداثيات إذا كانت موجودة
+      if (finalLatitude && finalLongitude) {
+        params.append('latitude', finalLatitude);
+        params.append('longitude', finalLongitude);
       }
       
-      // ✅ إضافة رابط خرائط Google للعمود G
-      if (googleMapsLink) {
-        formData.append('location', googleMapsLink);
-        console.log('✅ Google Maps link added to FormData:', googleMapsLink);
-      } else {
-        formData.append('location', address);
-      }
-      
+      // إضافة ملاحظة إذا كان لديه طلب سابق
       if (hasPreviousActiveOrder) {
-        formData.append('note', 'Customer placed another order');
+        params.append('note', 'Customer placed another order');
+        // نستخدم حقل note بدلاً من isDuplicateOrder لأنه غير موجود في Google Apps Script
       }
       
-      console.log('📤 Sending order with FormData');
+      const url = `${SCRIPT_URL}?${params.toString()}`;
+      console.log('Submit order URL:', url.substring(0, 200) + '...');
       
-      const response = await fetch(SCRIPT_URL, { 
-        method: 'POST',
-        body: formData,
-        mode: 'cors'
+      const response = await fetch(url, { 
+        method: 'GET',
+        cache: 'no-cache'
       });
       
       console.log('Submit response status:', response.status);
@@ -2364,28 +2143,31 @@
       console.log('📤 Submit order result:', result);
       
       if (result.success) {
+        // إخفاء جميع الأقسام
         document.getElementById('customer-info-form').style.display = 'none';
         document.getElementById('new-order-section').style.display = 'none';
         
+        // عرض رسالة النجاح فقط
         const successMessage = document.getElementById('success-message');
         successMessage.innerHTML = `
           <h3>✅ تم إرسال الطلب بنجاح!</h3>
           ${result.orderId ? `<p><strong>رقم الطلب:</strong> ${result.orderId}</p>` : ''}
           ${result.customerId ? `<p><strong>رقم العميل:</strong> ${result.customerId}</p>` : ''}
           <p>📍 <strong>موقع التسليم:</strong> ${address}</p>
-          ${latitude && longitude ? 
-            `<p>📍 <strong>الإحداثيات:</strong> ${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</p>` : ''}
-          ${googleMapsLink ? `<p>🗺️ <strong>رابط الخرائط:</strong> <a href="${googleMapsLink}" target="_blank">عرض الموقع</a></p>` : ''}
+          ${finalLatitude && finalLongitude ? 
+            `<p>📍 <strong>الإحداثيات:</strong> ${parseFloat(finalLatitude).toFixed(6)}, ${parseFloat(finalLongitude).toFixed(6)}</p>` : ''}
           ${hasPreviousActiveOrder ? `<p>📌 <strong>ملاحظة:</strong> تم ربط هذا الطلب بنفس رقم عميلك</p>` : ''}
           <p>عزيزي/عزيزتي <strong>${name}</strong>، سيتم التواصل معك على واتساب للتأكيد.</p>
           <p>شكراً لاستخدامك HomiCart! 💙</p>
         `;
         successMessage.style.display = 'block';
         
+        // تحديث بيانات العميل المحلية
         currentCustomerId = result.customerId;
         customerExists = true;
-        hasPreviousActiveOrder = true;
+        hasPreviousActiveOrder = true; // الآن أصبح لديه طلب نشط
         
+        // إعادة التعيين بعد 10 ثواني
         setTimeout(() => {
           resetForm();
           successMessage.style.display = 'none';
@@ -2412,8 +2194,7 @@
       const url = `${SCRIPT_URL}?action=getOrderStatus&_=${Date.now()}`;
       const response = await fetch(url, {
         method: 'GET',
-        cache: 'no-cache',
-        mode: 'cors'
+        cache: 'no-cache'
       });
       
       console.log('Response status:', response.status);
@@ -2527,6 +2308,7 @@
   
   // ===== إعادة تعيين النموذج للحالة الأولية =====
   function resetForm() {
+    // إعادة تعيين قيم النموذج
     document.getElementById('mobile-number').value = '';
     document.getElementById('customer-name').value = '';
     document.getElementById('customer-phone').value = '';
@@ -2536,12 +2318,15 @@
     document.getElementById('new-order-text').value = '';
     document.getElementById('edit-order-text').value = '';
     
+    // إعادة تعيين الموقع
     resetLocation();
     
+    // مسح الرسائل
     document.querySelectorAll('.error, .success').forEach(element => {
       element.textContent = '';
     });
     
+    // إخفاء جميع الأقسام
     document.getElementById('previous-order-alert').style.display = 'none';
     document.getElementById('customer-actions-section').style.display = 'none';
     document.getElementById('customer-info-form').style.display = 'none';
@@ -2550,10 +2335,12 @@
     document.getElementById('new-order-section').style.display = 'none';
     document.getElementById('duplicate-order-warning').style.display = 'none';
     
+    // إعادة تعيين الأزرار
     document.querySelectorAll('.type-btn').forEach(btn => {
       btn.classList.remove('active');
     });
     
+    // إعادة تعيين الحالة
     selectedOrderType = null;
     currentCustomer = null;
     currentOrder = null;
@@ -2571,14 +2358,17 @@
     currentLongitude = null;
     currentAccuracy = null;
     
+    // إعادة تعيين الخريطة
     mapInitialized = false;
     if (map) {
       map.remove();
       map = null;
     }
     
+    // إخفاء الرسائل
     hideMessages();
     
+    // التركيز على إدخال الهاتف
     document.getElementById('mobile-number').focus();
   }
 </script>
