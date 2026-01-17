@@ -702,6 +702,7 @@
       <input type="hidden" id="location-accuracy" name="location-accuracy">
       <input type="hidden" id="location-confirmed" name="location-confirmed" value="false">
       <input type="hidden" id="maps-link" name="maps-link">
+      <input type="hidden" id="google-maps-link" name="google-maps-link">
     </div>
     
     <div style="text-align: center;">
@@ -1590,7 +1591,7 @@
     }
   }
   
-  // ===== عرض الخريطة مع الموقع =====
+  // ===== عرض الخريطة مع الموقع - الإصدار المصحح مع الدائرة المتحركة =====
   function showMapWithLocation(latitude, longitude, accuracy) {
     const mapContainer = document.getElementById('map-container');
     mapContainer.style.display = 'block';
@@ -1601,6 +1602,7 @@
       map.setView([latitude, longitude], 17);
     }
     
+    // ✅ إزالة جميع العناصر السابقة
     if (userMarker) {
       map.removeLayer(userMarker);
     }
@@ -1612,6 +1614,7 @@
       confirmedMarker = null;
     }
     
+    // ✅ إنشاء علامة الموقع
     const locationIcon = L.divIcon({
       html: '<div class="location-marker">📍</div>',
       iconSize: [24, 24],
@@ -1627,6 +1630,7 @@
       zIndexOffset: 1000
     }).addTo(map);
     
+    // ✅ إنشاء دائرة الدقة المتحركة مع المستخدم
     if (accuracy) {
       accuracyCircle = L.circle([latitude, longitude], {
         radius: accuracy,
@@ -1637,9 +1641,22 @@
         dashArray: accuracy > 15 ? '5,5' : null,
         className: 'accuracy-circle'
       }).addTo(map);
+      
+      console.log('📍 دائرة الدقة تم إنشاؤها بنصف قطر:', accuracy, 'متر');
     }
     
     map.setView([latitude, longitude], 17);
+    
+    // ✅ إضافة حدث السحب للعلامة مع تحريك الدائرة
+    userMarker.on('drag', function(event) {
+      const marker = event.target;
+      const position = marker.getLatLng();
+      
+      // ✅ تحريك الدائرة مع العلامة
+      if (accuracyCircle) {
+        accuracyCircle.setLatLng([position.lat, position.lng]);
+      }
+    });
     
     userMarker.on('dragend', function(event) {
       const marker = event.target;
@@ -1664,7 +1681,8 @@
       updateAddressFromCoordinates(currentLatitude, currentLongitude);
       
       // ✅ إظهار رسالة للمستخدم
-      document.getElementById('location-error').innerHTML = `
+      const locationError = document.getElementById('location-error');
+      locationError.innerHTML = `
         <div class="info-message" style="margin: 10px 0; padding: 10px;">
           ✅ تم تحريك المؤشر إلى الموقع الجديد. اضغط على "تأكيد هذا الموقع" لحفظه.
         </div>
@@ -1675,6 +1693,9 @@
     
     // ✅ التأكد من أن الإحداثيات معروضة مباشرة
     console.log('📍 الإحداثيات المعروضة:', latitude.toFixed(6), longitude.toFixed(6));
+    
+    // ✅ تحديث العنوان
+    updateAddressFromCoordinates(latitude, longitude);
   }
   
   // ===== تحديث العنوان من الإحداثيات =====
@@ -1690,46 +1711,53 @@
     }
   }
   
-  // ===== تأكيد الموقع على الخريطة - الإصدار المصحح =====
+  // ===== تأكيد الموقع على الخريطة - الإصدار المصحح تماماً =====
   function confirmMapLocation() {
     if (!currentLatitude || !currentLongitude) {
       showError('يرجى تحديد موقعك أولاً');
       return;
     }
     
-    // ✅ التأكد من أن الإحداثيات تم تخزينها في المتغيرات
     console.log('📍 تأكيد الموقع - الإحداثيات الحالية:', currentLatitude, currentLongitude);
     
-    // ✅ تعبئة الحقول المخفية - الاسم مهم تماماً كما في الصورة
+    // ✅ 1. تعبئة الحقول المخفية الأساسية
     document.getElementById('latitude').value = currentLatitude;
     document.getElementById('longitude').value = currentLongitude;
     document.getElementById('location-accuracy').value = currentAccuracy || '18';
     document.getElementById('location-confirmed').value = 'true';
     
-    // ✅ تسجيل القيم في الكونسول للتأكد
-    console.log('✅ الحقول المخفية بعد التعبئة:');
-    console.log('latitude:', document.getElementById('latitude').value);
-    console.log('longitude:', document.getElementById('longitude').value);
-    console.log('location-accuracy:', document.getElementById('location-accuracy').value);
-    console.log('location-confirmed:', document.getElementById('location-confirmed').value);
+    // ✅ 2. إنشاء رابط خرائط Google
+    const googleMapsLink = `https://www.google.com/maps?q=${currentLatitude},${currentLongitude}`;
+    document.getElementById('maps-link').value = googleMapsLink;
+    document.getElementById('google-maps-link').value = googleMapsLink;
+    
+    console.log('✅ رابط خرائط Google:', googleMapsLink);
+    
+    // ✅ 3. نسخ العنوان تلقائياً إلى حقل العنوان
+    const addressElement = document.getElementById('location-address');
+    if (addressElement && addressElement.textContent) {
+      // استخراج العنوان النصي فقط
+      let addressText = addressElement.textContent;
+      if (addressText.includes('📍 العنوان:')) {
+        addressText = addressText.replace('📍 العنوان:', '').trim();
+      } else if (addressText.includes('📍 الموقع:')) {
+        addressText = addressText.replace('📍 الموقع:', '').trim();
+      }
+      
+      // ✅ وضع رابط الخرائط في العمود G
+      const locationValue = `${addressText}\n${googleMapsLink}`;
+      
+      // ✅ تحديث حقل العنوان بالنص ورابط الخرائط
+      document.getElementById('customer-address').value = addressText;
+      
+      console.log('✅ العنوان المنسوخ:', addressText);
+      console.log('✅ قيمة العمود G:', locationValue);
+    }
     
     locationConfirmed = true;
     hasLocation = true;
     
-    // ✅ إنشاء رابط خرائط Google
-    const mapsLink = `https://maps.google.com/?q=${currentLatitude},${currentLongitude}`;
-    document.getElementById('maps-link').value = mapsLink;
-    console.log('✅ رابط الخرائط:', mapsLink);
-    
-    // ✅ نسخ العنوان تلقائياً إلى حقل العنوان
-    const addressElement = document.getElementById('location-address');
-    if (addressElement && addressElement.textContent) {
-      const fullAddress = addressElement.textContent.replace('📍 ', '').replace('<strong>📍 العنوان:</strong> ', '');
-      document.getElementById('customer-address').value = fullAddress;
-      console.log('✅ العنوان المنسوخ:', fullAddress);
-    }
-    
-    // ✅ تحديث الخريطة
+    // ✅ 4. تحديث الخريطة بإضافة علامة التأكيد
     if (confirmedMarker) {
       map.removeLayer(confirmedMarker);
     }
@@ -1747,7 +1775,7 @@
       zIndexOffset: 2000
     }).addTo(map);
     
-    // ✅ عرض حالة الموقع المؤكد
+    // ✅ 5. عرض حالة الموقع المؤكد مع رابط الخرائط
     const locationStatus = document.getElementById('location-status');
     locationStatus.style.display = 'block';
     locationStatus.innerHTML = `
@@ -1756,7 +1784,10 @@
         <div style="margin-top: 8px; font-size: 14px;">
           <div><strong>الإحداثيات:</strong> ${currentLatitude.toFixed(6)}, ${currentLongitude.toFixed(6)}</div>
           <div><strong>الدقة:</strong> ${currentAccuracy ? Math.round(currentAccuracy) + ' متر' : 'غير معروفة'}</div>
-          <div><strong>رابط الخرائط:</strong> <a href="${mapsLink}" target="_blank" style="color: #1976d2;">عرض على خرائط Google</a></div>
+          <div><strong>رابط الخرائط:</strong> 
+            <a href="${googleMapsLink}" target="_blank" style="color: #1976d2;">عرض على خرائط Google</a>
+            <br><small style="color: #666; font-size: 12px;">سيتم حفظ هذا الرابط في العمود G</small>
+          </div>
           <button type="button" class="btn btn-warning" onclick="changeLocation()" style="padding: 6px 12px; font-size: 13px; margin-top: 8px;">
             تغيير الموقع
           </button>
@@ -1769,9 +1800,9 @@
     
     showSuccess('✅ تم تأكيد موقعك بنجاح');
     
-    // ✅ إظهار رسالة توضيحية للمستخدم
+    // ✅ 6. إظهار رسالة توضيحية للمستخدم
     setTimeout(() => {
-      showInfo('سيتم حفظ الإحداثيات مع باقي بياناتك عند الضغط على "حفظ المعلومات"');
+      showInfo('سيتم حفظ الإحداثيات ورابط الخرائط مع باقي بياناتك عند الضغط على "حفظ المعلومات"');
     }, 1500);
   }
   
@@ -1797,6 +1828,10 @@
     if (currentLatitude && currentLongitude && userMarker) {
       map.setView([currentLatitude, currentLongitude], 17);
       userMarker.setLatLng([currentLatitude, currentLongitude]);
+      
+      if (accuracyCircle) {
+        accuracyCircle.setLatLng([currentLatitude, currentLongitude]);
+      }
       
       if (confirmedMarker) {
         map.removeLayer(confirmedMarker);
@@ -1828,6 +1863,7 @@
     document.getElementById('location-accuracy').value = '';
     document.getElementById('location-confirmed').value = 'false';
     document.getElementById('maps-link').value = '';
+    document.getElementById('google-maps-link').value = '';
     document.getElementById('map-container').style.display = 'none';
     document.getElementById('location-info').style.display = 'none';
     document.getElementById('map-controls').style.display = 'none';
@@ -1885,6 +1921,7 @@
           <strong>📍 موقعك المخزن</strong>
           <div style="margin-top: 8px; font-size: 14px;">
             <div><strong>الإحداثيات:</strong> ${parseFloat(customer.latitude).toFixed(6)}, ${parseFloat(customer.longitude).toFixed(6)}</div>
+            ${customer.mapsLink ? `<div><strong>رابط الخرائط:</strong> <a href="${customer.mapsLink}" target="_blank" style="color: #1976d2;">عرض على خرائط Google</a></div>` : ''}
             <div style="margin-top: 5px;">
               <button type="button" class="btn btn-warning" onclick="getUserLocation()" style="padding: 6px 12px; font-size: 13px;">
                 تحديث الموقع
@@ -1933,7 +1970,7 @@
     hideMessages();
   }
   
-  // ===== حفظ معلومات العميل - الإصدار المصحح =====
+  // ===== حفظ معلومات العميل - الإصدار المصحح تماماً =====
   async function saveCustomerInfo() {
     hideMessages();
     
@@ -1944,15 +1981,17 @@
     const area = document.getElementById('customer-area').value.trim();
     const address = document.getElementById('customer-address').value.trim();
     
-    // ✅ هذه هي الأسماء الصحيحة للحقول - بنفس الأسماء الموجودة في HTML
+    // ✅ الحصول على الإحداثيات
     const latitude = document.getElementById('latitude').value.trim();
     const longitude = document.getElementById('longitude').value.trim();
     const locationConfirmed = document.getElementById('location-confirmed').value === 'true';
+    const googleMapsLink = document.getElementById('google-maps-link').value.trim();
     
     console.log('📊 بيانات الموقع قبل الحفظ:');
     console.log('latitude:', latitude);
     console.log('longitude:', longitude);
     console.log('locationConfirmed:', locationConfirmed);
+    console.log('googleMapsLink:', googleMapsLink);
     
     // ✅ التحقق من البيانات الأساسية
     if (!name) {
@@ -2020,11 +2059,20 @@
       formData.append('area', area);
       formData.append('address', address);
       
-      // ✅ إضافة بيانات الموقع - هذه هي الأسماء التي يبحث عنها Apps Script
+      // ✅ إضافة بيانات الموقع والإحداثيات
       if (latitude && longitude) {
         formData.append('latitude', latitude);
         formData.append('longitude', longitude);
         console.log('✅ إرسال الإحداثيات:', latitude, longitude);
+      }
+      
+      // ✅ إضافة رابط خرائط Google للعمود G
+      if (googleMapsLink) {
+        formData.append('location', googleMapsLink);
+        console.log('✅ إرسال رابط الخرائط للعمود G:', googleMapsLink);
+      } else {
+        // إذا لم يكن هناك رابط خرائط، أرسل العنوان فقط
+        formData.append('location', address);
       }
       
       console.log('📤 إرسال البيانات إلى Apps Script...');
@@ -2059,7 +2107,8 @@
           area: area,
           address: address,
           latitude: latitude,
-          longitude: longitude
+          longitude: longitude,
+          mapsLink: googleMapsLink
         };
         
         showSuccess('✅ تم حفظ المعلومات بنجاح');
@@ -2068,6 +2117,9 @@
         setTimeout(() => {
           if (latitude && longitude) {
             showInfo(`تم حفظ موقعك: ${latitude}, ${longitude}`);
+          }
+          if (googleMapsLink) {
+            console.log('✅ تم حفظ رابط الخرائط في العمود G:', googleMapsLink);
           }
         }, 500);
         
@@ -2144,11 +2196,16 @@
       // ✅ إضافة الإحداثيات
       const latitude = document.getElementById('latitude').value || currentCustomer.latitude || '';
       const longitude = document.getElementById('longitude').value || currentCustomer.longitude || '';
+      const googleMapsLink = document.getElementById('google-maps-link').value || '';
       
       if (latitude && longitude) {
         formData.append('latitude', latitude);
         formData.append('longitude', longitude);
         console.log('✅ Sending coordinates for order update:', latitude, longitude);
+      }
+      
+      if (googleMapsLink) {
+        formData.append('location', googleMapsLink);
       }
       
       formData.append('note', 'تم تعديل الطلب السابق');
@@ -2225,10 +2282,12 @@
     // ✅ الحصول على الإحداثيات من الحقول المخفية
     const latitude = document.getElementById('latitude').value.trim();
     const longitude = document.getElementById('longitude').value.trim();
+    const googleMapsLink = document.getElementById('google-maps-link').value.trim();
     
     console.log('📊 Coordinates before submitting order:');
     console.log('latitude:', latitude);
     console.log('longitude:', longitude);
+    console.log('googleMapsLink:', googleMapsLink);
     
     if (!name || !phone || !whatsapp || !area || !address) {
       alert('من فضلك أكمل معلومات العميل أولاً ثم اضغط على "حفظ المعلومات"');
@@ -2275,6 +2334,14 @@
         console.log('✅ Coordinates added to FormData:', latitude, longitude);
       }
       
+      // ✅ إضافة رابط خرائط Google للعمود G
+      if (googleMapsLink) {
+        formData.append('location', googleMapsLink);
+        console.log('✅ Google Maps link added to FormData:', googleMapsLink);
+      } else {
+        formData.append('location', address);
+      }
+      
       if (hasPreviousActiveOrder) {
         formData.append('note', 'Customer placed another order');
       }
@@ -2308,6 +2375,7 @@
           <p>📍 <strong>موقع التسليم:</strong> ${address}</p>
           ${latitude && longitude ? 
             `<p>📍 <strong>الإحداثيات:</strong> ${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</p>` : ''}
+          ${googleMapsLink ? `<p>🗺️ <strong>رابط الخرائط:</strong> <a href="${googleMapsLink}" target="_blank">عرض الموقع</a></p>` : ''}
           ${hasPreviousActiveOrder ? `<p>📌 <strong>ملاحظة:</strong> تم ربط هذا الطلب بنفس رقم عميلك</p>` : ''}
           <p>عزيزي/عزيزتي <strong>${name}</strong>، سيتم التواصل معك على واتساب للتأكيد.</p>
           <p>شكراً لاستخدامك HomiCart! 💙</p>
