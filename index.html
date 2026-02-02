@@ -540,6 +540,7 @@
       gap: 10px;
       text-align: center;
     }
+    updateCancelButtonVisibility();
   }
 </style>
 </head>
@@ -1359,12 +1360,25 @@
       ${order.notes ? `
       <div class="order-info-item" style="margin-top: 10px;">
         <strong>📌 ملاحظات:</strong>
-        <p style="background: #fff; padding: 10px; border
+        <p style="background: #fff; padding: 10px; border-radius: 5px; margin-top: 5px;">
+          ${order.notes}
+        </p>
+      </div>
+      ` : ''}
+    `;
+    
+    alertSection.style.display = 'block';
+    updateCancelButtonVisibility();
+  }
+  
+
+
   // ===== إظهار/إخفاء زر إلغاء الطلب حسب الحالة =====
   function updateCancelButtonVisibility() {
     const btn = document.getElementById('cancel-order-btn');
     if (!btn) return;
 
+    // الزر يظهر فقط إذا: النظام Active + الحساب Active + العميل موجود + عنده طلب نشط + عندنا OrderID
     const systemActive = (currentOrderStatus || '').toLowerCase() === 'active';
     const hasOrderId = !!(previousOrderData && (previousOrderData.id || existingOrderId));
     const shouldShow = systemActive && isAccountActive && customerExists && hasPreviousActiveOrder && hasOrderId;
@@ -1376,7 +1390,7 @@
   async function cancelExistingOrder() {
     hideMessages();
 
-    // حماية إضافية: لا نسمح بالإلغاء إذا النظام مغلق أو الحساب غير نشط
+    // حماية إضافية
     if ((currentOrderStatus || '').toLowerCase() !== 'active') {
       alert('لا يمكن إلغاء الطلب حالياً لأن الطلبات مغلقة.');
       updateCancelButtonVisibility();
@@ -1438,7 +1452,7 @@
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error('HTTP error! status: ' + response.status);
       }
 
       const result = await response.json();
@@ -1478,17 +1492,6 @@
     }
   }
 
--radius: 5px; margin-top: 5px;">
-          ${order.notes}
-        </p>
-      </div>
-      ` : ''}
-    `;
-    
-    alertSection.style.display = 'block';
-    updateCancelButtonVisibility();
-  }
-  
   // ===== تعديل الطلب السابق =====
   function editPreviousOrder() {
     if (!previousOrderData) return;
@@ -2704,9 +2707,6 @@
       statusText.textContent = '⛔ الطلبات مغلقة حالياً - يرجى الانتظار حتى يتم فتح الطلبات';
       disableForm();
     }
-
-    // تحديث ظهور زر إلغاء الطلب
-    updateCancelButtonVisibility();
   }
   
   // ===== تفعيل عناصر النموذج =====
