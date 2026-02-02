@@ -540,7 +540,6 @@
       gap: 10px;
       text-align: center;
     }
-    updateCancelButtonVisibility();
   }
 </style>
 </head>
@@ -592,9 +591,6 @@
       </button>
       <button class="btn" onclick="createNewOrderAnyway()" id="new-order-anyway-btn">
         طلب جديد أخر
-      </button>
-      <button class="btn btn-danger" onclick="cancelExistingOrder()" id="cancel-order-btn" style="display: none;">
-        🗑️ إلغاء الطلب الحالي
       </button>
     </div>
   </div>
@@ -1001,7 +997,6 @@
     document.getElementById('view-order-section').style.display = 'none';
     document.getElementById('edit-order-section').style.display = 'none';
     document.getElementById('new-order-section').style.display = 'none';
-    updateCancelButtonVisibility();
     
     if (!mobileNumber) {
       errorElement.textContent = 'رقم الهاتف مطلوب';
@@ -1234,7 +1229,6 @@
     document.getElementById('new-order-section').style.display = 'block';
     document.getElementById('new-order-text').value = '';
     
-    updateCancelButtonVisibility();
     hideMessages();
   }
   
@@ -1368,130 +1362,8 @@
     `;
     
     alertSection.style.display = 'block';
-    updateCancelButtonVisibility();
   }
   
-
-
-  // ===== إظهار/إخفاء زر إلغاء الطلب حسب الحالة =====
-  function updateCancelButtonVisibility() {
-    const btn = document.getElementById('cancel-order-btn');
-    if (!btn) return;
-
-    // الزر يظهر فقط إذا: النظام Active + الحساب Active + العميل موجود + عنده طلب نشط + عندنا OrderID
-    const systemActive = (currentOrderStatus || '').toLowerCase() === 'active';
-    const hasOrderId = !!(previousOrderData && (previousOrderData.id || existingOrderId));
-    const shouldShow = systemActive && isAccountActive && customerExists && hasPreviousActiveOrder && hasOrderId;
-
-    btn.style.display = shouldShow ? 'inline-block' : 'none';
-  }
-
-  // ===== إلغاء الطلب الحالي =====
-  async function cancelExistingOrder() {
-    hideMessages();
-
-    // حماية إضافية
-    if ((currentOrderStatus || '').toLowerCase() !== 'active') {
-      alert('لا يمكن إلغاء الطلب حالياً لأن الطلبات مغلقة.');
-      updateCancelButtonVisibility();
-      return;
-    }
-
-    if (!isAccountActive && customerExists) {
-      alert('حسابك غير نشط. يرجى التواصل مع الإدارة لتفعيل الحساب.');
-      updateCancelButtonVisibility();
-      return;
-    }
-
-    if (!hasPreviousActiveOrder || !previousOrderData) {
-      alert('لا يوجد طلب نشط لإلغائه.');
-      updateCancelButtonVisibility();
-      return;
-    }
-
-    const orderId = previousOrderData.id || existingOrderId;
-    if (!orderId) {
-      alert('رقم الطلب غير متوفر.');
-      updateCancelButtonVisibility();
-      return;
-    }
-
-    const ok = confirm('هل أنت متأكد أنك تريد إلغاء الطلب الحالي؟');
-    if (!ok) return;
-
-    const btn = document.getElementById('cancel-order-btn');
-    const editBtn = document.getElementById('edit-order-btn');
-    const newBtn = document.getElementById('new-order-anyway-btn');
-
-    if (btn) btn.disabled = true;
-    if (editBtn) editBtn.disabled = true;
-    if (newBtn) newBtn.disabled = true;
-
-    try {
-      console.log('🗑️ Cancelling order:', orderId);
-
-      const formData = new FormData();
-      formData.append('action', 'cancelOrder');
-      formData.append('orderId', orderId);
-      if (currentCustomerId) formData.append('customerId', currentCustomerId);
-      if (currentCustomerPhone) formData.append('phone', currentCustomerPhone);
-      if (currentRound) formData.append('round', currentRound);
-
-      // ✅ إرسال توقيت المستخدم
-      const userTimezone = document.getElementById('user-timezone').value;
-      const userTimestamp = getUserLocalTimestamp();
-      formData.append('userTimezone', userTimezone);
-      formData.append('userTimestamp', userTimestamp);
-
-      formData.append('note', 'إلغاء الطلب بواسطة العميل');
-
-      const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        body: formData,
-        mode: 'cors'
-      });
-
-      if (!response.ok) {
-        throw new Error('HTTP error! status: ' + response.status);
-      }
-
-      const result = await response.json();
-      console.log('📋 Cancel response:', result);
-
-      if (result.success) {
-        // تحديث الحالة داخل الصفحة
-        hasPreviousActiveOrder = false;
-        previousOrderData = null;
-        existingOrderId = null;
-
-        // إخفاء تنبيه الطلب السابق
-        document.getElementById('previous-order-alert').style.display = 'none';
-        document.getElementById('edit-order-section').style.display = 'none';
-        document.getElementById('view-order-section').style.display = 'none';
-        document.getElementById('new-order-section').style.display = 'none';
-
-        // عرض بيانات العميل (إن وجدت) بدل التنبيه
-        if (currentCustomer) {
-          displayCustomerData(currentCustomer);
-        }
-
-        updateCancelButtonVisibility();
-        showSuccess(result.message || '✅ تم إلغاء الطلب بنجاح');
-      } else {
-        throw new Error(result.message || 'فشل إلغاء الطلب');
-      }
-
-    } catch (error) {
-      console.error('❌ Error cancelling order:', error);
-      showError('حدث خطأ أثناء إلغاء الطلب: ' + error.message);
-    } finally {
-      if (btn) btn.disabled = false;
-      if (editBtn) editBtn.disabled = false;
-      if (newBtn) newBtn.disabled = false;
-      updateCancelButtonVisibility();
-    }
-  }
-
   // ===== تعديل الطلب السابق =====
   function editPreviousOrder() {
     if (!previousOrderData) return;
