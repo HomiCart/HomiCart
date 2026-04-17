@@ -503,6 +503,52 @@
     margin-bottom: 5px;
   }
   
+  /* NEW STYLES for multiple orders */
+  .multiple-orders-container {
+    margin-top: 20px;
+  }
+  
+  .order-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  
+  .order-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #2e5cff;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .store-badge {
+    display: inline-block;
+    background: #2e5cff;
+    color: white;
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  
+  .store-badge.fayoumi {
+    background: #ff9800;
+  }
+  
+  .edit-single-order-btn {
+    background: #ff9800;
+    padding: 8px 20px;
+    font-size: 14px;
+    margin: 0;
+  }
+  
   @media (max-width: 768px) {
     .container {
       padding: 20px;
@@ -538,6 +584,11 @@
     .customer-data-header {
       flex-direction: column;
       gap: 10px;
+      text-align: center;
+    }
+    
+    .order-card-header {
+      flex-direction: column;
       text-align: center;
     }
   }
@@ -578,19 +629,16 @@
     </div>
   </div>
 
-  <!-- Previous Order Alert Section -->
+  <!-- Previous Orders Alert Section - MODIFIED to support multiple orders -->
   <div id="previous-order-alert" class="previous-order-alert" style="display: none;">
-    <h4>📦 لقد لاحظنا أن لديك طلب سابق</h4>
-    <div id="previous-order-details"></div>
+    <h4>📦 لقد لاحظنا أن لديك طلبات سابقة</h4>
+    <div id="previous-orders-list"></div>
     <div class="order-type-buttons">
-      <button class="btn btn-warning" onclick="editPreviousOrder()" id="edit-order-btn">
-        تعديل الطلب الحالي
-      </button>
       <button class="btn btn-edit-info" onclick="editCustomerInfo()" id="edit-customer-info-btn">
         <span>✏️</span> تعديل بياناتي
       </button>
       <button class="btn" onclick="createNewOrderAnyway()" id="new-order-anyway-btn">
-        طلب جديد أخر
+        طلب جديد
       </button>
     </div>
   </div>
@@ -617,6 +665,15 @@
     </div>
   </div>
 
+  <!-- Edit Multiple Orders Section - NEW for editing multiple orders -->
+  <div id="edit-multiple-orders-section" class="section" style="display: none;">
+    <h3 class="section-title">تعديل الطلبات</h3>
+    <div id="multiple-orders-container" class="multiple-orders-container"></div>
+    <div style="text-align: center; margin-top: 20px;">
+      <button class="btn btn-secondary" onclick="goBackToMain()">العودة</button>
+    </div>
+  </div>
+
   <!-- View Order Section -->
   <div id="view-order-section" class="section" style="display: none;">
     <h3 class="section-title">عرض الطلب السابق</h3>
@@ -626,7 +683,7 @@
     </div>
   </div>
 
-  <!-- Edit Order Section -->
+  <!-- Edit Order Section (single order - kept for compatibility) -->
   <div id="edit-order-section" class="section" style="display: none;">
     <h3 class="section-title">تعديل الطلب الأخير</h3>
     
@@ -766,7 +823,7 @@
         <div id="confirmed-location-info"></div>
       </div>
       
-      <!-- ✅ الحقول المخفية لتخزين الإحداثيات -->
+      <!-- Hidden fields for coordinates -->
       <input type="hidden" id="latitude" name="latitude">
       <input type="hidden" id="longitude" name="longitude">
       <input type="hidden" id="location-accuracy" name="location-accuracy">
@@ -785,7 +842,7 @@
     </div>
   </div>
 
-  <!-- New Order Details Section -->
+  <!-- New Order Details Section - MODIFIED with dropdown -->
   <div id="new-order-section" class="section" style="display: none;">
     <h3 class="section-title">طلب جديد</h3>
     
@@ -794,13 +851,27 @@
       ⚠️ <strong>ملاحظة:</strong> لديك طلب سابق. سيتم ربط هذا الطلب بنفس رقم عميلك.
     </div>
     
+    <!-- NEW: Mandatory Dropdown -->
     <div class="form-group">
-      <label for="new-order-text" class="required">اكتب طلبك هنا</label>
-      <textarea 
-        id="new-order-text" 
-        rows="5" 
-        placeholder="اكتب تفاصيل طلبك هنا..."
-      ></textarea>
+      <label for="store-select" class="required">اختر المتجر</label>
+      <select id="store-select" onchange="toggleOrderTextarea()">
+        <option value="">-- اختر المتجر --</option>
+        <option value="01- ملحمة الركن المصري">01- ملحمة الركن المصري</option>
+        <option value="02- الفيومي للطيور">02- الفيومي للطيور</option>
+      </select>
+      <div id="store-error" class="error" style="display: none;">يرجى اختيار المتجر أولاً</div>
+    </div>
+    
+    <!-- Order Text - Hidden by default, shows after dropdown selection -->
+    <div id="order-text-container" style="display: none;">
+      <div class="form-group">
+        <label for="new-order-text" class="required">اكتب طلبك هنا</label>
+        <textarea 
+          id="new-order-text" 
+          rows="5" 
+          placeholder="اكتب تفاصيل طلبك هنا..."
+        ></textarea>
+      </div>
     </div>
     
     <div style="text-align: center;">
@@ -838,6 +909,7 @@
   let locationConfirmed = false;
   let hasPreviousActiveOrder = false;
   let previousOrderData = null;
+  let previousOrdersList = []; // NEW: Store multiple orders
   
   // متغيرات الخريطة
   let map = null;
@@ -856,9 +928,7 @@
   document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ HomiCart System Initialized - Updated Version');
     
-    // ✅ اكتشاف توقيت المستخدم وتخزينه
     detectUserTimezone();
-    
     checkOrderStatus();
     document.getElementById('mobile-number').focus();
   });
@@ -872,7 +942,6 @@
       return userTimezone;
     } catch (error) {
       console.warn('Could not detect user timezone:', error);
-      // استخدام توقيت السعودية كافتراضي
       document.getElementById('user-timezone').value = 'Asia/Riyadh';
       return 'Asia/Riyadh';
     }
@@ -883,28 +952,36 @@
     try {
       const now = new Date();
       const userTimezone = document.getElementById('user-timezone').value || 'Asia/Riyadh';
-      
-      // استخدام toLocaleString مع توقيت المستخدم
       const localDate = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
-      
-      // تنسيق التاريخ
       const year = localDate.getFullYear();
       const month = String(localDate.getMonth() + 1).padStart(2, '0');
       const day = String(localDate.getDate()).padStart(2, '0');
       const hours = String(localDate.getHours()).padStart(2, '0');
       const minutes = String(localDate.getMinutes()).padStart(2, '0');
       const seconds = String(localDate.getSeconds()).padStart(2, '0');
-      
       const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-      
       console.log('🕒 User Local Time:', timestamp, 'Timezone:', userTimezone);
       return timestamp;
     } catch (error) {
       console.error('Error getting user local time:', error);
-      // استخدام التاريخ الحالي كبديل
       const now = new Date();
       const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
       return timestamp;
+    }
+  }
+  
+  // ===== NEW: Toggle order textarea based on dropdown selection =====
+  function toggleOrderTextarea() {
+    const storeSelect = document.getElementById('store-select');
+    const orderContainer = document.getElementById('order-text-container');
+    const storeError = document.getElementById('store-error');
+    
+    if (storeSelect.value) {
+      orderContainer.style.display = 'block';
+      storeError.style.display = 'none';
+    } else {
+      orderContainer.style.display = 'none';
+      storeError.style.display = 'block';
     }
   }
   
@@ -978,7 +1055,7 @@
     }, 800);
   }
   
-  // ===== التحقق من رقم الهاتف وعرض حالة العميل =====
+  // ===== التحقق من رقم الهاتف وعرض حالة العميل (MODIFIED to fetch multiple orders) =====
   async function validateMobileNumber() {
     const mobileInput = document.getElementById('mobile-number');
     const mobileNumber = mobileInput.value.trim();
@@ -996,6 +1073,7 @@
     document.getElementById('customer-info-form').style.display = 'none';
     document.getElementById('view-order-section').style.display = 'none';
     document.getElementById('edit-order-section').style.display = 'none';
+    document.getElementById('edit-multiple-orders-section').style.display = 'none';
     document.getElementById('new-order-section').style.display = 'none';
     
     if (!mobileNumber) {
@@ -1014,7 +1092,8 @@
     try {
       console.log('🔍 Checking customer for phone:', mobileNumber);
       
-      const customerUrl = `${SCRIPT_URL}?action=getCustomer&phone=${encodeURIComponent(mobileNumber)}&_=${Date.now()}`;
+      // NEW: Fetch customer with orders from both sheets
+      const customerUrl = `${SCRIPT_URL}?action=getCustomerWithOrders&phone=${encodeURIComponent(mobileNumber)}&_=${Date.now()}`;
       console.log('Customer Fetch URL:', customerUrl);
       
       const customerResponse = await fetch(customerUrl, {
@@ -1039,8 +1118,12 @@
         customerExists = true;
         hasLocation = !!(customerData.customer.latitude && customerData.customer.longitude);
         
+        // NEW: Store multiple orders
+        previousOrdersList = customerData.orders || [];
+        hasPreviousActiveOrder = previousOrdersList.length > 0;
+        
         console.log('✅ Customer found:', customerData.customer);
-        console.log('📍 Has location:', hasLocation);
+        console.log('📦 Orders found:', previousOrdersList.length);
         
         if (customerData.customer.timestamp) {
           customerData.customer.formattedDate = formatDateString(customerData.customer.timestamp);
@@ -1053,73 +1136,15 @@
             <p>يرجى التواصل مع الإدارة لتفعيل الحساب</p>
           `;
           warningElement.style.display = 'block';
-          
           successElement.textContent = 'حساب غير نشط';
-          
         } else {
           isAccountActive = true;
           
-          try {
-            const ordersUrl = `${SCRIPT_URL}?action=getOrderByCustomer&customerId=${encodeURIComponent(currentCustomerId)}&_=${Date.now()}`;
-            console.log('Orders Fetch URL:', ordersUrl);
-            
-            const ordersResponse = await fetch(ordersUrl, {
-              method: 'GET',
-              cache: 'no-cache',
-              mode: 'cors'
-            });
-            
-            if (ordersResponse.ok) {
-              const ordersData = await ordersResponse.json();
-              console.log('📋 Orders response:', ordersData);
-              
-              if (ordersData.success && ordersData.order) {
-                if (ordersData.order.timestamp) {
-                  ordersData.order.formattedDate = formatDateString(ordersData.order.timestamp);
-                }
-                if (ordersData.order.date) {
-                  ordersData.order.formattedDate = formatDateString(ordersData.order.date);
-                }
-                
-                const orderStatus = ordersData.order.status || '';
-                const activeStatuses = ['جديد', 'New', 'Processing', 'Preparing', 'Ready', 'On the way', 'Pending', 'قيد المعالجة'];
-                const inactiveStatuses = ['مسلم', 'ملغى', 'Delivered', 'Cancelled', 'Rejected'];
-                
-                const isActive = activeStatuses.includes(orderStatus) || 
-                                (!inactiveStatuses.includes(orderStatus) && orderStatus !== '');
-                
-                if (isActive) {
-                  hasPreviousActiveOrder = true;
-                  previousOrderData = ordersData.order;
-                  
-                  showPreviousOrderAlert(ordersData.order, customerData.customer.name);
-                  successElement.textContent = `✅ مرحباً ${customerData.customer.name} - لديك طلب نشط`;
-                } else {
-                  hasPreviousActiveOrder = false;
-                  previousOrderData = null;
-                  
-                  displayCustomerData(customerData.customer);
-                  successElement.textContent = `✅ مرحباً ${customerData.customer.name}`;
-                }
-              } else {
-                hasPreviousActiveOrder = false;
-                previousOrderData = null;
-                
-                displayCustomerData(customerData.customer);
-                successElement.textContent = `✅ مرحباً ${customerData.customer.name}`;
-              }
-            } else {
-              hasPreviousActiveOrder = false;
-              previousOrderData = null;
-              
-              displayCustomerData(customerData.customer);
-              successElement.textContent = `✅ مرحباً ${customerData.customer.name}`;
-            }
-          } catch (orderError) {
-            console.error('❌ Error fetching orders:', orderError);
-            hasPreviousActiveOrder = false;
-            previousOrderData = null;
-            
+          // NEW: Display multiple orders if any, otherwise show customer data
+          if (hasPreviousActiveOrder) {
+            displayMultipleOrdersForEditing(previousOrdersList);
+            successElement.textContent = `✅ مرحباً ${customerData.customer.name} - لديك ${previousOrdersList.length} طلب(طلبات) نشط`;
+          } else {
             displayCustomerData(customerData.customer);
             successElement.textContent = `✅ مرحباً ${customerData.customer.name}`;
           }
@@ -1137,6 +1162,7 @@
         locationConfirmed = false;
         hasPreviousActiveOrder = false;
         previousOrderData = null;
+        previousOrdersList = [];
         
         console.log('🆕 New customer detected');
         
@@ -1162,6 +1188,176 @@
       console.error('❌ Error checking customer:', error);
       errorElement.textContent = 'حدث خطأ أثناء التحقق: ' + error.message;
       return false;
+    }
+  }
+  
+  // ===== NEW: Display multiple orders for editing =====
+  function displayMultipleOrdersForEditing(orders) {
+    const alertSection = document.getElementById('previous-order-alert');
+    const ordersListContainer = document.getElementById('previous-orders-list');
+    
+    if (!ordersListContainer) return;
+    
+    ordersListContainer.innerHTML = '';
+    
+    orders.forEach(order => {
+      const storeName = order.storeType === 'AlFayoumi' ? '02- الفيومي للطيور' : '01- ملحمة الركن المصري';
+      const storeClass = order.storeType === 'AlFayoumi' ? 'fayoumi' : '';
+      
+      const orderCard = document.createElement('div');
+      orderCard.className = 'order-card';
+      orderCard.innerHTML = `
+        <div class="order-card-header">
+          <span class="store-badge ${storeClass}">${storeName}</span>
+          <button class="btn edit-single-order-btn" onclick="editSpecificOrder('${order.id}', '${order.storeType}', '${escapeHtml(order.items)}')">
+            ✏️ تعديل هذا الطلب
+          </button>
+        </div>
+        <div><strong>تفاصيل الطلب:</strong></div>
+        <p style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-top: 8px; white-space: pre-wrap;">${escapeHtml(order.items)}</p>
+      `;
+      ordersListContainer.appendChild(orderCard);
+    });
+    
+    alertSection.style.display = 'block';
+  }
+  
+  // ===== Helper: Escape HTML =====
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+      if (m === '&') return '&amp;';
+      if (m === '<') return '&lt;';
+      if (m === '>') return '&gt;';
+      return m;
+    });
+  }
+  
+  // ===== NEW: Edit specific order from multiple orders =====
+  function editSpecificOrder(orderId, storeType, currentText) {
+    document.getElementById('previous-order-alert').style.display = 'none';
+    document.getElementById('customer-data-section').style.display = 'none';
+    document.getElementById('customer-info-form').style.display = 'none';
+    document.getElementById('view-order-section').style.display = 'none';
+    document.getElementById('new-order-section').style.display = 'none';
+    document.getElementById('edit-order-section').style.display = 'none';
+    
+    const editSection = document.getElementById('edit-multiple-orders-section');
+    const container = document.getElementById('multiple-orders-container');
+    
+    const storeName = storeType === 'AlFayoumi' ? '02- الفيومي للطيور' : '01- ملحمة الركن المصري';
+    const storeClass = storeType === 'AlFayoumi' ? 'fayoumi' : '';
+    
+    container.innerHTML = `
+      <div class="order-card">
+        <div class="order-card-header">
+          <span class="store-badge ${storeClass}">${storeName}</span>
+        </div>
+        <div class="form-group">
+          <label>تعديل الطلب</label>
+          <textarea id="edit-order-text-single" rows="5" placeholder="اكتب تفاصيل الطلب الجديد هنا...">${escapeHtml(currentText)}</textarea>
+        </div>
+        <div style="text-align: center; margin-top: 15px;">
+          <button class="btn btn-success" onclick="updateSingleOrder('${orderId}', '${storeType}')">
+            <span>تحديث الطلب</span>
+          </button>
+          <button class="btn btn-secondary" onclick="goBackToMain()">إلغاء والعودة</button>
+        </div>
+      </div>
+    `;
+    
+    editSection.style.display = 'block';
+  }
+  
+  // ===== NEW: Update single order =====
+  async function updateSingleOrder(orderId, storeType) {
+    const newOrderText = document.getElementById('edit-order-text-single').value.trim();
+    
+    if (!newOrderText) {
+      alert('من فضلك اكتب تفاصيل الطلب الجديد أولاً');
+      return;
+    }
+    
+    if (currentOrderStatus.toLowerCase() !== 'active') {
+      alert('لا يمكن تحديث الطلبات حالياً لأن النظام مغلق.');
+      return;
+    }
+    
+    if (!isAccountActive && customerExists) {
+      alert('حسابك غير نشط. يرجى التواصل مع الإدارة لتفعيل الحساب.');
+      return;
+    }
+    
+    const targetSheet = (storeType === 'AlFayoumi') ? 'AlFayoumi' : 'Orders';
+    const updateBtn = event.target;
+    updateBtn.disabled = true;
+    updateBtn.innerHTML = '<span class="loading"></span> جاري التحديث...';
+    
+    try {
+      if (!currentCustomer) {
+        throw new Error('بيانات العميل غير متوفرة');
+      }
+      
+      console.log('✏️ Updating existing order:', orderId, 'to sheet:', targetSheet);
+      
+      const formData = new FormData();
+      formData.append('action', 'submitOrder');
+      formData.append('phone', currentCustomer.phone);
+      formData.append('whatsapp', currentCustomer.whatsapp || currentCustomer.phone);
+      formData.append('name', currentCustomer.name);
+      formData.append('area', currentCustomer.area);
+      formData.append('address', currentCustomer.address);
+      formData.append('orderText', newOrderText);
+      if (currentRound) formData.append('round', currentRound);
+      formData.append('replaceOrderId', orderId);
+      formData.append('targetSheet', targetSheet);
+      
+      const userTimezone = document.getElementById('user-timezone').value;
+      const userTimestamp = getUserLocalTimestamp();
+      formData.append('userTimezone', userTimezone);
+      formData.append('userTimestamp', userTimestamp);
+      
+      console.log('📤 Sending update with FormData');
+      
+      const response = await fetch(SCRIPT_URL, { 
+        method: 'POST',
+        body: formData,
+        mode: 'cors'
+      });
+      
+      console.log('Update response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('✏️ Update order result:', result);
+      
+      if (result.success) {
+        document.getElementById('edit-multiple-orders-section').style.display = 'none';
+        
+        const successMessage = document.getElementById('success-message');
+        successMessage.innerHTML = `
+          <h3>✅ تم تحديث الطلب بنجاح!</h3>
+          <p>عزيزي/عزيزتي <strong>${currentCustomer.name}</strong></p>
+          <p>شكراً لاستخدامك HomiCart! 💙</p>
+        `;
+        successMessage.style.display = 'block';
+        
+        setTimeout(() => {
+          resetForm();
+        }, 3000);
+      } else {
+        throw new Error(result.message || 'فشل تحديث الطلب');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error updating order:', error);
+      showError('حدث خطأ أثناء تحديث الطلب: ' + error.message);
+    } finally {
+      updateBtn.disabled = false;
+      updateBtn.innerHTML = 'تحديث الطلب';
     }
   }
   
@@ -1221,13 +1417,22 @@
     isEditingCustomer = false;
     
     document.getElementById('customer-data-section').style.display = 'none';
+    document.getElementById('previous-order-alert').style.display = 'none';
+    document.getElementById('edit-multiple-orders-section').style.display = 'none';
     
     if (customerExists && hasPreviousActiveOrder) {
       document.getElementById('duplicate-order-warning').style.display = 'block';
+    } else {
+      document.getElementById('duplicate-order-warning').style.display = 'none';
     }
     
-    document.getElementById('new-order-section').style.display = 'block';
+    // Reset dropdown and hide textarea
+    document.getElementById('store-select').value = '';
+    document.getElementById('order-text-container').style.display = 'none';
+    document.getElementById('store-error').style.display = 'none';
     document.getElementById('new-order-text').value = '';
+    
+    document.getElementById('new-order-section').style.display = 'block';
     
     hideMessages();
   }
@@ -1237,10 +1442,8 @@
     if (!dateString) return 'غير معروف';
     
     try {
-      // إذا كان التاريخ بالفعل كائن Date
       if (dateString instanceof Date) {
         const date = dateString;
-        
         const optionsDate = { 
           weekday: 'long', 
           year: 'numeric', 
@@ -1248,7 +1451,6 @@
           day: 'numeric',
           timeZone: 'UTC'
         };
-        
         const optionsTime = {
           hour: '2-digit',
           minute: '2-digit',
@@ -1256,19 +1458,16 @@
           hour12: false,
           timeZone: 'UTC'
         };
-        
         const formattedDate = date.toLocaleDateString('en-GB', optionsDate);
         const formattedTime = date.toLocaleTimeString('en-GB', optionsTime);
-        
         return {
           date: formattedDate,
           time: formattedTime
         };
       }
       
-      // إذا كان نصاً
       const cleanDateString = dateString.replace('Z', '').replace('T', ' ');
-      const date = new Date(cleanDateString + 'Z'); // إضافة Z لتعيين UTC
+      const date = new Date(cleanDateString + 'Z');
       
       if (isNaN(date.getTime())) {
         return 'غير معروف';
@@ -1281,7 +1480,6 @@
         day: 'numeric',
         timeZone: 'UTC'
       };
-      
       const optionsTime = {
         hour: '2-digit',
         minute: '2-digit',
@@ -1289,7 +1487,6 @@
         hour12: false,
         timeZone: 'UTC'
       };
-      
       const formattedDate = date.toLocaleDateString('ar-SA', optionsDate);
       const formattedTime = date.toLocaleTimeString('ar-SA', optionsTime);
       
@@ -1304,147 +1501,12 @@
     }
   }
   
-  // ===== عرض تحذير الطلب السابق =====
-  function showPreviousOrderAlert(order, customerName) {
-    const alertSection = document.getElementById('previous-order-alert');
-    const orderDetails = document.getElementById('previous-order-details');
-    
-    let dateDisplay = 'غير معروف';
-    let timeDisplay = '';
-    
-    if (order.formattedDate) {
-      dateDisplay = order.formattedDate.date;
-      timeDisplay = order.formattedDate.time;
-    } else if (order.date) {
-      const formatted = formatDateString(order.date);
-      dateDisplay = formatted.date;
-      timeDisplay = formatted.time;
-    } else if (order.timestamp) {
-      const formatted = formatDateString(order.timestamp);
-      dateDisplay = formatted.date;
-      timeDisplay = formatted.time;
-    }
-    
-    const orderStatus = order.status || 'قيد المعالجة';
-    
-    let statusColor = '#ff9800';
-    if (orderStatus === 'مسلم' || orderStatus === 'Delivered') statusColor = '#4CAF50';
-    if (orderStatus === 'ملغى' || orderStatus === 'Cancelled') statusColor = '#f44336';
-    if (orderStatus === 'Processing' || orderStatus === 'قيد المعالجة') statusColor = '#2196F3';
-    
-    orderDetails.innerHTML = `
-      <div class="order-info-grid">
-        <div class="order-info-item">
-          <strong>📅 التاريخ:</strong> ${dateDisplay}
-          ${timeDisplay ? `<br><strong>⏰ الوقت:</strong> ${timeDisplay}` : ''}
-        </div>
-        <div class="order-info-item">
-          <strong>📦 حالة الطلب:</strong> <span style="color: ${statusColor}">${orderStatus}</span>
-        </div>
-        <div class="order-info-item">
-          <strong>📍 العنوان:</strong> ${order.address || (currentCustomer ? currentCustomer.address : 'غير محدد')}
-        </div>
-      </div>
-      <div class="order-info-item" style="margin-top: 10px;">
-        <strong>📝 تفاصيل الطلب:</strong>
-        <p style="background: #fff; padding: 10px; border-radius: 5px; margin-top: 5px; white-space: pre-wrap;">
-          ${order.items || 'لا توجد تفاصيل'}
-        </p>
-      </div>
-      ${order.notes ? `
-      <div class="order-info-item" style="margin-top: 10px;">
-        <strong>📌 ملاحظات:</strong>
-        <p style="background: #fff; padding: 10px; border-radius: 5px; margin-top: 5px;">
-          ${order.notes}
-        </p>
-      </div>
-      ` : ''}
-    `;
-    
-    alertSection.style.display = 'block';
-  }
-  
-  // ===== تعديل الطلب السابق =====
-  function editPreviousOrder() {
-    if (!previousOrderData) return;
-    
-    document.getElementById('previous-order-alert').style.display = 'none';
-    document.getElementById('customer-data-section').style.display = 'none';
-    document.getElementById('customer-info-form').style.display = 'none';
-    document.getElementById('view-order-section').style.display = 'none';
-    document.getElementById('new-order-section').style.display = 'none';
-    
-    const editSection = document.getElementById('edit-order-section');
-    const currentDetails = document.getElementById('current-order-details');
-    
-    let dateDisplay = 'غير معروف';
-    let timeDisplay = '';
-    
-    if (previousOrderData.formattedDate) {
-      dateDisplay = previousOrderData.formattedDate.date;
-      timeDisplay = previousOrderData.formattedDate.time;
-    } else if (previousOrderData.date) {
-      const formatted = formatDateString(previousOrderData.date);
-      dateDisplay = formatted.date;
-      timeDisplay = formatted.time;
-    } else if (previousOrderData.timestamp) {
-      const formatted = formatDateString(previousOrderData.timestamp);
-      dateDisplay = formatted.date;
-      timeDisplay = formatted.time;
-    }
-    
-    const orderStatus = previousOrderData.status || 'قيد المعالجة';
-    
-    let statusColor = '#ff9800';
-    if (orderStatus === 'مسلم' || orderStatus === 'Delivered') statusColor = '#4CAF50';
-    if (orderStatus === 'ملغى' || orderStatus === 'Cancelled') statusColor = '#f44336';
-    if (orderStatus === 'Processing' || orderStatus === 'قيد المعالجة') statusColor = '#2196F3';
-    
-    currentDetails.innerHTML = `
-      <div class="order-item">
-        <div class="order-info-grid">
-          <div class="order-info-item">
-            <strong>📅 التاريخ:</strong> ${dateDisplay}
-          </div>
-          <div class="order-info-item">
-            <strong>⏰ الوقت:</strong> ${timeDisplay || 'غير محدد'}
-          </div>
-          <div class="order-info-item">
-            <strong>📦 رقم الطلب:</strong> ${previousOrderData.id || 'غير معروف'}
-          </div>
-          <div class="order-info-item">
-            <strong>📍 الحالة:</strong> <span style="color: ${statusColor}">${orderStatus}</span>
-          </div>
-        </div>
-        <div style="margin-top: 10px;">
-          <strong>📝 الطلب الحالي:</strong>
-          <p style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 5px; white-space: pre-wrap;">
-            ${previousOrderData.items || 'لا توجد تفاصيل'}
-          </p>
-        </div>
-      </div>
-      <p style="color: #ff9800; margin-top: 10px; font-weight: bold;">
-        ⚠️ سيتم استبدال هذا الطلب بالطلب الجديد
-      </p>
-    `;
-    
-    if (previousOrderData.items) {
-      document.getElementById('edit-order-text').value = previousOrderData.items;
-    } else {
-      document.getElementById('edit-order-text').value = '';
-      document.getElementById('edit-order-text').placeholder = 'لم يتم العثور على طلب سابق';
-    }
-    
-    existingOrderId = previousOrderData.id;
-    editSection.style.display = 'block';
-    hideMessages();
-  }
-  
   // ===== إنشاء طلب جديد رغم وجود طلب سابق =====
   function createNewOrderAnyway() {
     document.getElementById('previous-order-alert').style.display = 'none';
     document.getElementById('customer-data-section').style.display = 'none';
     document.getElementById('edit-order-section').style.display = 'none';
+    document.getElementById('edit-multiple-orders-section').style.display = 'none';
     document.getElementById('view-order-section').style.display = 'none';
     
     document.getElementById('duplicate-order-warning').style.display = 'block';
@@ -1464,39 +1526,11 @@
       document.getElementById('cancel-btn').style.display = 'inline-block';
     }
     
-    document.getElementById('new-order-section').style.display = 'block';
+    // Reset dropdown
+    document.getElementById('store-select').value = '';
+    document.getElementById('order-text-container').style.display = 'none';
     document.getElementById('new-order-text').value = '';
-    hideMessages();
-  }
-  
-  // ===== اختيار نوع الطلب =====
-  function selectOrderType(type) {
-    if (currentOrderStatus.toLowerCase() !== 'active') {
-      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
-      return;
-    }
-    
-    if (!isAccountActive && customerExists) {
-      alert('حسابك غير نشط. يرجى التواصل مع الإدارة لتفعيل الحساب.');
-      return;
-    }
-    
-    selectedOrderType = type;
-    isEditingCustomer = false;
-    
-    document.getElementById('customer-data-section').style.display = 'none';
-    
-    document.getElementById('customer-info-form').style.display = 'block';
-    document.getElementById('customer-form-title').textContent = 'معلومات العميل';
-    document.getElementById('cancel-btn').style.display = 'inline-block';
-    
-    fillCustomerForm(currentCustomer);
-    
     document.getElementById('new-order-section').style.display = 'block';
-    document.getElementById('new-order-text').value = '';
-    
-    document.getElementById('duplicate-order-warning').style.display = 'none';
-    
     hideMessages();
   }
   
@@ -1504,13 +1538,15 @@
   function goBackToMain() {
     document.getElementById('view-order-section').style.display = 'none';
     document.getElementById('edit-order-section').style.display = 'none';
+    document.getElementById('edit-multiple-orders-section').style.display = 'none';
     document.getElementById('new-order-section').style.display = 'none';
     document.getElementById('customer-info-form').style.display = 'none';
     
     selectedOrderType = null;
     isEditingCustomer = false;
     
-    if (hasPreviousActiveOrder && previousOrderData) {
+    if (hasPreviousActiveOrder && previousOrdersList.length > 0) {
+      displayMultipleOrdersForEditing(previousOrdersList);
       document.getElementById('previous-order-alert').style.display = 'block';
     } else if (customerExists && currentCustomer && isAccountActive) {
       document.getElementById('customer-data-section').style.display = 'block';
@@ -1532,7 +1568,6 @@
     
     locationError.textContent = '';
     
-    // ✅ إظهار الخريطة والفروع
     locationInfo.style.display = 'none';
     mapControls.style.display = 'none';
     document.getElementById('location-status').style.display = 'none';
@@ -1844,22 +1879,6 @@
     
     console.log('✅ رابط خرائط Google:', googleMapsLink);
     
-    // ✅ الحصول على العنوان من العنصر الموجود
-    const addressElement = document.getElementById('location-address');
-    if (addressElement && addressElement.textContent) {
-      let addressText = addressElement.textContent;
-      if (addressText.includes('📍 العنوان:')) {
-        addressText = addressText.replace('📍 العنوان:', '').trim();
-      } else if (addressText.includes('📍 الموقع:')) {
-        addressText = addressText.replace('📍 الموقع:', '').trim();
-      }
-      
-      // ✅ عدم نسخ العنوان تلقائياً إلى حقل العنوان الرئيسي
-      // ❌ تم إزالة هذا السطر: document.getElementById('customer-address').value = addressText;
-      
-      console.log('✅ العنوان المستخرج:', addressText);
-    }
-    
     locationConfirmed = true;
     hasLocation = true;
     
@@ -2047,6 +2066,7 @@
     
     document.getElementById('previous-order-alert').style.display = 'none';
     document.getElementById('customer-data-section').style.display = 'none';
+    document.getElementById('edit-multiple-orders-section').style.display = 'none';
     
     document.getElementById('customer-info-form').style.display = 'block';
     document.getElementById('customer-form-title').textContent = 'تعديل بياناتي';
@@ -2064,7 +2084,8 @@
     document.getElementById('customer-info-form').style.display = 'none';
     document.getElementById('new-order-section').style.display = 'none';
     
-    if (hasPreviousActiveOrder && previousOrderData) {
+    if (hasPreviousActiveOrder && previousOrdersList.length > 0) {
+      displayMultipleOrdersForEditing(previousOrdersList);
       document.getElementById('previous-order-alert').style.display = 'block';
     } else if (customerExists && currentCustomer) {
       document.getElementById('customer-data-section').style.display = 'block';
@@ -2073,7 +2094,7 @@
     hideMessages();
   }
   
-  // ===== حفظ معلومات العميل - تم التحديث لمنع تعديل Location =====
+  // ===== حفظ معلومات العميل =====
   async function saveCustomerInfo() {
     hideMessages();
     
@@ -2085,14 +2106,14 @@
     
     const latitude = document.getElementById('latitude').value.trim();
     const longitude = document.getElementById('longitude').value.trim();
-    const locationConfirmed = document.getElementById('location-confirmed').value === 'true';
+    const locationConfirmedVal = document.getElementById('location-confirmed').value === 'true';
     const googleMapsLink = document.getElementById('google-maps-link').value.trim();
     const userTimezone = document.getElementById('user-timezone').value;
     
     console.log('📊 بيانات الموقع قبل الحفظ:');
     console.log('latitude:', latitude);
     console.log('longitude:', longitude);
-    console.log('locationConfirmed:', locationConfirmed);
+    console.log('locationConfirmed:', locationConfirmedVal);
     console.log('googleMapsLink:', googleMapsLink);
     console.log('userTimezone:', userTimezone);
     
@@ -2133,7 +2154,7 @@
       return;
     }
     
-    if (!customerExists && !locationConfirmed) {
+    if (!customerExists && !locationConfirmedVal) {
       showError('يرجى تأكيد موقعك الجغرافي أولاً');
       return;
     }
@@ -2160,21 +2181,17 @@
       formData.append('address', address);
       formData.append('userTimezone', userTimezone);
       
-      // ✅ إرسال البيانات فقط إذا كان العميل جديداً أو قام بتأكيد الموقع يدوياً
       if (customerExists) {
-        // للعملاء الموجودين: إرسال الإحداثيات فقط إذا تم تأكيد الموقع يدوياً
-        if (locationConfirmed && latitude && longitude) {
+        if (locationConfirmedVal && latitude && longitude) {
           formData.append('latitude', latitude);
           formData.append('longitude', longitude);
           console.log('✅ إرسال إحداثيات موقع جديد للعميل الموجود');
         }
-        // ❌ لا يتم إرسال رابط الخرائط إلا إذا تم تأكيد الموقع يدوياً
-        if (locationConfirmed && googleMapsLink) {
+        if (locationConfirmedVal && googleMapsLink) {
           formData.append('location', googleMapsLink);
           console.log('✅ إرسال رابط خرائط جديد للعميل الموجود');
         }
       } else {
-        // للعملاء الجدد: إرسال جميع بيانات الموقع
         if (latitude && longitude) {
           formData.append('latitude', latitude);
           formData.append('longitude', longitude);
@@ -2240,6 +2257,9 @@
             document.getElementById('customer-data-section').style.display = 'block';
           } else {
             document.getElementById('customer-info-form').style.display = 'none';
+            // Reset dropdown for new order
+            document.getElementById('store-select').value = '';
+            document.getElementById('order-text-container').style.display = 'none';
             document.getElementById('new-order-section').style.display = 'block';
           }
         }, 1500);
@@ -2258,8 +2278,162 @@
     }
   }
   
-  // ===== تحديث الطلب الحالي - تم التحديث =====
+  // ===== إرسال طلب جديد (MODIFIED to use dropdown and target sheet) =====
+  async function submitNewOrder() {
+    hideMessages();
+    
+    if (currentOrderStatus.toLowerCase() !== 'active') {
+      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
+      return;
+    }
+    
+    if (!isAccountActive && customerExists) {
+      alert('حسابك غير نشط. يرجى التواصل مع الإدارة لتفعيل الحساب.');
+      return;
+    }
+    
+    // Check dropdown selection
+    const storeSelect = document.getElementById('store-select');
+    const selectedStore = storeSelect.value;
+    if (!selectedStore) {
+      document.getElementById('store-error').style.display = 'block';
+      alert('يرجى اختيار المتجر أولاً');
+      return;
+    }
+    
+    const orderText = document.getElementById('new-order-text').value.trim();
+    if (!orderText) {
+      alert('من فضلك اكتب تفاصيل طلبك أولاً');
+      return;
+    }
+    
+    // Determine target sheet based on selection
+    const targetSheet = (selectedStore === '02- الفيومي للطيور') ? 'AlFayoumi' : 'Orders';
+    
+    const name = document.getElementById('customer-name').value.trim();
+    const phone = document.getElementById('customer-phone').value.trim();
+    const whatsapp = document.getElementById('customer-whatsapp').value.trim();
+    const area = document.getElementById('customer-area').value.trim();
+    const address = document.getElementById('customer-address').value.trim();
+    
+    const latitude = document.getElementById('latitude').value.trim();
+    const longitude = document.getElementById('longitude').value.trim();
+    const googleMapsLink = document.getElementById('google-maps-link').value.trim();
+    const userTimezone = document.getElementById('user-timezone').value;
+    const userTimestamp = getUserLocalTimestamp();
+    
+    console.log('📊 Target sheet:', targetSheet);
+    console.log('📊 Coordinates before submitting order:', { latitude, longitude, googleMapsLink });
+    
+    if (!name || !phone || !whatsapp || !area || !address) {
+      alert('من فضلك أكمل معلومات العميل أولاً ثم اضغط على "حفظ المعلومات"');
+      return;
+    }
+    
+    const submitBtn = document.getElementById('submit-new-btn');
+    const submitLoading = document.getElementById('submit-new-loading');
+    const submitText = document.getElementById('submit-new-text');
+    submitBtn.disabled = true;
+    submitLoading.style.display = 'inline-block';
+    submitText.textContent = 'جاري الإرسال...';
+    
+    try {
+      console.log('📤 Submitting new order to sheet:', targetSheet);
+      
+      const formData = new FormData();
+      formData.append('action', 'submitOrder');
+      formData.append('phone', phone);
+      formData.append('whatsapp', whatsapp);
+      formData.append('name', name);
+      formData.append('area', area);
+      formData.append('address', address);
+      formData.append('orderText', orderText);
+      formData.append('userTimezone', userTimezone);
+      formData.append('userTimestamp', userTimestamp);
+      formData.append('targetSheet', targetSheet);
+      
+      if (currentRound) formData.append('round', currentRound);
+      
+      if (!customerExists) {
+        if (latitude && longitude) {
+          formData.append('latitude', latitude);
+          formData.append('longitude', longitude);
+          console.log('✅ Coordinates added for new customer');
+        }
+        
+        if (googleMapsLink) {
+          formData.append('location', googleMapsLink);
+          console.log('✅ Google Maps link added for new customer');
+        }
+      }
+      
+      if (hasPreviousActiveOrder) {
+        formData.append('note', 'Customer placed another order');
+      }
+      
+      console.log('📤 Sending order with FormData');
+      
+      const response = await fetch(SCRIPT_URL, { 
+        method: 'POST',
+        body: formData,
+        mode: 'cors'
+      });
+      
+      console.log('Submit response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('📤 Submit order result:', result);
+      
+      if (result.success) {
+        document.getElementById('customer-info-form').style.display = 'none';
+        document.getElementById('new-order-section').style.display = 'none';
+        
+        const successMessage = document.getElementById('success-message');
+        successMessage.innerHTML = `
+          <h3>✅ تم إرسال الطلب بنجاح!</h3>
+          ${result.orderId ? `<p><strong>رقم الطلب:</strong> ${result.orderId}</p>` : ''}
+          ${result.customerId ? `<p><strong>رقم العميل:</strong> ${result.customerId}</p>` : ''}
+          <p><strong>المتجر:</strong> ${selectedStore}</p>
+          <p>📍 <strong>موقع التسليم:</strong> ${address}</p>
+          <p>🕒 <strong>وقت الطلب:</strong> ${userTimestamp}</p>
+          ${latitude && longitude ? 
+            `<p>📍 <strong>الإحداثيات:</strong> ${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</p>` : ''}
+          ${googleMapsLink ? `<p>🗺️ <strong>رابط الخرائط:</strong> <a href="${googleMapsLink}" target="_blank">عرض الموقع</a></p>` : ''}
+          ${hasPreviousActiveOrder ? `<p>📌 <strong>ملاحظة:</strong> تم ربط هذا الطلب بنفس رقم عميلك</p>` : ''}
+          <p>عزيزي/عزيزتي <strong>${name}</strong></p>
+          <p>شكراً لاستخدامك HomiCart! 💙</p>
+        `;
+        successMessage.style.display = 'block';
+        
+        currentCustomerId = result.customerId;
+        customerExists = true;
+        hasPreviousActiveOrder = true;
+        
+        setTimeout(() => {
+          resetForm();
+          successMessage.style.display = 'none';
+        }, 10000);
+      } else {
+        throw new Error(result.message || 'فشل إرسال الطلب');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error submitting order:', error);
+      showError('حدث خطأ أثناء إرسال الطلب: ' + error.message);
+    } finally {
+      submitBtn.disabled = false;
+      submitLoading.style.display = 'none';
+      submitText.textContent = 'إرسال الطلب الجديد';
+    }
+  }
+  
+  // ===== تحديث الطلب الحالي (kept for compatibility) =====
   async function updateExistingOrder() {
+    // This function is kept for compatibility but the new multi-order editing is preferred
     hideMessages();
     
     if (currentOrderStatus.toLowerCase() !== 'active') {
@@ -2303,34 +2477,10 @@
       if (currentRound) formData.append('round', currentRound);
       formData.append('replaceOrderId', existingOrderId);
       
-      // ✅ إرسال توقيت المستخدم
       const userTimezone = document.getElementById('user-timezone').value;
       const userTimestamp = getUserLocalTimestamp();
       formData.append('userTimezone', userTimezone);
       formData.append('userTimestamp', userTimestamp);
-      
-      // ✅ إرسال البيانات فقط إذا كان هناك إحداثيات جديدة
-      const latitude = document.getElementById('latitude').value || currentCustomer.latitude || '';
-      const longitude = document.getElementById('longitude').value || currentCustomer.longitude || '';
-      const locationConfirmed = document.getElementById('location-confirmed').value === 'true';
-      const googleMapsLink = document.getElementById('google-maps-link').value || '';
-      
-      // ❌ لا يتم إرسال بيانات الموقع عند تعديل الطلب إلا إذا تم تأكيد الموقع يدوياً
-      if (locationConfirmed && latitude && longitude) {
-        formData.append('latitude', latitude);
-        formData.append('longitude', longitude);
-        console.log('✅ Sending new coordinates for order update');
-      }
-      
-      // ❌ لا يتم إرسال رابط الخرائط إلا إذا تم تأكيد الموقع يدوياً
-      if (locationConfirmed && googleMapsLink) {
-        formData.append('location', googleMapsLink);
-        console.log('✅ Sending new location link for order update');
-      }
-      
-      formData.append('note', 'تم تعديل الطلب السابق');
-      
-      console.log('📤 Sending update with FormData');
       
       const response = await fetch(SCRIPT_URL, { 
         method: 'POST',
@@ -2376,150 +2526,6 @@
       updateBtn.disabled = false;
       updateLoading.style.display = 'none';
       updateText.textContent = 'تحديث الطلب';
-    }
-  }
-  
-  // ===== إرسال طلب جديد - تم التحديث =====
-  async function submitNewOrder() {
-    hideMessages();
-    
-    if (currentOrderStatus.toLowerCase() !== 'active') {
-      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
-      return;
-    }
-    
-    if (!isAccountActive && customerExists) {
-      alert('حسابك غير نشط. يرجى التواصل مع الإدارة لتفعيل الحساب.');
-      return;
-    }
-    
-    const name = document.getElementById('customer-name').value.trim();
-    const phone = document.getElementById('customer-phone').value.trim();
-    const whatsapp = document.getElementById('customer-whatsapp').value.trim();
-    const area = document.getElementById('customer-area').value.trim();
-    const address = document.getElementById('customer-address').value.trim();
-    
-    const latitude = document.getElementById('latitude').value.trim();
-    const longitude = document.getElementById('longitude').value.trim();
-    const googleMapsLink = document.getElementById('google-maps-link').value.trim();
-    const userTimezone = document.getElementById('user-timezone').value;
-    const userTimestamp = getUserLocalTimestamp();
-    
-    console.log('📊 Coordinates before submitting order:');
-    console.log('latitude:', latitude);
-    console.log('longitude:', longitude);
-    console.log('googleMapsLink:', googleMapsLink);
-    console.log('userTimezone:', userTimezone);
-    console.log('userTimestamp:', userTimestamp);
-    
-    if (!name || !phone || !whatsapp || !area || !address) {
-      alert('من فضلك أكمل معلومات العميل أولاً ثم اضغط على "حفظ المعلومات"');
-      return;
-    }
-    
-    const orderText = document.getElementById('new-order-text').value.trim();
-    if (!orderText) {
-      alert('من فضلك اكتب تفاصيل طلبك أولاً');
-      return;
-    }
-    
-    const submitBtn = document.getElementById('submit-new-btn');
-    const submitLoading = document.getElementById('submit-new-loading');
-    const submitText = document.getElementById('submit-new-text');
-    submitBtn.disabled = true;
-    submitLoading.style.display = 'inline-block';
-    submitText.textContent = 'جاري الإرسال...';
-    
-    try {
-      console.log('📤 Submitting new order');
-      
-      const formData = new FormData();
-      formData.append('action', 'submitOrder');
-      formData.append('phone', phone);
-      formData.append('whatsapp', whatsapp);
-      formData.append('name', name);
-      formData.append('area', area);
-      formData.append('address', address);
-      formData.append('orderText', orderText);
-      formData.append('userTimezone', userTimezone);
-      formData.append('userTimestamp', userTimestamp);
-      
-      if (currentRound) formData.append('round', currentRound);
-      
-      // ❌ لا يتم إرسال بيانات الموقع إلا إذا كان العميل جديداً
-      if (!customerExists) {
-        if (latitude && longitude) {
-          formData.append('latitude', latitude);
-          formData.append('longitude', longitude);
-          console.log('✅ Coordinates added for new customer');
-        }
-        
-        if (googleMapsLink) {
-          formData.append('location', googleMapsLink);
-          console.log('✅ Google Maps link added for new customer');
-        }
-      }
-      
-      if (hasPreviousActiveOrder) {
-        formData.append('note', 'Customer placed another order');
-      }
-      
-      console.log('📤 Sending order with FormData');
-      
-      const response = await fetch(SCRIPT_URL, { 
-        method: 'POST',
-        body: formData,
-        mode: 'cors'
-      });
-      
-      console.log('Submit response status:', response.status);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      console.log('📤 Submit order result:', result);
-      
-      if (result.success) {
-        document.getElementById('customer-info-form').style.display = 'none';
-        document.getElementById('new-order-section').style.display = 'none';
-        
-        const successMessage = document.getElementById('success-message');
-        successMessage.innerHTML = `
-          <h3>✅ تم إرسال الطلب بنجاح!</h3>
-          ${result.orderId ? `<p><strong>رقم الطلب:</strong> ${result.orderId}</p>` : ''}
-          ${result.customerId ? `<p><strong>رقم العميل:</strong> ${result.customerId}</p>` : ''}
-          <p>📍 <strong>موقع التسليم:</strong> ${address}</p>
-          <p>🕒 <strong>وقت الطلب:</strong> ${userTimestamp}</p>
-          ${latitude && longitude ? 
-            `<p>📍 <strong>الإحداثيات:</strong> ${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</p>` : ''}
-          ${googleMapsLink ? `<p>🗺️ <strong>رابط الخرائط:</strong> <a href="${googleMapsLink}" target="_blank">عرض الموقع</a></p>` : ''}
-          ${hasPreviousActiveOrder ? `<p>📌 <strong>ملاحظة:</strong> تم ربط هذا الطلب بنفس رقم عميلك</p>` : ''}
-          <p>عزيزي/عزيزتي <strong>${name}</strong></p>
-          <p>شكراً لاستخدامك HomiCart! 💙</p>
-        `;
-        successMessage.style.display = 'block';
-        
-        currentCustomerId = result.customerId;
-        customerExists = true;
-        hasPreviousActiveOrder = true;
-        
-        setTimeout(() => {
-          resetForm();
-          successMessage.style.display = 'none';
-        }, 10000);
-      } else {
-        throw new Error(result.message || 'فشل إرسال الطلب');
-      }
-      
-    } catch (error) {
-      console.error('❌ Error submitting order:', error);
-      showError('حدث خطأ أثناء إرسال الطلب: ' + error.message);
-    } finally {
-      submitBtn.disabled = false;
-      submitLoading.style.display = 'none';
-      submitText.textContent = 'إرسال الطلب الجديد';
     }
   }
   
@@ -2654,6 +2660,8 @@
     document.getElementById('customer-address').value = '';
     document.getElementById('new-order-text').value = '';
     document.getElementById('edit-order-text').value = '';
+    document.getElementById('store-select').value = '';
+    document.getElementById('order-text-container').style.display = 'none';
     
     resetLocation();
     
@@ -2666,6 +2674,7 @@
     document.getElementById('customer-info-form').style.display = 'none';
     document.getElementById('view-order-section').style.display = 'none';
     document.getElementById('edit-order-section').style.display = 'none';
+    document.getElementById('edit-multiple-orders-section').style.display = 'none';
     document.getElementById('new-order-section').style.display = 'none';
     document.getElementById('duplicate-order-warning').style.display = 'none';
     
@@ -2686,6 +2695,7 @@
     locationConfirmed = false;
     hasPreviousActiveOrder = false;
     previousOrderData = null;
+    previousOrdersList = [];
     currentLatitude = null;
     currentLongitude = null;
     currentAccuracy = null;
@@ -2703,4 +2713,3 @@
 </script>
 </body>
 </html>
-
