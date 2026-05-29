@@ -404,6 +404,26 @@ function cancelTempOrder(tempId, sheetName) {
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+//  AUTHORIZE DRIVE — run this ONCE from the editor to grant
+//  DriveApp permission. A popup will ask you to Allow access.
+//  After clicking Allow, all getDriveImages calls will work.
+// ══════════════════════════════════════════════════════════════
+function authorizeDriveAccess() {
+  try {
+    // This MUST call DriveApp so Google prompts for Drive permission
+    const folder = DriveApp.getFolderById('1EVV0EI-wfcqVexNxBmKw_jc7i1SMeMyo');
+    const files  = folder.getFiles();
+    let count = 0;
+    while (files.hasNext()) { files.next(); count++; }
+    console.log('✅ Drive access granted! AlFayoumy folder has ' + count + ' files.');
+    return { success: true, message: 'Drive access authorized!', files: count };
+  } catch (err) {
+    console.error('❌ Drive error:', err.toString());
+    return { success: false, message: err.toString() };
+  }
+}
+
 // ========== Core Functions (unchanged from v15.0) ==========
 
 function getOrderStatus() {
