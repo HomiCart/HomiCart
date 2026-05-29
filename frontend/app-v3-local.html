@@ -1275,17 +1275,31 @@
   //  → Replace ONLY the fetchImages() function below with
   //    a call to your cloud storage API.
   // ═══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════
+  //  GOOGLE DRIVE FOLDER IDs
+  //  Images are loaded from Drive — no local copies needed.
+  //  To add a new store: add an entry below with its Drive folder ID.
+  //  To switch back to local files: set driveFolder to '' or remove it.
+  // ═══════════════════════════════════════════════════════════════
+  const DRIVE_CONFIG = {
+    backgrounds  : '123evaENwY1Tv6lGhaOR6SBTaexLNRFX_',  // hero + card backgrounds
+    AlRoknAlMasry: '128tbcnmTV58imd2eYQzFxEZELDe0tvt_',  // Al Rokn Al Masry menu
+    AlFayoumy    : '1EVV0EI-wfcqVexNxBmKw_jc7i1SMeMyo',  // Al Fayoumy menu
+  };
+
   const MENU_CONFIG = {
     'Al Rokn AL masry': {
       name            : 'الركن المصري',
-      folder          : 'Menu/Al Rokn AL masry',            // ← menu images
-      discountsFolder : 'Menu/Al Rokn AL masry/discounts',  // ← discount/offer images
+      folder          : 'Menu/Al Rokn AL masry',                    // local fallback
+      driveFolder     : DRIVE_CONFIG.AlRoknAlMasry,                 // ← Drive (primary)
+      discountsFolder : 'Menu/Al Rokn AL masry/discounts',
       itemLabel       : 'لحم',
     },
     'Al Fayoumy': {
       name            : 'الفيومي',
-      folder          : 'Menu/Al Fayoumy',                  // ← menu images
-      discountsFolder : 'Menu/Al Fayoumy/discounts',        // ← discount/offer images
+      folder          : 'Menu/Al Fayoumy',                          // local fallback
+      driveFolder     : DRIVE_CONFIG.AlFayoumy,                     // ← Drive (primary)
+      discountsFolder : 'Menu/Al Fayoumy/discounts',
       itemLabel       : 'دجاج',
     },
   };
@@ -1308,21 +1322,37 @@
     ? 'http://localhost:3000'
     : '';   // empty = use same host (works when served via the server)
 
-  // Single timestamp per page load — image URLs stay stable within a
-  // session but are treated as new by the browser on every reload.
   const PAGE_TS = Date.now();
 
-  async function fetchImages(folderPath) {
+  // ─────────────────────────────────────────────────────────────
+  //  Smart image fetching: Drive-first, local fallback
+  //  • Drive folder ID (no slashes, 25+ chars) → /api/drive-images
+  //  • Local path (contains /)                → /api/list-images
+  // ─────────────────────────────────────────────────────────────
+  function _isDriveId(s) {
+    return typeof s === 'string' && /^[A-Za-z0-9_-]{25,}$/.test(s) && !s.includes('/');
+  }
+
+  async function fetchImages(source) {
+    if (!source) return [];
     try {
-      const res = await fetch(
-        `${API_BASE}/api/list-images?folder=${encodeURIComponent(folderPath)}&_t=${Date.now()}`,
-        { cache: 'no-store' }   // bypass browser cache completely for the file list
-      );
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.files || [];
+      if (_isDriveId(source)) {
+        const res = await fetch(
+          `${API_BASE}/api/drive-images?folderId=${encodeURIComponent(source)}&_t=${Date.now()}`,
+          { cache: 'no-store' }
+        );
+        if (!res.ok) return [];
+        return (await res.json()).files || [];
+      } else {
+        const res = await fetch(
+          `${API_BASE}/api/list-images?folder=${encodeURIComponent(source)}&_t=${Date.now()}`,
+          { cache: 'no-store' }
+        );
+        if (!res.ok) return [];
+        return (await res.json()).files || [];
+      }
     } catch (err) {
-      console.warn('fetchImages failed:', err);
+      console.warn('[fetchImages] failed:', source, err.message);
       return [];
     }
   }
@@ -1346,12 +1376,24 @@
     });
   }
 
-  /* ── Render stores ── */
-  function renderStores() {
+  /* ── Render stores — loads card backgrounds from Drive ── */
+  async function renderStores() {
+    // Pre-fetch first image from each store's Drive folder for the card background
+    const cardPhotos = await Promise.all(stores.map(async s => {
+      const cfg = MENU_CONFIG[s.folder];
+      const driveId = cfg?.driveFolder || '';
+      if (driveId) {
+        const imgs = await fetchImages(driveId);
+        if (imgs.length > 0) return imgs[0].fullUrl || imgs[0].url;
+      }
+      // Fallback: keep local photo path (works on localhost)
+      return s.photo;
+    }));
+
     // Real store cards
-    const realHtml = stores.map(s => `
+    const realHtml = stores.map((s, idx) => `
       <div class="store-card" onclick="selectStore('${s.folder}', '${s.name}', '${s.tag}')">
-        <div class="store-card-bg" style="background-image:url('${s.photo}')"></div>
+        <div class="store-card-bg" style="background-image:url('${cardPhotos[idx]}')"></div>
         <div class="store-card-overlay"></div>
         <div class="store-badge"><i class="fas fa-tag"></i>${s.tag}</div>
         <div class="store-card-content">
@@ -1409,11 +1451,13 @@
       </div>`;
     showPage('menuPage');
 
-    // Fetch menu images AND discount images simultaneously
+    // Fetch menu + discount images — Drive is primary, local is fallback
     const config = MENU_CONFIG[folder];
+    const menuSource     = config?.driveFolder     || config?.folder          || '';
+    const discountSource = config?.discountsDrive  || config?.discountsFolder || '';
     const [menuImages, discountImages] = await Promise.all([
-      config ? fetchImages(config.folder)          : Promise.resolve([]),
-      config ? fetchImages(config.discountsFolder) : Promise.resolve([]),
+      fetchImages(menuSource),
+      fetchImages(discountSource),
     ]);
 
     // ── Build menu card ────────────────────────────────────────

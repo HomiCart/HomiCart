@@ -41,6 +41,22 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/REPLACE_WITH_YOUR_SC
 // Local mock fallback
 const MOCK_DB_FILE = path.join(BASE_DIR, 'data', 'local_orders.json');
 
+// ═══════════════════════════════════════════════════════════════
+//  GOOGLE DRIVE CONFIG
+//  1. Enable the Drive API in Google Cloud Console
+//  2. Create an API key (same project as Sheets API if you have one)
+//  3. Paste the key below
+//  4. Make each Drive folder public: Share → Anyone with the link → Viewer
+// ═══════════════════════════════════════════════════════════════
+const GOOGLE_DRIVE_API_KEY = 'REPLACE_WITH_YOUR_DRIVE_API_KEY';
+
+const DRIVE_FOLDERS = {
+  backgrounds  : '123evaENwY1Tv6lGhaOR6SBTaexLNRFX_',  // Hero + card backgrounds
+  menusRoot    : '1ukaeTtNz1JcEKDP0ZRkRGP1BFPVtQaD6',  // All menus parent
+  AlFayoumy    : '1EVV0EI-wfcqVexNxBmKw_jc7i1SMeMyo',  // Al Fayoumy menu
+  AlRoknAlMasry: '128tbcnmTV58imd2eYQzFxEZELDe0tvt_',  // Al Rokn Al Masry menu
+};
+
 // ── MIME types ──────────────────────────────────────────────────
 const MIME = {
   '.html' : 'text/html; charset=utf-8',
@@ -151,6 +167,66 @@ http.createServer((req, res) => {
   if (pathname === '/api/orders') {
     const db = _loadMock();
     sendJSON(res, 200, db);
+    return;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  API  →  GET /api/drive-images?folderId=FOLDER_ID
+  //  Lists image files in a public Google Drive folder.
+  //  Returns same format as /api/list-images: { files:[{name,url,fullUrl}] }
+  //  Requires GOOGLE_DRIVE_API_KEY above + folder shared publicly.
+  // ═══════════════════════════════════════════════════════════════
+  if (pathname === '/api/drive-images') {
+    const folderId = parsed.query.folderId || '';
+    if (!folderId) return sendJSON(res, 400, { error: 'folderId required', files: [] });
+
+    if (GOOGLE_DRIVE_API_KEY.includes('REPLACE_WITH')) {
+      return sendJSON(res, 503, {
+        error: 'GOOGLE_DRIVE_API_KEY not configured in server.js',
+        files: [],
+      });
+    }
+
+    const q = encodeURIComponent(
+      `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`
+    );
+    const driveUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&key=${GOOGLE_DRIVE_API_KEY}&fields=files(id,name,mimeType)&orderBy=name&pageSize=200`;
+
+    https.get(driveUrl, driveRes => {
+      let data = '';
+      driveRes.on('data', chunk => data += chunk);
+      driveRes.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.error) {
+            console.error('[Drive API]', json.error.message);
+            return sendJSON(res, 400, { error: json.error.message, files: [] });
+          }
+          const files = (json.files || []).map(f => ({
+            name   : f.name,
+            // thumbnail — fast, works for any public file, no virus-scan page
+            url    : `https://drive.google.com/thumbnail?id=${f.id}&sz=w1200`,
+            // full resolution direct link
+            fullUrl: `https://lh3.googleusercontent.com/d/${f.id}`,
+          }));
+          sendJSON(res, 200, { files, count: files.length });
+        } catch(e) {
+          sendJSON(res, 500, { error: 'Drive parse error: ' + e.message, files: [] });
+        }
+      });
+    }).on('error', e => sendJSON(res, 500, { error: e.message, files: [] }));
+    return;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  API  →  GET /api/drive-config
+  //  Returns the configured Drive folder IDs (read-only, safe to expose)
+  // ═══════════════════════════════════════════════════════════════
+  if (pathname === '/api/drive-config') {
+    sendJSON(res, 200, {
+      configured: !GOOGLE_DRIVE_API_KEY.includes('REPLACE_WITH'),
+      folders: DRIVE_FOLDERS,
+    });
     return;
   }
 

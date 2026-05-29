@@ -680,6 +680,40 @@
 			if (!explanationOpen) toggleExplanation();
 		}, 700);
 	}
+
+	/* ── Load hero background from Google Drive ── */
+	(async function loadHeroBg() {
+		// ← Change this folder ID if you move the backgrounds folder
+		var BACKGROUNDS_FOLDER_ID = '123evaENwY1Tv6lGhaOR6SBTaexLNRFX_';
+		var API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
+
+		try {
+			var res = await fetch(
+				API_BASE + '/api/drive-images?folderId=' + BACKGROUNDS_FOLDER_ID + '&_t=' + Date.now(),
+				{ cache: 'no-store' }
+			);
+			if (!res.ok) return;
+			var data = await res.json();
+			if (!data.files || !data.files.length) return;
+
+			// Pick a random background each page load for variety
+			var pick = data.files[Math.floor(Math.random() * data.files.length)];
+			var imgUrl = pick.fullUrl || pick.url;
+
+			var heroBg = document.querySelector('.hero-bg-inner');
+			if (heroBg) {
+				// Preload the image before swapping to avoid flash
+				var img = new Image();
+				img.onload = function() {
+					heroBg.style.backgroundImage = "url('" + imgUrl + "')";
+				};
+				img.src = imgUrl;
+			}
+		} catch(e) {
+			// Drive unavailable — keep local fallback photo
+			console.log('Hero: using local fallback.');
+		}
+	})();
 </script>
 
 </body>
