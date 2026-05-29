@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HomiCart - نظام الطلبات الموحد الجديد</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+      direction: rtl;
+      text-align: right;
+      line-height: 1.6;
+      color: #333;
+    }
+
+    header {
+      background: linear-gradient(135deg, #2e5cff, #6c8eff);
+      color: white;
+      padding: 15px 20px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 { font-size: 24px; }
+    header .header-right { display: flex; gap: 15px; align-items: center; }
+    .cart-badge {
+      background: #ff6b6b;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 15px;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; animation: fadeIn 0.3s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Vendor Selection Page */
+    .vendors-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .vendor-card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .vendor-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+
+    .vendor-image {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      background: #f0f0f0;
+    }
+
+    .vendor-info {
+      padding: 15px;
+    }
+
+    .vendor-info h3 {
+      color: #2e5cff;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .vendor-details {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.8;
+    }
+
+    .vendor-detail-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 5px 0;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #2e5cff, #6c8eff);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.3s;
+      text-align: center;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(46, 92, 255, 0.3);
+    }
+
+    .btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+    }
+
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+
+    /* Menu Page */
+    .menu-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+    }
+
+    .menu-header h2 { color: #2e5cff; }
+    .menu-header button { font-size: 14px; padding: 10px 15px; }
+
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .product-card {
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: all 0.3s;
+    }
+
+    .product-card:hover {
+      box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+      transform: translateY(-3px);
+    }
+
+    .product-image {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      background: #f0f0f0;
+    }
+
+    .product-info {
+      padding: 12px;
+    }
+
+    .product-name {
+      color: #333;
+      font-weight: 600;
+      margin-bottom: 8px;
+      min-height: 40px;
+    }
+
+    .product-price {
+      color: #2e5cff;
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .quantity-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .qty-btn {
+      background: #e0e0e0;
+      border: none;
+      width: 30px;
+      height: 30px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+
+    .qty-btn:hover { background: #2e5cff; color: white; }
+
+    .qty-input {
+      width: 50px;
+      text-align: center;
+      border: 1px solid #ddd;
+      padding: 5px;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    .add-to-cart-btn {
+      width: 100%;
+      padding: 8px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .add-to-cart-btn:hover { background: #218838; }
+
+    /* Cart Page */
+    .cart-container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 20px;
+    }
+
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .cart-item-info {
+      flex: 1;
+    }
+
+    .cart-item-name { font-weight: 600; color: #333; }
+    .cart-item-qty { font-size: 14px; color: #666; }
+    .cart-item-price { color: #2e5cff; font-weight: 600; font-size: 16px; }
+
+    .cart-empty {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .cart-summary {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 20px;
+      border: 2px solid #2e5cff;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 0;
+      font-size: 16px;
+    }
+
+    .summary-row.total {
+      font-size: 20px;
+      font-weight: bold;
+      color: #2e5cff;
+      border-top: 2px solid #eee;
+      padding-top: 10px;
+      margin-top: 10px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      justify-content: space-between;
+    }
+
+    .actions button {
+      flex: 1;
+      padding: 12px;
+      font-size: 16px;
+    }
+
+    /* Checkout */
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 16px;
+      font-family: inherit;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: #2e5cff;
+      box-shadow: 0 0 0 3px rgba(46,92,255,0.1);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .vendors-grid { grid-template-columns: 1fr; }
+      .products-grid { grid-template-columns: repeat(2, 1fr); }
+      header { flex-direction: column; gap: 10px; }
+      .actions { flex-direction: column; }
+    }
+
+    /* Confirmation & Tracking */
+    .success-message {
+      background: #d4edda;
+      color: #155724;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .success-message h3 { margin-bottom: 10px; }
+
+    .order-details {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .detail-label { font-weight: 600; color: #666; }
+    .detail-value { color: #333; }
+
+    .status-badge {
+      display: inline-block;
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .status-new { background: #e3f2fd; color: #1976d2; }
+    .status-processing { background: #fff3cd; color: #856404; }
+    .status-delivery { background: #d1ecf1; color: #0c5460; }
+    .status-delivered { background: #d4edda; color: #155724; }
+
+    .breadcrumb {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .breadcrumb-item { color: #2e5cff; cursor: pointer; }
+    .breadcrumb-item.separator { color: #999; }
+    .breadcrumb-item.active { color: #333; font-weight: 600; }
+
+    .error-message {
+      background: #ffebee;
+      color: #c62828;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+
+    .loading { text-align: center; padding: 20px; }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #2e5cff;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Phase 2: Invoice & Sharing */
+    .invoice-section {
+      background: #f0f7ff;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      border-left: 4px solid #2e5cff;
+    }
+
+    .invoice-section h4 {
+      color: #2e5cff;
+      margin-bottom: 15px;
+      font-size: 16px;
+    }
+
+    .action-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .btn-small {
+      padding: 10px 15px;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .btn-invoice {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+
+    .btn-invoice:hover {
+      background: #bbdefb;
+    }
+
+    .btn-whatsapp {
+      background: #d5f8d5;
+      color: #1b8a1b;
+    }
+
+    .btn-whatsapp:hover {
+      background: #a8e6a8;
+    }
+
+    .btn-email {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
+    .btn-email:hover {
+      background: #ffe0b2;
+    }
+
+    .share-message {
+      background: white;
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 10px;
+      font-size: 13px;
+      color: #666;
+      max-height: 100px;
+      overflow-y: auto;
+      font-family: monospace;
+      border: 1px solid #ddd;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>HomiCart 🛒</h1>
+  <div class="header-right">
+    <span id="headerInfo"></span>
+    <button class="btn btn-secondary" id="cartBtn" onclick="goToPage('cart')" style="position: relative;">
+      🛒 السلة
+      <span class="cart-badge" id="cartCount" style="display: none;">0</span>
+    </button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Page 1: Vendor Selection -->
+  <div id="vendorsPage" class="page active">
+    <div class="breadcrumb">
+      <span class="breadcrumb-item active">اختيار المتجر</span>
+    </div>
+    <h2>اختر المتجر المفضل لديك</h2>
+    <div id="vendorsContainer" class="vendors-grid"></div>
+  </div>
+
+  <!-- Page 2: Menu -->
+  <div id="menuPage" class="page">
+    <div class="breadcrumb">
+      <span class="breadcrumb-item" onclick="goToPage('vendors')">اختيار المتجر</span>
+      <span class="breadcrumb-item separator"> / </span>
+      <span class="breadcrumb-item active" id="vendorNameBreadcrumb"></span>
+    </div>
+    <div class="menu-header">
+      <h2 id="vendorMenuTitle"></h2>
+      <button class="btn btn-secondary" onclick="goToPage('vendors')">← عودة للمتاجر</button>
+    </div>
+    <div id="menuContainer" class="products-grid"></div>
+  </div>
+
+  <!-- Page 3: Cart -->
+  <div id="cartPage" class="page">
+    <div class="breadcrumb">
+      <span class="breadcrumb-item" onclick="goToPage('vendors')">اختيار المتجر</span>
+      <span class="breadcrumb-item separator"> / </span>
+      <span class="breadcrumb-item" id="cartVendorBreadcrumb" onclick="goToPage('menu')"></span>
+      <span class="breadcrumb-item separator"> / </span>
+      <span class="breadcrumb-item active">السلة</span>
+    </div>
+    <h2>سلة التسوق</h2>
+    <div class="cart-container">
+      <div id="cartItems"></div>
+      <div id="cartEmpty" class="cart-empty">السلة فارغة</div>
+    </div>
+    <div class="cart-summary">
+      <div class="summary-row">
+        <span>السعر الفرعي:</span>
+        <span id="subtotal">0 د.إ</span>
+      </div>
+      <div class="summary-row">
+        <span>رسوم التوصيل:</span>
+        <span id="deliveryFee">0 د.إ</span>
+      </div>
+      <div class="summary-row total">
+        <span>المجموع الكلي:</span>
+        <span id="total">0 د.إ</span>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-secondary" onclick="goToPage('menu')">← العودة للقائمة</button>
+      <button class="btn" onclick="goToPage('checkout')">المتابعة للدفع →</button>
+    </div>
+  </div>
+
+  <!-- Page 4: Checkout -->
+  <div id="checkoutPage" class="page">
+    <div class="breadcrumb">
+      <span class="breadcrumb-item" onclick="goToPage('vendors')">اختيار المتجر</span>
+      <span class="breadcrumb-item separator"> / </span>
+      <span class="breadcrumb-item" onclick="goToPage('cart')">السلة</span>
+      <span class="breadcrumb-item separator"> / </span>
+      <span class="breadcrumb-item active">الدفع</span>
+    </div>
+    <h2>إكمال الطلب</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div>
+        <h3>بيانات العميل</h3>
+        <form id="checkoutForm">
+          <div class="form-group">
+            <label>الاسم الكامل *</label>
+            <input type="text" id="checkoutName" required>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>رقم الموبايل *</label>
+              <input type="tel" id="checkoutPhone" required placeholder="0501234567">
+            </div>
+            <div class="form-group">
+              <label>رقم الواتساب</label>
+              <input type="tel" id="checkoutWhatsapp" placeholder="0501234567">
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>المنطقة *</label>
+              <input type="text" id="checkoutArea" required>
+            </div>
+            <div class="form-group">
+              <label>العنوان التفصيلي *</label>
+              <input type="text" id="checkoutAddress" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>ملاحظات إضافية</label>
+            <textarea id="checkoutNotes" rows="3"></textarea>
+          </div>
+        </form>
+      </div>
+      <div>
+        <h3>ملخص الطلب</h3>
+        <div class="order-details">
+          <div class="detail-row">
+            <span class="detail-label">المتجر:</span>
+            <span class="detail-value" id="checkoutVendor"></span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">عدد المنتجات:</span>
+            <span class="detail-value" id="checkoutItemCount">0</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">السعر الفرعي:</span>
+            <span class="detail-value" id="checkoutSubtotal">0 د.إ</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">رسوم التوصيل:</span>
+            <span class="detail-value" id="checkoutDelivery">0 د.إ</span>
+          </div>
+          <div class="detail-row" style="font-weight: bold; color: #2e5cff; font-size: 18px;">
+            <span>الإجمالي:</span>
+            <span id="checkoutTotal">0 د.إ</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="checkoutError" class="error-message" style="display: none;"></div>
+    <div class="actions">
+      <button class="btn btn-secondary" onclick="goToPage('cart')">← العودة للسلة</button>
+      <button class="btn" id="submitOrderBtn" onclick="submitOrder()">تأكيد الطلب ✓</button>
+    </div>
+  </div>
+
+  <!-- Page 5: Order Confirmation -->
+  <div id="confirmationPage" class="page">
+    <div class="breadcrumb">
+      <span class="breadcrumb-item active">تأكيد الطلب</span>
+    </div>
+    <div class="success-message">
+      <h3>✓ تم استلام طلبك بنجاح!</h3>
+      <p id="confirmationMessage"></p>
+    </div>
+    <div class="order-details">
+      <h3>تفاصيل الطلب</h3>
+      <div class="detail-row">
+        <span class="detail-label">رقم الطلب:</span>
+        <span class="detail-value" id="confirmOrderId"></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">اسم العميل:</span>
+        <span class="detail-value" id="confirmCustomerName"></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">رقم الهاتف:</span>
+        <span class="detail-value" id="confirmPhone"></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">العنوان:</span>
+        <span class="detail-value" id="confirmAddress"></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">الإجمالي:</span>
+        <span class="detail-value" id="confirmTotal"></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">الحالة:</span>
+        <span class="detail-value"><span class="status-badge status-new">جديد</span></span>
+      </div>
+    </div>
+
+    <!-- Phase 2: Invoice & Sharing Section -->
+    <div class="invoice-section">
+      <h4>📄 الفاتورة والمشاركة</h4>
+      <p style="color: #666; font-size: 14px; margin-bottom: 15px;">يمكنك الآن تنزيل الفاتورة ومشاركتها عبر WhatsApp أو البريد الإلكتروني</p>
+      <div class="action-buttons">
+        <button class="btn-small btn-invoice" onclick="downloadInvoicePDF()">
+          📥 تنزيل الفاتورة
+        </button>
+        <button class="btn-small btn-whatsapp" onclick="shareWhatsApp()">
+          💬 مشاركة عبر WhatsApp
+        </button>
+        <button class="btn-small btn-email" onclick="sendInvoiceEmail()">
+          📧 إرسال بالبريد
+        </button>
+      </div>
+      <div id="shareMessage" class="share-message" style="display: none;"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-secondary" onclick="newOrder()">طلب جديد</button>
+      <button class="btn" onclick="trackOrder()">تتبع الطلب</button>
+    </div>
+  </div>
+
+  <!-- Page 6: Order Tracking -->
+  <div id="trackingPage" class="page">
+    <h2>تتبع الطلب</h2>
+    <div class="form-group" style="max-width: 300px; margin-bottom: 20px;">
+      <input type="text" id="trackingOrderId" placeholder="أدخل رقم الطلب" onkeyup="searchOrder()">
+    </div>
+    <div id="trackingResult"></div>
+  </div>
+
+</div>
+
+<script>
+  const API_URL = 'https://script.google.com/macros/s/AKfycbz7AeGB7lZr3Dm7V2-oZSIw0v_cqlfhVEn9q6iJnnLlzXom4JlcndX2TDo94r-ptuMEFg/exec';
+
+  let appState = {
+    vendors: [],
+    selectedVendor: null,
+    menu: [],
+    cart: [],
+    schedule: null,
+    lastOrder: null
+  };
+
+  function goToPage(pageName) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(pageName + 'Page').classList.add('active');
+
+    if (pageName === 'vendors') loadVendors();
+    else if (pageName === 'menu') loadMenu();
+    else if (pageName === 'cart') updateCartDisplay();
+    else if (pageName === 'checkout') updateCheckoutDisplay();
+  }
+
+  async function loadVendors() {
+    try {
+      const res = await fetch(`${API_URL}?action=getVendors`);
+      const data = await res.json();
+      if (data.success) {
+        appState.vendors = data.vendors;
+        renderVendors();
+      }
+    } catch (e) { console.error(e); }
+  }
+
+  function renderVendors() {
+    const container = document.getElementById('vendorsContainer');
+    container.innerHTML = appState.vendors.map(v => `
+      <div class="vendor-card" onclick="selectVendor('${v.id}', '${v.name}')">
+        <img src="${v.imageUrl}" alt="${v.name}" class="vendor-image">
+        <div class="vendor-info">
+          <h3>${v.name}</h3>
+          <div class="vendor-details">
+            <div class="vendor-detail-row">
+              <span>رسوم التوصيل:</span>
+              <strong>${v.deliveryFee} د.إ</strong>
+            </div>
+            <div class="vendor-detail-row">
+              <span>الحد الأدنى:</span>
+              <strong>${v.minOrder} د.إ</strong>
+            </div>
+            <div class="vendor-detail-row">
+              <span>المنطقة:</span>
+              <span>${v.area}</span>
+            </div>
+          </div>
+          <button class="btn" style="width: 100%; margin-top: 10px;">اختر المتجر</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function selectVendor(vendorId, vendorName) {
+    appState.selectedVendor = appState.vendors.find(v => v.id === vendorId);
+    document.getElementById('vendorNameBreadcrumb').textContent = vendorName;
+    document.getElementById('vendorMenuTitle').textContent = `منتجات ${vendorName}`;
+    document.getElementById('cartVendorBreadcrumb').textContent = vendorName;
+    goToPage('menu');
+  }
+
+  async function loadMenu() {
+    if (!appState.selectedVendor) return;
+    try {
+      const res = await fetch(`${API_URL}?action=getMenuByVendor&vendorId=${appState.selectedVendor.id}`);
+      const data = await res.json();
+      if (data.success) {
+        appState.menu = data.products;
+        renderMenu();
+      }
+    } catch (e) { console.error(e); }
+  }
+
+  function renderMenu() {
+    const container = document.getElementById('menuContainer');
+    container.innerHTML = appState.menu.map((p, idx) => `
+      <div class="product-card">
+        <img src="${p.imageUrl}" alt="${p.name}" class="product-image">
+        <div class="product-info">
+          <div class="product-name">${p.name}</div>
+          ${p.price > 0 ? `<div class="product-price">${p.price} د.إ</div>` : '<div class="product-price">السعر حسب الوزن</div>'}
+          <div class="quantity-control">
+            <button class="qty-btn" onclick="changeQty(${idx}, -1)">−</button>
+            <input type="number" class="qty-input" id="qty${idx}" value="0" min="0" onchange="updateQty(${idx})">
+            <button class="qty-btn" onclick="changeQty(${idx}, 1)">+</button>
+          </div>
+          <button class="add-to-cart-btn" onclick="addToCart(${idx})">أضف للسلة</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function changeQty(idx, delta) {
+    const input = document.getElementById(`qty${idx}`);
+    input.value = Math.max(0, parseInt(input.value || 0) + delta);
+  }
+
+  function updateQty(idx) {
+    // Just validate, no action needed
+  }
+
+  function addToCart(idx) {
+    const product = appState.menu[idx];
+    const qty = parseInt(document.getElementById(`qty${idx}`).value) || 0;
+    if (qty <= 0) { alert('الرجاء اختيار الكمية'); return; }
+
+    const existingItem = appState.cart.find(item => item.id === product.id);
+    if (existingItem) {
+      existingItem.quantity += qty;
+    } else {
+      appState.cart.push({ ...product, quantity: qty, cartLineTotal: qty * product.price });
+    }
+
+    document.getElementById(`qty${idx}`).value = 0;
+    updateCartBadge();
+    alert('✓ تم إضافة المنتج للسلة');
+  }
+
+  function updateCartBadge() {
+    const count = appState.cart.reduce((sum, item) => sum + item.quantity, 0);
+    const badge = document.getElementById('cartCount');
+    if (count > 0) {
+      badge.textContent = count;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  function updateCartDisplay() {
+    const cartItems = document.getElementById('cartItems');
+    const cartEmpty = document.getElementById('cartEmpty');
+
+    if (appState.cart.length === 0) {
+      cartItems.innerHTML = '';
+      cartEmpty.style.display = 'block';
+      document.getElementById('subtotal').textContent = '0 د.إ';
+      document.getElementById('deliveryFee').textContent = `${appState.selectedVendor?.deliveryFee || 0} د.إ`;
+      document.getElementById('total').textContent = `${appState.selectedVendor?.deliveryFee || 0} د.إ`;
+      return;
+    }
+
+    cartEmpty.style.display = 'none';
+    cartItems.innerHTML = appState.cart.map((item, idx) => `
+      <div class="cart-item">
+        <div class="cart-item-info">
+          <div class="cart-item-name">${item.name}</div>
+          <div class="cart-item-qty">الكمية: ${item.quantity}</div>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center;">
+          <div class="cart-item-price">${(item.quantity * item.price).toFixed(2)} د.إ</div>
+          <button class="btn btn-secondary" style="padding: 5px 10px;" onclick="removeFromCart(${idx})">حذف</button>
+        </div>
+      </div>
+    `).join('');
+
+    const subtotal = appState.cart.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    const delivery = appState.selectedVendor?.deliveryFee || 0;
+    const total = subtotal + delivery;
+
+    document.getElementById('subtotal').textContent = `${subtotal.toFixed(2)} د.إ`;
+    document.getElementById('deliveryFee').textContent = `${delivery} د.إ`;
+    document.getElementById('total').textContent = `${total.toFixed(2)} د.إ`;
+  }
+
+  function removeFromCart(idx) {
+    appState.cart.splice(idx, 1);
+    updateCartBadge();
+    updateCartDisplay();
+  }
+
+  function updateCheckoutDisplay() {
+    if (!appState.selectedVendor || appState.cart.length === 0) {
+      alert('السلة فارغة أو لم يتم اختيار متجر');
+      goToPage('cart');
+      return;
+    }
+
+    document.getElementById('checkoutVendor').textContent = appState.selectedVendor.name;
+    document.getElementById('checkoutItemCount').textContent = appState.cart.length;
+
+    const subtotal = appState.cart.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    const delivery = appState.selectedVendor.deliveryFee;
+    const total = subtotal + delivery;
+
+    document.getElementById('checkoutSubtotal').textContent = `${subtotal.toFixed(2)} د.إ`;
+    document.getElementById('checkoutDelivery').textContent = `${delivery} د.إ`;
+    document.getElementById('checkoutTotal').textContent = `${total.toFixed(2)} د.إ`;
+  }
+
+  async function submitOrder() {
+    const form = document.getElementById('checkoutForm');
+    const name = document.getElementById('checkoutName').value.trim();
+    const phone = document.getElementById('checkoutPhone').value.trim();
+    const whatsapp = document.getElementById('checkoutWhatsapp').value.trim() || phone;
+    const area = document.getElementById('checkoutArea').value.trim();
+    const address = document.getElementById('checkoutAddress').value.trim();
+    const notes = document.getElementById('checkoutNotes').value.trim();
+
+    if (!name || !phone || !area || !address) {
+      document.getElementById('checkoutError').textContent = 'الرجاء ملء جميع الحقول المطلوبة';
+      document.getElementById('checkoutError').style.display = 'block';
+      return;
+    }
+
+    const orderItems = appState.cart.map(item => `${item.name} × ${item.quantity}`).join('\n');
+    const subtotal = appState.cart.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+
+    document.getElementById('submitOrderBtn').disabled = true;
+
+    const formData = new FormData();
+    formData.append('action', 'submitOrder');
+    formData.append('phone', phone);
+    formData.append('whatsapp', whatsapp);
+    formData.append('name', name);
+    formData.append('area', area);
+    formData.append('address', address);
+    formData.append('orderText', orderItems);
+    formData.append('sheet', 'Orders');
+    formData.append('vendor', appState.selectedVendor.id);
+    formData.append('notes', notes);
+    formData.append('userTimezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
+    formData.append('userTimestamp', new Date().toLocaleString());
+
+    try {
+      const res = await fetch(API_URL, { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (data.success) {
+        const totalAmount = (subtotal + appState.selectedVendor.deliveryFee).toFixed(2);
+
+        appState.lastOrder = {
+          id: data.orderId,
+          orderId: data.orderId,
+          customerName: name,
+          phone: phone,
+          whatsapp: whatsapp || phone,
+          area: area,
+          address: address,
+          notes: notes,
+          subtotal: subtotal.toFixed(2),
+          deliveryFee: appState.selectedVendor.deliveryFee,
+          total: totalAmount,
+          cartItems: appState.cart.map(item => ({ name: item.name, quantity: item.quantity })),
+          vendor: appState.selectedVendor.name,
+          date: new Date().toLocaleDateString('ar-SA'),
+          email: ''
+        };
+
+        // Set global lastOrder for Phase 2 functions
+        lastOrder = appState.lastOrder;
+
+        document.getElementById('confirmOrderId').textContent = data.orderId;
+        document.getElementById('confirmCustomerName').textContent = name;
+        document.getElementById('confirmPhone').textContent = phone;
+        document.getElementById('confirmAddress').textContent = address;
+        document.getElementById('confirmTotal').textContent = `${totalAmount} د.إ`;
+        document.getElementById('confirmationMessage').textContent = `شكراً لطلبك! رقم الطلب الخاص بك هو: ${data.orderId}`;
+
+        appState.cart = [];
+        updateCartBadge();
+        goToPage('confirmation');
+      } else {
+        alert('خطأ: ' + data.message);
+      }
+    } catch (e) {
+      alert('خطأ في الاتصال: ' + e.message);
+    } finally {
+      document.getElementById('submitOrderBtn').disabled = false;
+    }
+  }
+
+  function newOrder() {
+    appState.cart = [];
+    updateCartBadge();
+    goToPage('vendors');
+  }
+
+  function trackOrder() {
+    if (appState.lastOrder) {
+      document.getElementById('trackingOrderId').value = appState.lastOrder.id;
+      searchOrder();
+    }
+    goToPage('tracking');
+  }
+
+  async function searchOrder() {
+    const orderId = document.getElementById('trackingOrderId').value.trim();
+    if (!orderId) {
+      document.getElementById('trackingResult').innerHTML = '';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}?action=getOrderById&orderId=${orderId}`);
+      const data = await res.json();
+
+      if (data.success && data.order) {
+        const order = data.order;
+        const statusClass = `status-${order.status.toLowerCase().replace(/\s+/g, '')}`;
+        document.getElementById('trackingResult').innerHTML = `
+          <div class="order-details">
+            <h3>تفاصيل الطلب</h3>
+            <div class="detail-row">
+              <span class="detail-label">رقم الطلب:</span>
+              <span class="detail-value">${order.id}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">اسم العميل:</span>
+              <span class="detail-value">${order.customerName}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">الحالة:</span>
+              <span class="detail-value"><span class="status-badge ${statusClass}">${order.status}</span></span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">التاريخ:</span>
+              <span class="detail-value">${order.date}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">المنتجات:</span>
+              <span class="detail-value">${order.items}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">العنوان:</span>
+              <span class="detail-value">${order.location}</span>
+            </div>
+          </div>
+        `;
+      } else {
+        document.getElementById('trackingResult').innerHTML = '<div class="error-message">لم يتم العثور على الطلب</div>';
+      }
+    } catch (e) {
+      document.getElementById('trackingResult').innerHTML = '<div class="error-message">خطأ في البحث</div>';
+    }
+  }
+
+  // ========== PHASE 2: INVOICE & SHARING FUNCTIONS ==========
+
+  // Store last order for invoice generation
+  let lastOrder = null;
+
+  function downloadInvoicePDF() {
+    if (!lastOrder) {
+      alert('لم يتم العثور على بيانات الطلب');
+      return;
+    }
+
+    const invoiceHTML = `
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: white; padding: 20px; direction: rtl; text-align: right; }
+    .invoice { max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 30px; background: white; }
+    .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #2e5cff; padding-bottom: 20px; }
+    .header h1 { color: #2e5cff; font-size: 28px; margin-bottom: 5px; }
+    .header p { color: #666; font-size: 14px; }
+    .order-info { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+    .info-block { font-size: 13px; line-height: 1.8; }
+    .info-block label { font-weight: bold; color: #333; display: block; margin-top: 10px; }
+    .info-block span { color: #666; }
+    .items-section { margin: 20px 0; }
+    .items-list { background: #f9f9f9; padding: 15px; border-radius: 5px; }
+    .item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+    .item-name { font-weight: 500; }
+    .item-qty { color: #666; }
+    .totals { margin: 20px 0; padding: 15px; background: #f0f7ff; border-radius: 5px; border-left: 4px solid #2e5cff; }
+    .total-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 14px; }
+    .total-row.grand { font-weight: bold; font-size: 16px; color: #2e5cff; margin-top: 10px; padding-top: 10px; border-top: 2px solid #2e5cff; }
+    .footer { text-align: center; margin-top: 30px; color: #999; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="invoice">
+    <div class="header">
+      <h1>فاتورة الطلب</h1>
+      <p>Invoice</p>
+    </div>
+
+    <div class="order-info">
+      <div class="info-block">
+        <label>رقم الطلب:</label>
+        <span>${lastOrder.id || lastOrder.orderId}</span>
+        <label>اسم العميل:</label>
+        <span>${lastOrder.customerName}</span>
+        <label>رقم الهاتف:</label>
+        <span>${lastOrder.phone}</span>
+      </div>
+      <div class="info-block">
+        <label>التاريخ:</label>
+        <span>${new Date().toLocaleDateString('ar-SA')}</span>
+        <label>المنطقة:</label>
+        <span>${lastOrder.area}</span>
+        <label>العنوان:</label>
+        <span>${lastOrder.address}</span>
+      </div>
+    </div>
+
+    <div class="items-section">
+      <h3 style="color: #333; margin-bottom: 10px;">📦 الأصناف المطلوبة</h3>
+      <div class="items-list">
+        ${lastOrder.cartItems.map(item => \`
+          <div class="item">
+            <span class="item-name">\${item.name}</span>
+            <span class="item-qty">الكمية: \${item.quantity}</span>
+          </div>
+        \`).join('')}
+      </div>
+    </div>
+
+    <div class="totals">
+      <div class="total-row">
+        <span>الإجمالي الجزئي:</span>
+        <span>\${lastOrder.subtotal} درهم</span>
+      </div>
+      <div class="total-row">
+        <span>رسوم التوصيل:</span>
+        <span>\${lastOrder.deliveryFee} درهم</span>
+      </div>
+      <div class="total-row grand">
+        <span>الإجمالي النهائي:</span>
+        <span>\${lastOrder.total} درهم</span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>شكراً لتعاملك معنا!</p>
+      <p>Thank you for your order!</p>
+      <p style="margin-top: 10px;">HomiCart - نظام الطلبات الموحد</p>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    const element = document.createElement('div');
+    element.innerHTML = invoiceHTML;
+    const opt = {
+      margin: 10,
+      filename: \`invoice-\${lastOrder.id || lastOrder.orderId}.pdf\`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+    };
+    html2pdf().set(opt).from(element.innerHTML).save();
+    showMessage('تم تحميل الفاتورة بنجاح ✅');
+  }
+
+  function shareWhatsApp() {
+    if (!lastOrder) {
+      alert('لم يتم العثور على بيانات الطلب');
+      return;
+    }
+
+    const message = \`مرحباً،
+طلبي رقم: \${lastOrder.id || lastOrder.orderId}
+الاسم: \${lastOrder.customerName}
+الهاتف: \${lastOrder.phone}
+المنطقة: \${lastOrder.area}
+العنوان: \${lastOrder.address}
+الإجمالي: \${lastOrder.total} درهم
+
+شكراً لتعاملكم معنا 🙏
+HomiCart\`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappLink = \`https://wa.me/?text=\${encodedMessage}\`;
+
+    // Show the message in the share section
+    document.getElementById('shareMessage').style.display = 'block';
+    document.getElementById('shareMessage').innerHTML = \`<strong>الرسالة المعدة للمشاركة:</strong><br><br>\${message}\`;
+
+    window.open(whatsappLink, '_blank');
+    showMessage('تم فتح WhatsApp - الصق الرسالة في المحادثة 💬');
+  }
+
+  function sendInvoiceEmail() {
+    if (!lastOrder) {
+      alert('لم يتم العثور على بيانات الطلب');
+      return;
+    }
+
+    const email = prompt('أدخل بريدك الإلكتروني:', lastOrder.email || '');
+    if (!email || !email.includes('@')) {
+      alert('البريد الإلكتروني غير صحيح');
+      return;
+    }
+
+    const emailMessage = \`
+مرحباً \${lastOrder.customerName}،
+
+تم استقبال طلبك بنجاح ✅
+
+تفاصيل الطلب:
+- رقم الطلب: \${lastOrder.id || lastOrder.orderId}
+- التاريخ: \${new Date().toLocaleDateString('ar-SA')}
+- الإجمالي: \${lastOrder.total} درهم
+- حالة الطلب: جديد
+
+يمكنك تتبع طلبك من خلال رقم الطلب أعلاه
+
+شكراً لاختيارك HomiCart 🙏
+    \`;
+
+    // Send via API
+    fetch(API_URL, {
+      method: 'POST',
+      body: new URLSearchParams({
+        action: 'sendEmailNotification',
+        email: email,
+        subject: \`تأكيد الطلب - Order #\${lastOrder.id || lastOrder.orderId}\`,
+        orderDetails: JSON.stringify({
+          orderId: lastOrder.id || lastOrder.orderId,
+          name: lastOrder.customerName,
+          phone: lastOrder.phone,
+          area: lastOrder.area,
+          address: lastOrder.address,
+          total: lastOrder.total
+        })
+      })
+    }).then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          showMessage(\`تم إرسال الفاتورة إلى \${email} بنجاح ✅\`);
+        } else {
+          showMessage('حدث خطأ في إرسال البريد ❌');
+        }
+      })
+      .catch(err => showMessage('خطأ في الاتصال ❌'));
+  }
+
+  function showMessage(msg) {
+    const msgEl = document.getElementById('shareMessage');
+    msgEl.style.display = 'block';
+    msgEl.innerHTML = \`<strong>رسالة:</strong> \${msg}\`;
+    setTimeout(() => {
+      msgEl.style.display = 'none';
+    }, 5000);
+  }
+
+  // Initialize
+  window.addEventListener('load', () => {
+    loadVendors();
+    updateCartBadge();
+  });
+</script>
+
+</body>
+</html>
