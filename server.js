@@ -42,19 +42,18 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/REPLACE_WITH_YOUR_SC
 const MOCK_DB_FILE = path.join(BASE_DIR, 'data', 'local_orders.json');
 
 // ═══════════════════════════════════════════════════════════════
-//  GOOGLE DRIVE CONFIG
-//  1. Enable the Drive API in Google Cloud Console
-//  2. Create an API key (same project as Sheets API if you have one)
-//  3. Paste the key below
-//  4. Make each Drive folder public: Share → Anyone with the link → Viewer
+//  APPS SCRIPT URL  ← SINGLE URL for BOTH orders AND Drive images
+//  After deploying backend/Code.gs (v15.1):
+//    Deploy → New Deployment → Web App → Execute as Me → Anyone
+//  Then paste the URL here.  No API key needed!
 // ═══════════════════════════════════════════════════════════════
-const GOOGLE_DRIVE_API_KEY = 'REPLACE_WITH_YOUR_DRIVE_API_KEY';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/REPLACE_WITH_YOUR_SCRIPT_ID/exec';
 
+// Drive folder IDs (used by /api/drive-images → Apps Script getDriveImages)
 const DRIVE_FOLDERS = {
-  backgrounds  : '123evaENwY1Tv6lGhaOR6SBTaexLNRFX_',  // Hero + card backgrounds
-  menusRoot    : '1ukaeTtNz1JcEKDP0ZRkRGP1BFPVtQaD6',  // All menus parent
-  AlFayoumy    : '1EVV0EI-wfcqVexNxBmKw_jc7i1SMeMyo',  // Al Fayoumy menu
-  AlRoknAlMasry: '128tbcnmTV58imd2eYQzFxEZELDe0tvt_',  // Al Rokn Al Masry menu
+  backgrounds  : '123evaENwY1Tv6lGhaOR6SBTaexLNRFX_',
+  AlFayoumy    : '1EVV0EI-wfcqVexNxBmKw_jc7i1SMeMyo',
+  AlRoknAlMasry: '128tbcnmTV58imd2eYQzFxEZELDe0tvt_',
 };
 
 // ── MIME types ──────────────────────────────────────────────────
@@ -176,55 +175,36 @@ http.createServer((req, res) => {
   //  Returns same format as /api/list-images: { files:[{name,url,fullUrl}] }
   //  Requires GOOGLE_DRIVE_API_KEY above + folder shared publicly.
   // ═══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════
+  //  API  →  GET /api/drive-images?folderId=FOLDER_ID
+  //  Proxied to Apps Script doGet?action=getDriveImages&folderId=...
+  //  Uses DriveApp inside Apps Script — NO separate API key needed.
+  // ═══════════════════════════════════════════════════════════════
   if (pathname === '/api/drive-images') {
     const folderId = parsed.query.folderId || '';
     if (!folderId) return sendJSON(res, 400, { error: 'folderId required', files: [] });
 
-    if (GOOGLE_DRIVE_API_KEY.includes('REPLACE_WITH')) {
+    if (APPS_SCRIPT_URL.includes('REPLACE_WITH')) {
       return sendJSON(res, 503, {
-        error: 'GOOGLE_DRIVE_API_KEY not configured in server.js',
+        error: 'APPS_SCRIPT_URL not configured in server.js — deploy backend/Code.gs first.',
         files: [],
+        hint: 'Open Code.gs in your Apps Script project, deploy as Web App, paste URL in server.js',
       });
     }
 
-    const q = encodeURIComponent(
-      `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`
-    );
-    const driveUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&key=${GOOGLE_DRIVE_API_KEY}&fields=files(id,name,mimeType)&orderBy=name&pageSize=200`;
-
-    https.get(driveUrl, driveRes => {
-      let data = '';
-      driveRes.on('data', chunk => data += chunk);
-      driveRes.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          if (json.error) {
-            console.error('[Drive API]', json.error.message);
-            return sendJSON(res, 400, { error: json.error.message, files: [] });
-          }
-          const files = (json.files || []).map(f => ({
-            name   : f.name,
-            // thumbnail — fast, works for any public file, no virus-scan page
-            url    : `https://drive.google.com/thumbnail?id=${f.id}&sz=w1200`,
-            // full resolution direct link
-            fullUrl: `https://lh3.googleusercontent.com/d/${f.id}`,
-          }));
-          sendJSON(res, 200, { files, count: files.length });
-        } catch(e) {
-          sendJSON(res, 500, { error: 'Drive parse error: ' + e.message, files: [] });
-        }
-      });
-    }).on('error', e => sendJSON(res, 500, { error: e.message, files: [] }));
+    // Call Apps Script as a GET request with action=getDriveImages
+    const scriptGetUrl = APPS_SCRIPT_URL + '?action=getDriveImages&folderId=' + encodeURIComponent(folderId);
+    _forwardScriptGET(scriptGetUrl, 0, (err, result) => {
+      if (err) return sendJSON(res, 502, { error: err.message, files: [] });
+      sendJSON(res, 200, result);
+    });
     return;
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  //  API  →  GET /api/drive-config
-  //  Returns the configured Drive folder IDs (read-only, safe to expose)
-  // ═══════════════════════════════════════════════════════════════
+  // ─── Drive config (read-only folder IDs for frontend reference) ─
   if (pathname === '/api/drive-config') {
     sendJSON(res, 200, {
-      configured: !GOOGLE_DRIVE_API_KEY.includes('REPLACE_WITH'),
+      appsScriptReady: !APPS_SCRIPT_URL.includes('REPLACE_WITH'),
       folders: DRIVE_FOLDERS,
     });
     return;
@@ -552,6 +532,33 @@ function _handleMock(body, callback) {
   } catch(err) {
     callback(err);
   }
+}
+
+// ── Apps Script GET proxy (for getDriveImages and other GET actions) ──
+function _forwardScriptGET(targetUrl, depth, callback) {
+  if (depth > 6) return callback(new Error('Too many redirects'));
+  let urlObj;
+  try { urlObj = new URL(targetUrl); } catch(e) { return callback(e); }
+  const opts = {
+    hostname: urlObj.hostname,
+    path    : urlObj.pathname + urlObj.search,
+    method  : 'GET',
+    headers : { 'User-Agent': 'HomiCart-Server/1.0' },
+  };
+  const req = https.request(opts, (proxyRes) => {
+    if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+      proxyRes.resume();
+      return _forwardScriptGET(proxyRes.headers.location, depth + 1, callback);
+    }
+    let data = '';
+    proxyRes.on('data', chunk => data += chunk.toString());
+    proxyRes.on('end', () => {
+      try   { callback(null, JSON.parse(data)); }
+      catch (e) { callback(null, { raw: data.slice(0, 200) }); }
+    });
+  });
+  req.on('error', callback);
+  req.end();
 }
 
 // ── Apps Script proxy helper (follows redirects, keeps POST body) ──

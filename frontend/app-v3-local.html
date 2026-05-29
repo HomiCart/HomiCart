@@ -1644,9 +1644,10 @@
   ══════════════════════════════════════════════════════════ */
   const APPS_SCRIPT_URL_LOCAL = `${API_BASE}/api/sheets`;  // proxied through server.js
 
+  // Sheet names MUST match what your Apps Script uses
   const SHEET_NAMES = {
-    'Al Rokn AL masry' : 'AlRoknAlMasry',
-    'Al Fayoumy'       : 'AlFayoumi',
+    'Al Rokn AL masry' : 'Orders',     // → "Orders" tab  (الركن المصري)
+    'Al Fayoumy'       : 'AlFayoumi',  // → "AlFayoumi" tab
   };
 
   async function _callScript(action, data) {
