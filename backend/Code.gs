@@ -52,9 +52,29 @@ function doGet(e) {
         ]
       };
     }
-    // ── NEW: List images from a Google Drive folder ────────────────
+    // ── List images from a Google Drive folder ─────────────────────
     else if (action === 'getDriveImages') {
       result = getDriveImages(e.parameter.folderId);
+    }
+    // ── Serve a single Drive file as base64 (used by server proxy) ─
+    else if (action === 'getImageBase64') {
+      const fileId = e.parameter.id;
+      if (!fileId) {
+        result = { success: false, message: 'id is required' };
+      } else {
+        try {
+          const file     = DriveApp.getFileById(fileId.trim());
+          const blob     = file.getBlob();
+          result = {
+            success  : true,
+            data     : Utilities.base64Encode(blob.getBytes()),
+            mimeType : blob.getContentType() || 'image/jpeg',
+            name     : file.getName()
+          };
+        } catch(err) {
+          result = { success: false, message: 'File error: ' + err.toString() };
+        }
+      }
     }
     else if (action === 'getOrderStatus') {
       result = getOrderStatus();

@@ -49,6 +49,9 @@ const DRIVE_FOLDERS = {
   AlRoknAlMasry: '128tbcnmTV58imd2eYQzFxEZELDe0tvt_',
 };
 
+// In-memory image cache: fileId → { buf, mime, exp }
+const _imgCache = new Map();
+
 // ── MIME types ──────────────────────────────────────────────────
 const MIME = {
   '.html' : 'text/html; charset=utf-8',
@@ -189,6 +192,15 @@ http.createServer((req, res) => {
     const scriptGetUrl = APPS_SCRIPT_URL + '?action=getDriveImages&folderId=' + encodeURIComponent(folderId);
     _forwardScriptGET(scriptGetUrl, 0, (err, result) => {
       if (err) return sendJSON(res, 502, { error: err.message, files: [] });
+      // Rewrite Drive URLs → local proxy URLs so browser can load them
+      if (result && result.files) {
+        result.files = result.files.map(f => ({
+          name   : f.name,
+          id     : f.id,
+          url    : '/api/drive-proxy?id=' + f.id,
+          fullUrl: '/api/drive-proxy?id=' + f.id,
+        }));
+      }
       sendJSON(res, 200, result);
     });
     return;
@@ -199,6 +211,60 @@ http.createServer((req, res) => {
     sendJSON(res, 200, {
       appsScriptReady: !APPS_SCRIPT_URL.includes('REPLACE_WITH'),
       folders: DRIVE_FOLDERS,
+    });
+    return;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  API  →  GET /api/drive-proxy?id=FILE_ID
+  //  Fetches a Drive file via Apps Script and serves it as an image.
+  //  Bypasses Google Drive's cross-origin block completely.
+  //  Simple in-memory cache (1 hour) to avoid redundant fetches.
+  // ═══════════════════════════════════════════════════════════════
+  if (pathname === '/api/drive-proxy') {
+    const fileId = parsed.query.id || '';
+    if (!fileId) { res.writeHead(400); res.end('id required'); return; }
+
+    // Check memory cache first
+    const cached = _imgCache.get(fileId);
+    if (cached && Date.now() < cached.exp) {
+      res.writeHead(200, {
+        'Content-Type'  : cached.mime,
+        'Content-Length': cached.buf.length,
+        'Cache-Control' : 'public, max-age=3600',
+        'Access-Control-Allow-Origin': '*',
+      });
+      res.end(cached.buf);
+      return;
+    }
+
+    if (APPS_SCRIPT_URL.includes('REPLACE_WITH')) {
+      res.writeHead(503); res.end('APPS_SCRIPT_URL not configured');
+      return;
+    }
+
+    const scriptUrl = APPS_SCRIPT_URL + '?action=getImageBase64&id=' + encodeURIComponent(fileId);
+    _forwardScriptGET(scriptUrl, 0, (err, result) => {
+      if (err || !result || !result.success) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Image not found: ' + (err ? err.message : (result && result.message) || '?'));
+        return;
+      }
+      try {
+        const buf  = Buffer.from(result.data, 'base64');
+        const mime = result.mimeType || 'image/jpeg';
+        // Store in cache for 1 hour
+        _imgCache.set(fileId, { buf, mime, exp: Date.now() + 3600000 });
+        res.writeHead(200, {
+          'Content-Type'  : mime,
+          'Content-Length': buf.length,
+          'Cache-Control' : 'public, max-age=3600',
+          'Access-Control-Allow-Origin': '*',
+        });
+        res.end(buf);
+      } catch(e) {
+        res.writeHead(500); res.end('Decode error: ' + e.message);
+      }
     });
     return;
   }
