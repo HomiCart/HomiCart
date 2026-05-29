@@ -1,0 +1,2127 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HomiCart - نظام الطلبات الموحد</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    background: #f7f7fb; 
+    direction: rtl; 
+    text-align: right; 
+    line-height: 1.6;
+  }
+  
+  header { 
+    background: linear-gradient(135deg, #2e5cff, #6c8eff); 
+    color: #fff; 
+    padding: 20px; 
+    text-align: center; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  .header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  .container { 
+    max-width: 900px; 
+    margin: 30px auto; 
+    background: #fff; 
+    border-radius: 16px; 
+    padding: 30px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,.08); 
+  }
+  
+  .round-status {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    margin: 20px 0;
+    text-align: center;
+    font-weight: bold;
+    font-size: 18px;
+  }
+  
+  .round-status.closed {
+    background: linear-gradient(135deg, #f44336, #d32f2f);
+  }
+  
+  .section { 
+    margin-bottom: 30px; 
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .section-title {
+    text-align: center;
+    color: #2e5cff;
+    margin: 0 0 20px 0;
+    font-size: 24px;
+    position: relative;
+    padding-bottom: 10px;
+  }
+  
+  .section-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 50%;
+    transform: translateX(50%);
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(90deg, #2e5cff, #6c8eff);
+    border-radius: 2px;
+  }
+  
+  .order-type-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  
+  .type-btn {
+    background: #2e5cff;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 15px 25px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    min-width: 160px;
+    text-align: center;
+  }
+  
+  .type-btn:hover {
+    background: #1e4ae0;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(46, 92, 255, 0.2);
+  }
+  
+  .type-btn.active {
+    background: #1e4ae0;
+    box-shadow: 0 6px 15px rgba(46, 92, 255, 0.3);
+  }
+  
+  .type-btn:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+  
+  input, select, textarea { 
+    width: 100%; 
+    padding: 12px; 
+    border-radius: 8px; 
+    border: 1px solid #ddd; 
+    margin-top: 8px; 
+    margin-bottom: 15px;
+    box-sizing: border-box; 
+    font-size: 16px;
+    transition: all 0.3s ease;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: #2e5cff;
+    box-shadow: 0 0 0 3px rgba(46, 92, 255, 0.1);
+  }
+  
+  input::placeholder, textarea::placeholder { 
+    color: #aaa; 
+  }
+  
+  label {
+    font-weight: 600;
+    color: #444;
+    display: block;
+    margin-bottom: 8px;
+    font-size: 16px;
+  }
+  
+  .customer-info-form {
+    background: #f8f9ff;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 15px 0;
+    border-right: 4px solid #2e5cff;
+  }
+  
+  .customer-info-form h4 {
+    color: #2e5cff;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .location-group {
+    background: #f0f8ff;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #d0e7ff;
+    margin-top: 10px;
+  }
+  
+  #map-container {
+    height: 300px;
+    width: 100%;
+    border-radius: 8px;
+    margin: 15px 0;
+    border: 1px solid #ddd;
+    display: none;
+    position: relative;
+    z-index: 1;
+  }
+  
+  #map {
+    height: 100%;
+    width: 100%;
+    border-radius: 8px;
+  }
+  
+  .map-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  
+  .map-info {
+    background: #fff;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #eee;
+    margin: 10px 0;
+    font-size: 14px;
+  }
+  
+  .accuracy-info {
+    color: #666;
+    font-size: 14px;
+    margin-top: 5px;
+  }
+  
+  .accuracy-good { color: #28a745; }
+  .accuracy-fair { color: #ffc107; }
+  .accuracy-poor { color: #dc3545; }
+  
+  .previous-orders {
+    background: #fff8e1;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 15px 0;
+    border-right: 4px solid #ff9800;
+  }
+  
+  .order-item {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    margin: 8px 0;
+    border: 1px solid #eee;
+  }
+  
+  .btn { 
+    background: linear-gradient(135deg, #2e5cff, #6c8eff); 
+    color: white; 
+    border: none; 
+    border-radius: 8px; 
+    padding: 14px 28px; 
+    cursor: pointer; 
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: inline-block;
+    text-align: center;
+    margin: 8px 4px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  .btn:hover { 
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(46, 92, 255, 0.25);
+  }
+  
+  .btn:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+  
+  .btn-secondary {
+    background: linear-gradient(135deg, #6c757d, #868e96);
+  }
+  
+  .btn-secondary:hover {
+    background: linear-gradient(135deg, #5a6268, #727b84);
+    box-shadow: 0 6px 15px rgba(108, 117, 125, 0.25);
+  }
+  
+  .btn-warning {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+  }
+  
+  .btn-warning:hover {
+    background: linear-gradient(135deg, #f57c00, #e65100);
+    box-shadow: 0 6px 15px rgba(255, 152, 0, 0.25);
+  }
+  
+  .btn-success {
+    background: linear-gradient(135deg, #28a745, #218838);
+  }
+  
+  .btn-success:hover {
+    background: linear-gradient(135deg, #218838, #1e7e34);
+    box-shadow: 0 6px 15px rgba(40, 167, 69, 0.25);
+  }
+  
+  .btn-danger {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+  }
+  
+  .btn-danger:hover {
+    background: linear-gradient(135deg, #c82333, #bd2130);
+    box-shadow: 0 6px 15px rgba(220, 53, 69, 0.25);
+  }
+  
+  .btn-edit-info {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    padding: 10px 20px;
+    font-size: 14px;
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .btn-edit-info:hover {
+    background: linear-gradient(135deg, #138496, #117a8b);
+    box-shadow: 0 6px 15px rgba(23, 162, 184, 0.25);
+  }
+  
+  .error { 
+    color: #dc3545; 
+    margin-top: 5px; 
+    font-size: 14px;
+  }
+  
+  .success { 
+    color: #28a745; 
+    margin-top: 5px; 
+    font-size: 14px;
+  }
+  
+  .info-message {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    text-align: center;
+  }
+  
+  .error-message {
+    background: #ffebee;
+    color: #c62828;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    text-align: center;
+  }
+  
+  .warning-message {
+    background: #fff3cd;
+    color: #856404;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    text-align: center;
+    border: 1px solid #ffeaa7;
+  }
+  
+  .loading {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #2e5cff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 8px;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .required::after {
+    content: " *";
+    color: #dc3545;
+  }
+  
+  .customer-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+  }
+  
+  .location-status {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 6px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+  }
+  
+  .coordinates-display {
+    font-family: monospace;
+    background: #fff;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+    margin-top: 5px;
+  }
+  
+  .previous-order-alert {
+    background: #fff3e0;
+    border-right: 4px solid #ff9800;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+  }
+  
+  .previous-order-alert h4 {
+    color: #e65100;
+    margin-bottom: 15px;
+    text-align: center;
+  }
+  
+  .order-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin: 15px 0;
+  }
+  
+  .order-info-item {
+    background: #fff8e1;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ffcc80;
+  }
+  
+  .location-marker {
+    background: #2e5cff;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    border: 3px solid white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  }
+  
+  .confirmed-marker {
+    background: #28a745;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    border: 3px solid white;
+    box-shadow: 0 0 15px rgba(0,0,0,0.4);
+  }
+  
+  .customer-data-display {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 2px solid #e3f2fd;
+    position: relative;
+  }
+  
+  .customer-data-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #2e5cff;
+  }
+  
+  .customer-data-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+  }
+  
+  .data-item {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+  }
+  
+  .data-item strong {
+    color: #2e5cff;
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  .vendor-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .vendor-badge.malhama {
+    background: #fce4ec;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
+  }
+  .vendor-badge.fayoumi {
+    background: #e8f5e9;
+    color: #1b5e20;
+    border: 1px solid #a5d6a7;
+  }
+
+  .multi-order-card {
+    background: #fff;
+    border: 2px solid #e3f2fd;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 15px 0;
+    position: relative;
+  }
+  .multi-order-card .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e3f2fd;
+  }
+  .multi-order-card .card-header h4 {
+    color: #333;
+    margin: 0;
+  }
+  .multi-order-card .current-order-preview {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+    border-right: 3px solid #ddd;
+  }
+
+  .vendor-select-wrapper {
+    background: linear-gradient(135deg, #f8f9ff, #e8edff);
+    border: 2px solid #c5d0ff;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .vendor-select-wrapper label {
+    color: #2e5cff;
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .vendor-select-wrapper select {
+    border: 2px solid #2e5cff;
+    font-weight: 600;
+    color: #333;
+    background: #fff;
+    margin-bottom: 0;
+  }
+  .vendor-select-wrapper select:focus {
+    border-color: #1e4ae0;
+    box-shadow: 0 0 0 3px rgba(46, 92, 255, 0.15);
+  }
+
+  @media (max-width: 768px) {
+    .container {
+      padding: 20px;
+      margin: 15px;
+    }
+    
+    .order-type-buttons, .customer-actions, .map-controls {
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .type-btn, .btn {
+      width: 100%;
+      max-width: 300px;
+    }
+    
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    #map-container {
+      height: 250px;
+    }
+    
+    .order-info-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .customer-data-content {
+      grid-template-columns: 1fr;
+    }
+    
+    .customer-data-header {
+      flex-direction: column;
+      gap: 10px;
+      text-align: center;
+    }
+
+    .multi-order-card .card-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-content">
+    <h1>HomiCart 🛒</h1>
+    <p>طلباتك المنزلية في مكان واحد 💙</p>
+  </div>
+</header>
+
+<div class="container">
+  <div id="round-status" class="round-status">
+    <span id="round-status-text">جاري التحقق من حالة النظام...</span>
+  </div>
+
+  <div id="phone-section" class="section">
+    <h2 class="section-title">أدخل رقم هاتفك</h2>
+    
+    <div class="form-group">
+      <label for="mobile-number" class="required">رقم الموبايل</label>
+      <input 
+        type="text" 
+        id="mobile-number" 
+        placeholder="أدخل رقم الموبايل 05XXXXXXXX"
+        maxlength="10"
+        oninput="formatMobileNumber(this)"
+        onkeyup="checkPhoneNumber()"
+        autocomplete="off"
+      >
+      <div id="mobile-error" class="error"></div>
+      <div id="mobile-success" class="success"></div>
+      <div id="mobile-warning" class="warning-message" style="display: none; margin-top: 10px;"></div>
+    </div>
+  </div>
+
+  <div id="previous-order-alert" class="previous-order-alert" style="display: none;">
+    <h4>📦 لقد لاحظنا أن لديك طلب سابق</h4>
+    <div id="previous-order-details"></div>
+    <div class="order-type-buttons">
+      <button class="btn btn-warning" onclick="editPreviousOrder()" id="edit-order-btn">
+        تعديل الطلب الحالي
+      </button>
+      <button class="btn btn-edit-info" onclick="editCustomerInfo()" id="edit-customer-info-btn">
+        <span>✏️</span> تعديل بياناتي
+      </button>
+      <button class="btn" onclick="createNewOrderAnyway()" id="new-order-anyway-btn">
+        طلب جديد أخر
+      </button>
+    </div>
+  </div>
+
+  <div id="customer-data-section" class="section" style="display: none;">
+    <div class="customer-data-display">
+      <div class="customer-data-header">
+        <h3>👤 بيانات العميل</h3>
+        <button class="btn btn-edit-info" onclick="editCustomerInfo()">
+          <span>✏️</span> تعديل البيانات
+        </button>
+      </div>
+      
+      <div id="customer-data-details" class="customer-data-content"></div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 20px;">
+      <button class="btn btn-success" onclick="startNewOrder()" id="start-new-order-btn">
+        بدء طلب جديد
+      </button>
+    </div>
+  </div>
+
+  <div id="view-order-section" class="section" style="display: none;">
+    <h3 class="section-title">عرض الطلب السابق</h3>
+    <div id="view-order-details" class="previous-orders"></div>
+    <div style="text-align: center; margin-top: 20px;">
+      <button class="btn btn-secondary" onclick="goBackToMain()">العودة</button>
+    </div>
+  </div>
+
+  <div id="edit-order-section" class="section" style="display: none;">
+    <h3 class="section-title">تعديل الطلب الأخير</h3>
+    <div id="multi-order-edit-container"></div>
+    <div style="text-align: center; margin-top: 20px;">
+      <button class="btn btn-secondary" onclick="goBackToMain()">إلغاء والعودة</button>
+    </div>
+  </div>
+
+  <div id="customer-info-form" class="customer-info-form" style="display: none;">
+    <h4 id="customer-form-title">معلومات العميل</h4>
+    
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="customer-name" class="required">الاسم</label>
+        <input type="text" id="customer-name" placeholder="الاسم الكامل" autocomplete="name">
+      </div>
+      
+      <div class="form-group">
+        <label for="customer-phone" class="required">رقم الموبايل</label>
+        <input type="text" id="customer-phone" placeholder="05XXXXXXXX" maxlength="10" readonly>
+      </div>
+    </div>
+    
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="customer-whatsapp" class="required">رقم الواتساب</label>
+        <input type="text" id="customer-whatsapp" placeholder="05XXXXXXXX" maxlength="10" autocomplete="tel">
+      </div>
+      
+      <div class="form-group">
+        <label for="customer-area" class="required">المنطقة</label>
+        <input type="text" id="customer-area" placeholder="اسم المنطقة" autocomplete="off">
+      </div>
+    </div>
+    
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="customer-address" class="required">العنوان التفصيلي</label>
+        <input type="text" id="customer-address" placeholder="اكتب عنوانك بالتفصيل" autocomplete="street-address">
+      </div>
+    </div>
+    
+    <div class="form-group location-group" id="location-group">
+      <label class="required">📍 تأكيد موقعك الجغرافي</label>
+      <div id="location-warning" class="warning-message" style="margin-top: 10px; display: block;">
+        ⚠️ <strong>مهم:</strong> يجب تحديد موقعك الجغرافي بدقة لتسليم الطلب
+      </div>
+      
+      <div style="margin-top: 15px;">
+        <button type="button" class="btn btn-success" onclick="getUserLocation()" id="location-btn">
+          <span id="location-btn-text">تحديد موقعي الحالي</span>
+          <span id="location-loading" class="loading" style="display: none;"></span>
+        </button>
+      </div>
+      
+      <div id="map-container">
+        <div id="map"></div>
+      </div>
+      
+      <div id="location-info" class="map-info" style="display: none;">
+        <div id="location-address" class="success"></div>
+        <div id="location-coordinates" class="coordinates-display" style="margin-top: 10px;">
+          <strong>الإحداثيات:</strong> 
+          <span id="latitude-display"></span>, 
+          <span id="longitude-display"></span>
+        </div>
+        <div id="accuracy-info" class="accuracy-info"></div>
+      </div>
+      
+      <div id="location-error" class="error" style="margin-top: 10px;"></div>
+      
+      <div class="map-controls" id="map-controls" style="display: none;">
+        <button type="button" class="btn btn-success" onclick="confirmMapLocation()" id="confirm-location-btn">
+          تأكيد هذا الموقع
+        </button>
+        <button type="button" class="btn btn-secondary" onclick="recenterMap()">
+          العودة إلى موقعي
+        </button>
+        <button type="button" class="btn btn-warning" onclick="getUserLocation()">
+          تحديث الموقع
+        </button>
+      </div>
+      
+      <div id="location-status" class="location-status" style="display: none; margin-top: 15px;">
+        <div id="confirmed-location-info"></div>
+      </div>
+      
+      <input type="hidden" id="latitude" name="latitude">
+      <input type="hidden" id="longitude" name="longitude">
+      <input type="hidden" id="location-accuracy" name="location-accuracy">
+      <input type="hidden" id="location-confirmed" name="location-confirmed" value="false">
+      <input type="hidden" id="maps-link" name="maps-link">
+      <input type="hidden" id="google-maps-link" name="google-maps-link">
+      <input type="hidden" id="user-timezone" name="user-timezone">
+    </div>
+    
+    <div style="text-align: center;">
+      <button class="btn" onclick="saveCustomerInfo()" id="save-customer-btn">
+        <span id="save-customer-text">حفظ المعلومات</span>
+        <span id="save-customer-loading" class="loading" style="display: none;"></span>
+      </button>
+      <button class="btn btn-secondary" onclick="cancelEdit()" id="cancel-btn" style="display: none;">إلغاء</button>
+    </div>
+  </div>
+
+  <div id="new-order-section" class="section" style="display: none;">
+    <h3 class="section-title">طلب جديد</h3>
+    
+    <div id="duplicate-order-warning" class="warning-message" style="display: none;">
+      ⚠️ <strong>ملاحظة:</strong> لديك طلب سابق. سيتم ربط هذا الطلب بنفس رقم عميلك.
+    </div>
+
+    <div class="vendor-select-wrapper">
+      <label for="vendor-select" class="required">اختر المتجر</label>
+      <select id="vendor-select" onchange="onVendorChange()">
+        <option value="">-- اختر المتجر أولاً --</option>
+        <option value="malhama">01- ملحمة الركن المصري</option>
+        <option value="fayoumi">02- الفيومي للطيور</option>
+      </select>
+      <div id="vendor-error" class="error" style="display:none;">يرجى اختيار المتجر أولاً</div>
+    </div>
+
+    <div id="order-text-wrapper" style="display: none;">
+      <div class="form-group">
+        <label for="new-order-text" class="required">اكتب طلبك هنا</label>
+        <textarea id="new-order-text" rows="5" placeholder="اكتب تفاصيل طلبك هنا..."></textarea>
+      </div>
+      
+      <div style="text-align: center;">
+        <button class="btn" onclick="submitNewOrder()" id="submit-new-btn">
+          <span id="submit-new-text">إرسال الطلب الجديد</span>
+          <span id="submit-new-loading" class="loading" style="display: none;"></span>
+        </button>
+        <button class="btn btn-secondary" onclick="goBackToMain()">إلغاء والعودة</button>
+      </div>
+    </div>
+
+    <div id="new-order-cancel-only" style="text-align: center; margin-top: 10px;">
+      <button class="btn btn-secondary" onclick="goBackToMain()">إلغاء والعودة</button>
+    </div>
+  </div>
+
+  <div id="success-message" class="info-message" style="display: none;"></div>
+  <div id="error-message" class="error-message" style="display: none;"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz7AeGB7lZr3Dm7V2-oZSIw0v_cqlfhVEn9q6iJnnLlzXom4JlcndX2TDo94r-ptuMEFg/exec';
+
+  const SHEET_ORDERS   = 'Orders';
+  const SHEET_FAYOUMI  = 'AlFayoumi';
+
+  const VENDOR_LABELS = {
+    malhama: '01- ملحمة الركن المصري',
+    fayoumi: '02- الفيومي للطيور'
+  };
+
+  let selectedOrderType = null;
+  let currentCustomer = null;
+  let currentOrder = null;
+  let currentOrderStatus = 'checking';
+  let currentRound = '';
+  let currentCustomerId = '';
+  let currentCustomerPhone = '';
+  let isAccountActive = true;
+  let customerExists = false;
+  let isEditingCustomer = false;
+  let existingOrderId = null;
+  let hasLocation = false;
+  let locationConfirmed = false;
+  let hasPreviousActiveOrder = false;
+  let previousOrderData = null;
+  let allPreviousOrders = [];
+
+  let map = null;
+  let userMarker = null;
+  let confirmedMarker = null;
+  let accuracyCircle = null;
+  let currentLatitude = null;
+  let currentLongitude = null;
+  let currentAccuracy = null;
+  let mapInitialized = false;
+  
+  let phoneCheckTimer = null;
+  let phoneCheckAbortController = null; // Fix: cancel stale in-flight requests
+
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ HomiCart System Initialized - Multi-Vendor Version');
+    detectUserTimezone();
+    checkOrderStatus();
+    setInterval(checkOrderStatus, 5 * 60 * 1000); // Fix: refresh order status every 5 min
+    document.getElementById('mobile-number').focus();
+  });
+
+  function onVendorChange() {
+    const vendorSelect = document.getElementById('vendor-select');
+    const orderWrapper = document.getElementById('order-text-wrapper');
+    const cancelOnly = document.getElementById('new-order-cancel-only');
+    const vendorError = document.getElementById('vendor-error');
+
+    vendorError.style.display = 'none';
+
+    if (vendorSelect.value) {
+      orderWrapper.style.display = 'block';
+      cancelOnly.style.display = 'none';
+    } else {
+      orderWrapper.style.display = 'none';
+      cancelOnly.style.display = 'block';
+    }
+  }
+  
+  function detectUserTimezone() {
+    try {
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      document.getElementById('user-timezone').value = userTimezone;
+      return userTimezone;
+    } catch (error) {
+      document.getElementById('user-timezone').value = 'Asia/Riyadh';
+      return 'Asia/Riyadh';
+    }
+  }
+  
+  function getUserLocalTimestamp() {
+    // Fix: use Intl.DateTimeFormat.formatToParts() — reliable on all browsers including Safari
+    try {
+      const userTimezone = document.getElementById('user-timezone').value || 'Asia/Riyadh';
+      const now = new Date();
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: userTimezone,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+      }).formatToParts(now);
+      const get = function(type) { var p = parts.find(function(x) { return x.type === type; }); return p ? p.value : '00'; };
+      return get('year') + '-' + get('month') + '-' + get('day') + ' ' + get('hour') + ':' + get('minute') + ':' + get('second');
+    } catch (error) {
+      return new Date().toISOString().replace('T', ' ').substring(0, 19);
+    }
+  }
+  
+  function initializeMap(latitude, longitude) {
+    latitude = latitude || 24.4539;
+    longitude = longitude || 54.3773;
+    const mapContainer = document.getElementById('map-container');
+    const mapElement = document.getElementById('map');
+    if (!mapContainer || !mapElement) return;
+    if (map) return;
+    
+    try {
+      map = L.map('map', { attributionControl: false });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+      }).addTo(map);
+      map.setView([latitude, longitude], 15);
+      mapInitialized = true;
+      L.control.attribution({ position: 'bottomright', prefix: '© OpenStreetMap' }).addTo(map);
+    } catch (error) {
+      mapInitialized = false;
+    }
+  }
+  
+  function formatMobileNumber(input) {
+    let value = input.value.replace(/\D/g, '');
+    if (value.length > 10) value = value.substring(0, 10);
+    input.value = value;
+    const errorElement = document.getElementById('mobile-error');
+    if (value.length > 0 && !value.startsWith('05') && value.length >= 2) {
+      errorElement.textContent = 'الرقم يجب أن يبدأ بـ 05';
+    } else {
+      errorElement.textContent = '';
+    }
+  }
+  
+  function checkPhoneNumber() {
+    if (phoneCheckTimer) clearTimeout(phoneCheckTimer);
+    phoneCheckTimer = setTimeout(async () => {
+      await validateMobileNumber();
+    }, 800);
+  }
+  
+  async function validateMobileNumber() {
+    const mobileInput = document.getElementById('mobile-number');
+    const mobileNumber = mobileInput.value.trim();
+    const errorElement = document.getElementById('mobile-error');
+    const successElement = document.getElementById('mobile-success');
+    const warningElement = document.getElementById('mobile-warning');
+    
+    errorElement.textContent = '';
+    successElement.textContent = '';
+    warningElement.style.display = 'none';
+    hideMessages();
+    
+    document.getElementById('previous-order-alert').style.display = 'none';
+    document.getElementById('customer-data-section').style.display = 'none';
+    document.getElementById('customer-info-form').style.display = 'none';
+    document.getElementById('view-order-section').style.display = 'none';
+    document.getElementById('edit-order-section').style.display = 'none';
+    document.getElementById('new-order-section').style.display = 'none';
+    
+    if (!mobileNumber) { errorElement.textContent = 'رقم الهاتف مطلوب'; return false; }
+    
+    const mobileRegex = /^05\d{8}$/;
+    if (!mobileRegex.test(mobileNumber)) {
+      errorElement.textContent = 'رقم الهاتف يجب أن يبدأ بـ 05 ويحتوي على 10 أرقام';
+      return false;
+    }
+    
+    successElement.textContent = 'جاري التحقق من قاعدة البيانات...';
+
+    // Fix: cancel any previous in-flight request before starting a new one
+    if (phoneCheckAbortController) phoneCheckAbortController.abort();
+    phoneCheckAbortController = new AbortController();
+    const signal = phoneCheckAbortController.signal;
+
+    try {
+      const customerUrl = SCRIPT_URL + '?action=getCustomer&phone=' + encodeURIComponent(mobileNumber) + '&_=' + Date.now();
+      const customerResponse = await fetch(customerUrl, { method: 'GET', cache: 'no-cache', mode: 'cors', signal: signal });
+      if (!customerResponse.ok) throw new Error('HTTP error! status: ' + customerResponse.status);
+      const customerData = await customerResponse.json();
+      
+      if (customerData.success && customerData.customer) {
+        currentCustomer = customerData.customer;
+        currentCustomerId = customerData.customer.id;
+        currentCustomerPhone = mobileNumber;
+        customerExists = true;
+        hasLocation = !!(customerData.customer.latitude && customerData.customer.longitude);
+        
+        if (customerData.customer.timestamp) {
+          customerData.customer.formattedDate = formatDateString(customerData.customer.timestamp);
+        }
+        
+        if (customerData.customer.accountStatus === 'Inactive' || customerData.customer.isActive === false) {
+          isAccountActive = false;
+          warningElement.innerHTML = '<p>⚠️ حسابك غير نشط حالياً</p><p>يرجى التواصل مع الإدارة لتفعيل الحساب</p>';
+          warningElement.style.display = 'block';
+          successElement.textContent = 'حساب غير نشط';
+        } else {
+          isAccountActive = true;
+          
+          allPreviousOrders = [];
+          const activeStatuses = ['جديد', 'New', 'Processing', 'Preparing', 'Ready', 'On the way', 'Pending', 'قيد المعالجة', 'تم التحديث'];
+          const inactiveStatuses = ['مسلم', 'ملغى', 'Delivered', 'Cancelled', 'Rejected'];
+
+          try {
+            const ordersUrl = SCRIPT_URL + '?action=getOrderByCustomer&customerId=' + encodeURIComponent(currentCustomerId) + '&_=' + Date.now();
+            const ordersResponse = await fetch(ordersUrl, { method: 'GET', cache: 'no-cache', mode: 'cors', signal: signal });
+            if (ordersResponse.ok) {
+              const ordersData = await ordersResponse.json();
+              if (ordersData.success && ordersData.order) {
+                const o = ordersData.order;
+                if (o.timestamp) o.formattedDate = formatDateString(o.timestamp);
+                if (o.date) o.formattedDate = formatDateString(o.date);
+                const status = o.status || '';
+                const isActive = activeStatuses.includes(status) || (!inactiveStatuses.includes(status) && status !== '');
+                if (isActive) {
+                  allPreviousOrders.push({ vendor: 'malhama', sheetName: SHEET_ORDERS, order: o });
+                }
+              }
+            }
+          } catch(e) { console.warn('Error fetching Orders:', e); }
+
+          try {
+            const fayoumiUrl = SCRIPT_URL + '?action=getOrderByCustomer&customerId=' + encodeURIComponent(currentCustomerId) + '&sheet=' + encodeURIComponent(SHEET_FAYOUMI) + '&_=' + Date.now();
+            const fayoumiResponse = await fetch(fayoumiUrl, { method: 'GET', cache: 'no-cache', mode: 'cors', signal: signal });
+            if (fayoumiResponse.ok) {
+              const fayoumiData = await fayoumiResponse.json();
+              if (fayoumiData.success && fayoumiData.order) {
+                const o = fayoumiData.order;
+                if (o.timestamp) o.formattedDate = formatDateString(o.timestamp);
+                if (o.date) o.formattedDate = formatDateString(o.date);
+                const status = o.status || '';
+                const isActive = activeStatuses.includes(status) || (!inactiveStatuses.includes(status) && status !== '');
+                if (isActive) {
+                  allPreviousOrders.push({ vendor: 'fayoumi', sheetName: SHEET_FAYOUMI, order: o });
+                }
+              }
+            }
+          } catch(e) { console.warn('Error fetching AlFayoumi:', e); }
+
+          if (allPreviousOrders.length > 0) {
+            hasPreviousActiveOrder = true;
+            previousOrderData = allPreviousOrders[0].order;
+            showPreviousOrderAlert(allPreviousOrders, customerData.customer.name);
+            successElement.textContent = '✅ مرحباً ' + customerData.customer.name + ' - لديك ' + (allPreviousOrders.length > 1 ? 'طلبات نشطة' : 'طلب نشط');
+          } else {
+            hasPreviousActiveOrder = false;
+            previousOrderData = null;
+            displayCustomerData(customerData.customer);
+            successElement.textContent = '✅ مرحباً ' + customerData.customer.name;
+          }
+          
+          fillCustomerForm(customerData.customer);
+        }
+        
+      } else {
+        currentCustomer = null;
+        currentCustomerId = '';
+        currentCustomerPhone = mobileNumber;
+        customerExists = false;
+        isAccountActive = true;
+        hasLocation = false;
+        locationConfirmed = false;
+        hasPreviousActiveOrder = false;
+        previousOrderData = null;
+        allPreviousOrders = [];
+        
+        successElement.textContent = '🆕 رقم جديد - سيتم إنشاء حساب جديد';
+        
+        document.getElementById('customer-data-section').style.display = 'none';
+        document.getElementById('customer-info-form').style.display = 'block';
+        document.getElementById('customer-form-title').textContent = 'معلومات العميل الجديد';
+        document.getElementById('cancel-btn').style.display = 'none';
+        
+        document.getElementById('customer-phone').value = mobileNumber;
+        document.getElementById('customer-whatsapp').value = mobileNumber;
+        document.getElementById('customer-name').value = '';
+        document.getElementById('customer-area').value = '';
+        document.getElementById('customer-address').value = '';
+        
+        resetLocation();
+      }
+      
+      return true;
+    } catch (error) {
+      if (error.name === 'AbortError') return false; // Fix: request was cancelled by a newer one, ignore
+      errorElement.textContent = 'حدث خطأ أثناء التحقق: ' + error.message;
+      return false;
+    }
+  }
+  
+  function displayCustomerData(customer) {
+    const customerDataSection = document.getElementById('customer-data-section');
+    const customerDataDetails = document.getElementById('customer-data-details');
+    if (!customerDataSection || !customerDataDetails) return;
+    
+    let locationHtml = '';
+    if (customer.latitude && customer.longitude) {
+      locationHtml = '<div class="data-item"><strong>📍 الموقع:</strong><span>' + 
+        parseFloat(customer.latitude).toFixed(6) + ', ' + parseFloat(customer.longitude).toFixed(6) + '</span>';
+      if (customer.mapsLink) {
+        locationHtml += '<br><a href="' + customer.mapsLink + '" target="_blank" style="color: #2e5cff; font-size: 14px;">عرض على الخريطة</a>';
+      }
+      locationHtml += '</div>';
+    }
+    
+    customerDataDetails.innerHTML = 
+      '<div class="data-item"><strong>👤 الاسم:</strong><span>' + (customer.name || 'غير محدد') + '</span></div>' +
+      '<div class="data-item"><strong>📱 رقم الموبايل:</strong><span>' + (customer.phone || 'غير محدد') + '</span></div>' +
+      '<div class="data-item"><strong>💬 رقم الواتساب:</strong><span>' + (customer.whatsapp || customer.phone || 'غير محدد') + '</span></div>' +
+      '<div class="data-item"><strong>📍 المنطقة:</strong><span>' + (customer.area || 'غير محدد') + '</span></div>' +
+      '<div class="data-item"><strong>🏠 العنوان:</strong><span>' + (customer.address || 'غير محدد') + '</span></div>' +
+      locationHtml;
+    customerDataSection.style.display = 'block';
+  }
+  
+  function startNewOrder() {
+    if (currentOrderStatus.toLowerCase() !== 'active') {
+      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
+      return;
+    }
+    if (!isAccountActive && customerExists) {
+      alert('حسابك غير نشط. يرجى التواصل مع الإدارة لتفعيل الحساب.');
+      return;
+    }
+    selectedOrderType = 'new';
+    isEditingCustomer = false;
+    document.getElementById('customer-data-section').style.display = 'none';
+    if (customerExists && hasPreviousActiveOrder) {
+      document.getElementById('duplicate-order-warning').style.display = 'block';
+    }
+    showNewOrderSection();
+    hideMessages();
+  }
+
+  function showNewOrderSection() {
+    document.getElementById('new-order-section').style.display = 'block';
+    document.getElementById('new-order-text').value = '';
+    document.getElementById('vendor-select').value = '';
+    document.getElementById('order-text-wrapper').style.display = 'none';
+    document.getElementById('new-order-cancel-only').style.display = 'block';
+    document.getElementById('vendor-error').style.display = 'none';
+  }
+  
+  function formatDateString(dateString) {
+    if (!dateString) return 'غير معروف';
+    try {
+      if (dateString instanceof Date) {
+        // Fix: use ar-SA locale consistently (was en-GB for Date objects, ar-SA for strings)
+        const date = dateString;
+        const optionsDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' };
+        const optionsTime = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'UTC' };
+        return { date: date.toLocaleDateString('ar-SA', optionsDate), time: date.toLocaleTimeString('ar-SA', optionsTime) };
+      }
+      const cleanDateString = dateString.replace('Z', '').replace('T', ' ');
+      const date = new Date(cleanDateString + 'Z');
+      if (isNaN(date.getTime())) return 'غير معروف';
+      const optionsDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' };
+      const optionsTime = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'UTC' };
+      return { date: date.toLocaleDateString('ar-SA', optionsDate), time: date.toLocaleTimeString('ar-SA', optionsTime) };
+    } catch (error) {
+      return 'غير معروف';
+    }
+  }
+  
+  function showPreviousOrderAlert(orders, customerName) {
+    const alertSection = document.getElementById('previous-order-alert');
+    const orderDetails = document.getElementById('previous-order-details');
+
+    let html = '';
+    orders.forEach((entry, idx) => {
+      const order = entry.order;
+      let dateDisplay = 'غير معروف', timeDisplay = '';
+      if (order.formattedDate && order.formattedDate.date) {
+        dateDisplay = order.formattedDate.date;
+        timeDisplay = order.formattedDate.time;
+      } else if (order.date) {
+        const f = formatDateString(order.date);
+        dateDisplay = f.date; timeDisplay = f.time;
+      }
+      const orderStatus = order.status || 'قيد المعالجة';
+      let statusColor = '#ff9800';
+      if (orderStatus === 'مسلم' || orderStatus === 'Delivered') statusColor = '#4CAF50';
+      if (orderStatus === 'ملغى' || orderStatus === 'Cancelled') statusColor = '#f44336';
+      if (orderStatus === 'Processing' || orderStatus === 'قيد المعالجة') statusColor = '#2196F3';
+
+      const vendorLabel = VENDOR_LABELS[entry.vendor] || entry.vendor;
+      const badgeClass = entry.vendor === 'malhama' ? 'malhama' : 'fayoumi';
+
+      html += '<div class="order-item" style="margin-bottom: 15px; border: 2px solid #e3f2fd;">' +
+        '<span class="vendor-badge ' + badgeClass + '">🏪 ' + vendorLabel + '</span>' +
+        '<div class="order-info-grid">' +
+          '<div class="order-info-item"><strong>📅 التاريخ:</strong> ' + dateDisplay + 
+          (timeDisplay ? '<br><strong>⏰ الوقت:</strong> ' + timeDisplay : '') + '</div>' +
+          '<div class="order-info-item"><strong>📦 حالة الطلب:</strong> <span style="color:' + statusColor + '">' + orderStatus + '</span></div>' +
+          '<div class="order-info-item"><strong>📍 العنوان:</strong> ' + (order.address || (currentCustomer ? currentCustomer.address : 'غير محدد')) + '</div>' +
+        '</div>' +
+        '<div class="order-info-item" style="margin-top: 10px;">' +
+          '<strong>📝 تفاصيل الطلب:</strong>' +
+          '<p style="background:#fff;padding:10px;border-radius:5px;margin-top:5px;white-space:pre-wrap;">' + (order.items || 'لا توجد تفاصيل') + '</p>' +
+        '</div>' +
+      '</div>';
+    });
+    orderDetails.innerHTML = html;
+    alertSection.style.display = 'block';
+  }
+  
+  function editPreviousOrder() {
+    if (!allPreviousOrders.length) return;
+    
+    document.getElementById('previous-order-alert').style.display = 'none';
+    document.getElementById('customer-data-section').style.display = 'none';
+    document.getElementById('customer-info-form').style.display = 'none';
+    document.getElementById('view-order-section').style.display = 'none';
+    document.getElementById('new-order-section').style.display = 'none';
+    
+    const editSection = document.getElementById('edit-order-section');
+    const container = document.getElementById('multi-order-edit-container');
+    container.innerHTML = '';
+
+    allPreviousOrders.forEach((entry, idx) => {
+      const order = entry.order;
+      let dateDisplay = 'غير معروف', timeDisplay = '';
+      if (order.formattedDate && order.formattedDate.date) {
+        dateDisplay = order.formattedDate.date;
+        timeDisplay = order.formattedDate.time;
+      } else if (order.date) {
+        const f = formatDateString(order.date);
+        dateDisplay = f.date; timeDisplay = f.time;
+      }
+      const orderStatus = order.status || 'قيد المعالجة';
+      let statusColor = '#ff9800';
+      if (orderStatus === 'مسلم' || orderStatus === 'Delivered') statusColor = '#4CAF50';
+      if (orderStatus === 'ملغى' || orderStatus === 'Cancelled') statusColor = '#f44336';
+      if (orderStatus === 'Processing' || orderStatus === 'قيد المعالجة') statusColor = '#2196F3';
+
+      const vendorLabel = VENDOR_LABELS[entry.vendor] || entry.vendor;
+      const badgeClass = entry.vendor === 'malhama' ? 'malhama' : 'fayoumi';
+
+      const card = document.createElement('div');
+      card.className = 'multi-order-card';
+      card.innerHTML = 
+        '<div class="card-header">' +
+          '<span class="vendor-badge ' + badgeClass + '">🏪 ' + vendorLabel + '</span>' +
+          '<h4>تعديل الطلب</h4>' +
+        '</div>' +
+        '<div class="order-info-grid" style="margin-bottom:12px;">' +
+          '<div class="order-info-item"><strong>📅 التاريخ:</strong> ' + dateDisplay + '</div>' +
+          '<div class="order-info-item"><strong>⏰ الوقت:</strong> ' + (timeDisplay || 'غير محدد') + '</div>' +
+          '<div class="order-info-item"><strong>📦 رقم الطلب:</strong> ' + (order.id || 'غير معروف') + '</div>' +
+          '<div class="order-info-item"><strong>📍 الحالة:</strong> <span style="color:' + statusColor + '">' + orderStatus + '</span></div>' +
+        '</div>' +
+        '<div class="current-order-preview"><strong>📝 الطلب الحالي:</strong><br>' + (order.items || 'لا توجد تفاصيل') + '</div>' +
+        '<div class="form-group">' +
+          '<label for="edit-order-text-' + idx + '" class="required">اكتب الطلب الجديد بدلاً من السابق</label>' +
+          '<textarea id="edit-order-text-' + idx + '" rows="4" placeholder="اكتب تفاصيل الطلب الجديد هنا...">' + (order.items || '') + '</textarea>' +
+        '</div>' +
+        '<p style="color:#ff9800;font-weight:bold;font-size:13px;">⚠️ سيتم استبدال هذا الطلب بالطلب الجديد</p>' +
+        '<div style="text-align:center;margin-top:10px;">' +
+          '<button class="btn btn-success" onclick="updateSingleOrder(' + idx + ')" id="update-btn-' + idx + '">' +
+            '<span id="update-text-' + idx + '">تحديث هذا الطلب</span>' +
+            '<span id="update-loading-' + idx + '" class="loading" style="display:none;"></span>' +
+          '</button>' +
+        '</div>';
+      container.appendChild(card);
+    });
+    
+    editSection.style.display = 'block';
+    hideMessages();
+  }
+
+  async function updateSingleOrder(idx) {
+    hideMessages();
+
+    if (currentOrderStatus.toLowerCase() !== 'active') {
+      alert('لا يمكن تحديث الطلبات حالياً لأن النظام مغلق.');
+      return;
+    }
+    if (!isAccountActive && customerExists) {
+      alert('حسابك غير نشط. يرجى التواصل مع الإدارة لتفعيل الحساب.');
+      return;
+    }
+
+    const entry = allPreviousOrders[idx];
+    if (!entry) return;
+
+    const orderText = document.getElementById('edit-order-text-' + idx).value.trim();
+    if (!orderText) {
+      alert('من فضلك اكتب تفاصيل الطلب الجديد أولاً');
+      return;
+    }
+
+    const updateBtn = document.getElementById('update-btn-' + idx);
+    const updateLoading = document.getElementById('update-loading-' + idx);
+    const updateText = document.getElementById('update-text-' + idx);
+    updateBtn.disabled = true;
+    updateLoading.style.display = 'inline-block';
+    updateText.textContent = 'جاري التحديث...';
+
+    try {
+      if (!currentCustomer) throw new Error('بيانات العميل غير متوفرة');
+
+      const formData = new FormData();
+      formData.append('action', 'submitOrder');
+      formData.append('phone', currentCustomer.phone);
+      formData.append('whatsapp', currentCustomer.whatsapp || currentCustomer.phone);
+      formData.append('name', currentCustomer.name);
+      formData.append('area', currentCustomer.area);
+      formData.append('address', currentCustomer.address);
+      formData.append('orderText', orderText);
+      formData.append('sheet', entry.sheetName);
+      formData.append('vendor', entry.vendor);
+      if (currentRound) formData.append('round', currentRound);
+      formData.append('replaceOrderId', entry.order.id);
+      
+      const userTimezone = document.getElementById('user-timezone').value;
+      const userTimestamp = getUserLocalTimestamp();
+      formData.append('userTimezone', userTimezone);
+      formData.append('userTimestamp', userTimestamp);
+      formData.append('note', 'تم تعديل الطلب السابق');
+
+      const response = await fetch(SCRIPT_URL, { method: 'POST', body: formData, mode: 'cors' });
+      if (!response.ok) throw new Error('HTTP error! status: ' + response.status);
+      const result = await response.json();
+
+      if (result.success) {
+        const cards = document.querySelectorAll('.multi-order-card');
+        const card = cards[idx];
+        if (card) {
+          card.style.border = '2px solid #28a745';
+          const badgeClass = entry.vendor === 'malhama' ? 'malhama' : 'fayoumi';
+          card.innerHTML = 
+            '<div style="text-align:center;padding:20px;color:#1b5e20;">' +
+              '<div style="font-size:40px;margin-bottom:10px;">✅</div>' +
+              '<h4>تم تحديث الطلب في <span class="vendor-badge ' + badgeClass + '">' + VENDOR_LABELS[entry.vendor] + '</span></h4>' +
+            '</div>';
+        }
+        showSuccess('✅ تم تحديث الطلب بنجاح!');
+
+        allPreviousOrders[idx] = null;
+        const remaining = allPreviousOrders.filter(Boolean);
+        if (remaining.length === 0) {
+          hasPreviousActiveOrder = false;
+          previousOrderData = null;
+          allPreviousOrders = [];
+          setTimeout(() => resetForm(), 3000);
+        }
+      } else {
+        throw new Error(result.message || 'فشل تحديث الطلب');
+      }
+    } catch (error) {
+      showError('حدث خطأ أثناء تحديث الطلب: ' + error.message);
+    } finally {
+      if (updateBtn) {
+        updateBtn.disabled = false;
+        updateLoading.style.display = 'none';
+        updateText.textContent = 'تحديث هذا الطلب';
+      }
+    }
+  }
+  
+  function createNewOrderAnyway() {
+    document.getElementById('previous-order-alert').style.display = 'none';
+    document.getElementById('customer-data-section').style.display = 'none';
+    document.getElementById('edit-order-section').style.display = 'none';
+    document.getElementById('view-order-section').style.display = 'none';
+    document.getElementById('duplicate-order-warning').style.display = 'block';
+    
+    if (currentCustomer) {
+      document.getElementById('customer-info-form').style.display = 'block';
+      document.getElementById('customer-form-title').textContent = 'تأكيد المعلومات';
+      document.getElementById('cancel-btn').style.display = 'inline-block';
+      fillCustomerForm(currentCustomer);
+      if (hasLocation && locationConfirmed) {
+        document.getElementById('location-group').style.display = 'none';
+      }
+    } else {
+      document.getElementById('customer-info-form').style.display = 'block';
+      document.getElementById('customer-form-title').textContent = 'معلومات العميل';
+      document.getElementById('cancel-btn').style.display = 'inline-block';
+    }
+    
+    showNewOrderSection();
+    hideMessages();
+  }
+  
+  function goBackToMain() {
+    document.getElementById('view-order-section').style.display = 'none';
+    document.getElementById('edit-order-section').style.display = 'none';
+    document.getElementById('new-order-section').style.display = 'none';
+    document.getElementById('customer-info-form').style.display = 'none';
+    document.getElementById('duplicate-order-warning').style.display = 'none';
+    
+    selectedOrderType = null;
+    isEditingCustomer = false;
+    
+    if (hasPreviousActiveOrder && allPreviousOrders.filter(Boolean).length > 0) {
+      document.getElementById('previous-order-alert').style.display = 'block';
+    } else if (customerExists && currentCustomer && isAccountActive) {
+      document.getElementById('customer-data-section').style.display = 'block';
+    }
+    hideMessages();
+  }
+  
+  function getUserLocation() {
+    hideMessages();
+    const locationBtn = document.getElementById('location-btn');
+    const locationText = document.getElementById('location-btn-text');
+    const locationLoading = document.getElementById('location-loading');
+    const locationError = document.getElementById('location-error');
+    const locationInfo = document.getElementById('location-info');
+    const mapControls = document.getElementById('map-controls');
+    
+    locationError.textContent = '';
+    locationInfo.style.display = 'none';
+    mapControls.style.display = 'none';
+    document.getElementById('location-status').style.display = 'none';
+    document.getElementById('map-container').style.display = 'block';
+    locationBtn.disabled = true;
+    locationLoading.style.display = 'inline-block';
+    locationText.textContent = 'جاري تحديد الموقع...';
+    
+    if (!navigator.geolocation) {
+      locationError.textContent = 'متصفحك لا يدعم تحديد الموقع الجغرافي.';
+      resetLocationButton();
+      return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+      async function(position) {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        const accuracy = position.coords.accuracy;
+        
+        currentLatitude = latitude;
+        currentLongitude = longitude;
+        currentAccuracy = accuracy;
+        
+        showMapWithLocation(latitude, longitude, accuracy);
+        locationInfo.style.display = 'block';
+        mapControls.style.display = 'flex';
+        
+        document.getElementById('latitude-display').textContent = latitude.toFixed(6);
+        document.getElementById('longitude-display').textContent = longitude.toFixed(6);
+        
+        let accuracyClass = 'accuracy-poor';
+        let accuracyText = 'دقة منخفضة (' + Math.round(accuracy) + ' متر)';
+        if (accuracy <= 15) {
+          accuracyClass = accuracy <= 10 ? 'accuracy-good' : 'accuracy-fair';
+          accuracyText = accuracy <= 10 ? 'دقة ممتازة' : 'دقة جيدة';
+        }
+        document.getElementById('accuracy-info').innerHTML = 
+          '<span class="' + accuracyClass + '">📍 الدقة: ' + Math.round(accuracy) + ' متر (' + accuracyText + ')</span>' +
+          (accuracy > 15 ? '<br><small>يرجى سحب المؤشر لضبط الموقع الدقيق</small>' : '');
+        
+        try {
+          const address = await getAddressFromCoordinates(latitude, longitude);
+          document.getElementById('location-address').innerHTML = '<strong>📍 العنوان:</strong> ' + address;
+          document.getElementById('location-address').style.color = '#28a745';
+        } catch (error) {
+          document.getElementById('location-address').textContent = '📍 تم تحديد موقعك على الخريطة';
+          document.getElementById('location-address').style.color = '#1976d2';
+        }
+        
+        resetLocationButton();
+        if (accuracy > 15) {
+          locationError.innerHTML = 
+            '<div class="warning-message" style="text-align:right;margin:10px 0;">' +
+              '<p><strong>⚠️ الدقة الحالية ' + Math.round(accuracy) + ' متر - المطلوبة 5-15 متر</strong></p>' +
+              '<p>لتحسين الدقة:</p>' +
+              '<ul style="text-align:right;margin-right:15px;">' +
+                '<li>تفعيل GPS عالي الدقة في إعدادات الهاتف</li>' +
+                '<li>الانتقال إلى مكان مفتوح بعيد عن المباني</li>' +
+                '<li>سحب المؤشر لضبط الموقع الدقيق</li>' +
+              '</ul>' +
+            '</div>';
+        }
+      },
+      function(error) {
+        let errorMessage = '';
+        let showRetry = true;
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = '<div class="error-message" style="text-align:right;">' +
+              '<p><strong>تم رفض صلاحية تحديد الموقع</strong></p>' +
+              '<p>يجب تفعيل صلاحيات الموقع للمتابعة.</p>' +
+              '<p style="margin-top:10px;"><button class="btn" onclick="location.reload()" style="background:#dc3545;color:white;">إعادة تحميل الصفحة</button></p>' +
+            '</div>';
+            showRetry = false;
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'معلومات الموقع غير متاحة. تأكد من تفعيل GPS.';
+            break;
+          case error.TIMEOUT:
+            errorMessage = 'انتهت مهلة طلب الموقع. يرجى المحاولة مرة أخرى.';
+            break;
+          default:
+            errorMessage = 'حدث خطأ غير معروف في تحديد الموقع.';
+        }
+        locationError.innerHTML = errorMessage;
+        if (showRetry) {
+          locationError.innerHTML += '<p style="margin-top:10px;"><button class="btn btn-warning" onclick="getUserLocation()" style="padding:8px 16px;">المحاولة مرة أخرى</button></p>';
+        }
+        resetLocationButton();
+      },
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
+    );
+  }
+  
+  async function getAddressFromCoordinates(latitude, longitude) {
+    const response = await fetch(
+      'https://nominatim.openstreetmap.org/reverse?format=json&lat=' + latitude + '&lon=' + longitude + '&zoom=18&addressdetails=1&accept-language=ar',
+      { method: 'GET', headers: { 'User-Agent': 'HomiCart/1.0', 'Accept-Language': 'ar' } }
+    );
+    if (!response.ok) throw new Error('Failed to get address');
+    const data = await response.json();
+    if (data && data.display_name) {
+      const addressParts = [];
+      if (data.address) {
+        if (data.address.road) addressParts.push(data.address.road);
+        if (data.address.neighbourhood) addressParts.push(data.address.neighbourhood);
+        if (data.address.suburb) addressParts.push(data.address.suburb);
+        if (data.address.city_district) addressParts.push(data.address.city_district);
+        if (data.address.city) addressParts.push(data.address.city);
+      }
+      if (addressParts.length === 0) return data.display_name.length > 100 ? data.display_name.substring(0,100)+'...' : data.display_name;
+      return addressParts.join('، ') || data.display_name;
+    }
+    throw new Error('No address found');
+  }
+  
+  function showMapWithLocation(latitude, longitude, accuracy) {
+    document.getElementById('map-container').style.display = 'block';
+    if (!mapInitialized || !map) {
+      initializeMap(latitude, longitude);
+    } else {
+      map.setView([latitude, longitude], 17);
+    }
+    if (userMarker) map.removeLayer(userMarker);
+    if (accuracyCircle) map.removeLayer(accuracyCircle);
+    if (confirmedMarker) { map.removeLayer(confirmedMarker); confirmedMarker = null; }
+    
+    const locationIcon = L.divIcon({ html: '<div class="location-marker">📍</div>', iconSize: [24,24], iconAnchor: [12,24], popupAnchor: [0,-24], className: 'custom-location-marker' });
+    userMarker = L.marker([latitude, longitude], { draggable: true, title: 'موقعك الحالي', icon: locationIcon, zIndexOffset: 1000 }).addTo(map);
+    
+    if (accuracy) {
+      accuracyCircle = L.circle([latitude, longitude], {
+        radius: accuracy,
+        color: accuracy <= 10 ? '#28a745' : accuracy <= 15 ? '#ffc107' : '#dc3545',
+        fillColor: accuracy <= 10 ? '#28a745' : accuracy <= 15 ? '#ffc107' : '#dc3545',
+        fillOpacity: 0.1, weight: 2, dashArray: accuracy > 15 ? '5,5' : null
+      }).addTo(map);
+    }
+    
+    map.setView([latitude, longitude], 17);
+    
+    userMarker.on('drag', function(e) {
+      const pos = e.target.getLatLng();
+      if (accuracyCircle) accuracyCircle.setLatLng([pos.lat, pos.lng]);
+    });
+    
+    userMarker.on('dragend', function(e) {
+      const pos = e.target.getLatLng();
+      currentLatitude = pos.lat;
+      currentLongitude = pos.lng;
+      document.getElementById('latitude-display').textContent = currentLatitude.toFixed(6);
+      document.getElementById('longitude-display').textContent = currentLongitude.toFixed(6);
+      if (confirmedMarker) { map.removeLayer(confirmedMarker); confirmedMarker = null; document.getElementById('location-confirmed').value = 'false'; }
+      updateAddressFromCoordinates(currentLatitude, currentLongitude);
+      document.getElementById('location-error').innerHTML = '<div class="info-message" style="margin:10px 0;padding:10px;">✅ تم تحريك المؤشر. اضغط على "تأكيد هذا الموقع" لحفظه.</div>';
+    });
+    
+    updateAddressFromCoordinates(latitude, longitude);
+  }
+  
+  async function updateAddressFromCoordinates(latitude, longitude) {
+    try {
+      const address = await getAddressFromCoordinates(latitude, longitude);
+      document.getElementById('location-address').innerHTML = '<strong>📍 العنوان:</strong> ' + address;
+      document.getElementById('location-address').style.color = '#28a745';
+    } catch (error) {
+      document.getElementById('location-address').textContent = '📍 الموقع: ' + latitude.toFixed(6) + ', ' + longitude.toFixed(6);
+      document.getElementById('location-address').style.color = '#1976d2';
+    }
+  }
+  
+  function confirmMapLocation() {
+    if (!currentLatitude || !currentLongitude) { showError('يرجى تحديد موقعك أولاً'); return; }
+    
+    document.getElementById('latitude').value = currentLatitude;
+    document.getElementById('longitude').value = currentLongitude;
+    document.getElementById('location-accuracy').value = currentAccuracy || '18';
+    document.getElementById('location-confirmed').value = 'true';
+    
+    const googleMapsLink = 'https://www.google.com/maps?q=' + currentLatitude + ',' + currentLongitude;
+    document.getElementById('maps-link').value = googleMapsLink;
+    document.getElementById('google-maps-link').value = googleMapsLink;
+    
+    locationConfirmed = true;
+    hasLocation = true;
+    
+    if (confirmedMarker) map.removeLayer(confirmedMarker);
+    const confirmedIcon = L.divIcon({ html: '<div class="confirmed-marker">✓</div>', iconSize: [24,24], iconAnchor: [12,24], className: 'custom-confirmed-marker' });
+    confirmedMarker = L.marker([currentLatitude, currentLongitude], { icon: confirmedIcon, title: 'الموقع المؤكد', zIndexOffset: 2000 }).addTo(map);
+    
+    const locationStatus = document.getElementById('location-status');
+    locationStatus.style.display = 'block';
+    locationStatus.innerHTML = 
+      '<div style="background:#d4edda;color:#155724;padding:15px;border-radius:8px;border:1px solid #c3e6cb;">' +
+        '<strong>✅ الموقع مؤكد</strong>' +
+        '<div style="margin-top:8px;font-size:14px;">' +
+          '<div><strong>الإحداثيات:</strong> ' + currentLatitude.toFixed(6) + ', ' + currentLongitude.toFixed(6) + '</div>' +
+          '<div><strong>الدقة:</strong> ' + (currentAccuracy ? Math.round(currentAccuracy)+' متر' : 'غير معروفة') + '</div>' +
+          '<div><strong>رابط الخرائط:</strong> <a href="' + googleMapsLink + '" target="_blank" style="color:#1976d2;">عرض على خرائط Google</a></div>' +
+          '<button type="button" class="btn btn-warning" onclick="changeLocation()" style="padding:6px 12px;font-size:13px;margin-top:8px;">تغيير الموقع</button>' +
+        '</div>' +
+      '</div>';
+    document.getElementById('map-controls').style.display = 'none';
+    document.getElementById('location-warning').style.display = 'none';
+    showSuccess('✅ تم تأكيد موقعك بنجاح');
+    setTimeout(() => showInfo('سيتم حفظ الإحداثيات ورابط الخرائط مع باقي بياناتك عند الضغط على "حفظ المعلومات"'), 1500);
+  }
+  
+  function changeLocation() {
+    locationConfirmed = false;
+    hasLocation = false;
+    document.getElementById('location-confirmed').value = 'false';
+    document.getElementById('location-status').style.display = 'none';
+    document.getElementById('map-controls').style.display = 'flex';
+    document.getElementById('location-warning').style.display = 'block';
+    if (confirmedMarker) { map.removeLayer(confirmedMarker); confirmedMarker = null; }
+    showInfo('يمكنك الآن تغيير موقعك');
+  }
+  
+  function recenterMap() {
+    if (currentLatitude && currentLongitude && userMarker) {
+      map.setView([currentLatitude, currentLongitude], 17);
+      userMarker.setLatLng([currentLatitude, currentLongitude]);
+      if (accuracyCircle) accuracyCircle.setLatLng([currentLatitude, currentLongitude]);
+      if (confirmedMarker) { map.removeLayer(confirmedMarker); confirmedMarker = null; }
+      document.getElementById('location-confirmed').value = 'false';
+      locationConfirmed = false;
+      showInfo('تم العودة إلى موقعك الحالي');
+    }
+  }
+  
+  function resetLocationButton() {
+    document.getElementById('location-btn').disabled = false;
+    document.getElementById('location-loading').style.display = 'none';
+    document.getElementById('location-btn-text').textContent = 'تحديد موقعي الحالي';
+  }
+  
+  function resetLocation() {
+    document.getElementById('latitude').value = '';
+    document.getElementById('longitude').value = '';
+    document.getElementById('location-accuracy').value = '';
+    document.getElementById('location-confirmed').value = 'false';
+    document.getElementById('maps-link').value = '';
+    document.getElementById('google-maps-link').value = '';
+    document.getElementById('map-container').style.display = 'none';
+    document.getElementById('location-info').style.display = 'none';
+    document.getElementById('map-controls').style.display = 'none';
+    document.getElementById('location-status').style.display = 'none';
+    document.getElementById('location-error').textContent = '';
+    document.getElementById('location-warning').style.display = 'block';
+    if (userMarker && map) { map.removeLayer(userMarker); userMarker = null; }
+    if (confirmedMarker && map) { map.removeLayer(confirmedMarker); confirmedMarker = null; }
+    if (accuracyCircle && map) { map.removeLayer(accuracyCircle); accuracyCircle = null; }
+    if (map) { map.remove(); map = null; mapInitialized = false; }
+    locationConfirmed = false;
+    hasLocation = false;
+    currentLatitude = null;
+    currentLongitude = null;
+    currentAccuracy = null;
+  }
+  
+  function fillCustomerForm(customer) {
+    if (!customer) return;
+    document.getElementById('customer-name').value = customer.name || '';
+    document.getElementById('customer-phone').value = customer.phone || currentCustomerPhone;
+    document.getElementById('customer-whatsapp').value = customer.whatsapp || customer.phone || currentCustomerPhone;
+    document.getElementById('customer-area').value = customer.area || '';
+    document.getElementById('customer-address').value = customer.address || '';
+    
+    if (customer.latitude && customer.longitude) {
+      document.getElementById('latitude').value = customer.latitude;
+      document.getElementById('longitude').value = customer.longitude;
+      document.getElementById('location-confirmed').value = 'true';
+      locationConfirmed = true;
+      hasLocation = true;
+      
+      const googleMapsLink = customer.mapsLink || ('https://www.google.com/maps?q=' + customer.latitude + ',' + customer.longitude);
+      
+      const locationStatus = document.getElementById('location-status');
+      locationStatus.style.display = 'block';
+      locationStatus.innerHTML = 
+        '<div style="background:#d4edda;color:#155724;padding:15px;border-radius:8px;border:1px solid #c3e6cb;">' +
+          '<strong>📍 موقعك المخزن</strong>' +
+          '<div style="margin-top:8px;font-size:14px;">' +
+            '<div><strong>الإحداثيات:</strong> ' + parseFloat(customer.latitude).toFixed(6) + ', ' + parseFloat(customer.longitude).toFixed(6) + '</div>' +
+            (customer.mapsLink ? '<div><strong>رابط الخرائط:</strong> <a href="' + customer.mapsLink + '" target="_blank" style="color:#1976d2;">عرض على خرائط Google</a></div>' : '') +
+            '<div style="margin-top:5px;"><button type="button" class="btn btn-warning" onclick="getUserLocation()" style="padding:6px 12px;font-size:13px;">تحديث الموقع</button></div>' +
+          '</div>' +
+        '</div>';
+      document.getElementById('location-warning').style.display = 'none';
+    } else {
+      resetLocation();
+    }
+  }
+  
+  function editCustomerInfo() {
+    if (!currentCustomer) return;
+    isEditingCustomer = true;
+    document.getElementById('previous-order-alert').style.display = 'none';
+    document.getElementById('customer-data-section').style.display = 'none';
+    document.getElementById('customer-info-form').style.display = 'block';
+    document.getElementById('customer-form-title').textContent = 'تعديل بياناتي';
+    document.getElementById('cancel-btn').style.display = 'inline-block';
+    fillCustomerForm(currentCustomer);
+    hideMessages();
+  }
+  
+  function cancelEdit() {
+    isEditingCustomer = false;
+    document.getElementById('customer-info-form').style.display = 'none';
+    document.getElementById('new-order-section').style.display = 'none';
+    if (hasPreviousActiveOrder && allPreviousOrders.filter(Boolean).length > 0) {
+      document.getElementById('previous-order-alert').style.display = 'block';
+    } else if (customerExists && currentCustomer) {
+      document.getElementById('customer-data-section').style.display = 'block';
+    }
+    hideMessages();
+  }
+  
+  async function saveCustomerInfo() {
+    hideMessages();
+    const name = document.getElementById('customer-name').value.trim();
+    const phone = document.getElementById('customer-phone').value.trim();
+    const whatsapp = document.getElementById('customer-whatsapp').value.trim();
+    const area = document.getElementById('customer-area').value.trim();
+    const address = document.getElementById('customer-address').value.trim();
+    const latitude = document.getElementById('latitude').value.trim();
+    const longitude = document.getElementById('longitude').value.trim();
+    const locationConfirmedVal = document.getElementById('location-confirmed').value === 'true';
+    const googleMapsLink = document.getElementById('google-maps-link').value.trim();
+    const userTimezone = document.getElementById('user-timezone').value;
+    
+    if (!name) { showError('الاسم مطلوب'); return; }
+    if (!phone) { showError('رقم الموبايل مطلوب'); return; }
+    if (!/^05\d{8}$/.test(phone)) { showError('رقم الموبايل يجب أن يبدأ بـ 05 ويحتوي على 10 أرقام'); return; }
+    if (!whatsapp) { showError('رقم الواتساب مطلوب'); return; }
+    if (!/^05\d{8}$/.test(whatsapp)) { showError('رقم الواتساب يجب أن يبدأ بـ 05 ويحتوي على 10 أرقام'); return; }
+    if (!area) { showError('المنطقة مطلوبة'); return; }
+    if (!address) { showError('العنوان التفصيلي مطلوب'); return; }
+    if (!customerExists && !locationConfirmedVal) { showError('يرجى تأكيد موقعك الجغرافي أولاً'); return; }
+    if (!customerExists && (!latitude || !longitude)) { showError('يرجى تحديد موقعك الجغرافي أولاً'); return; }
+    
+    const saveBtn = document.getElementById('save-customer-btn');
+    const saveLoading = document.getElementById('save-customer-loading');
+    const saveText = document.getElementById('save-customer-text');
+    saveBtn.disabled = true;
+    saveLoading.style.display = 'inline-block';
+    saveText.textContent = 'جاري الحفظ...';
+    
+    try {
+      const formData = new FormData();
+      formData.append('action', 'createOrUpdateCustomer');
+      formData.append('phone', phone);
+      formData.append('whatsapp', whatsapp);
+      formData.append('name', name);
+      formData.append('area', area);
+      formData.append('address', address);
+      formData.append('userTimezone', userTimezone);
+      
+      if (customerExists) {
+        if (locationConfirmedVal && latitude && longitude) {
+          formData.append('latitude', latitude);
+          formData.append('longitude', longitude);
+        }
+        if (locationConfirmedVal && googleMapsLink) {
+          formData.append('location', googleMapsLink);
+        }
+      } else {
+        if (latitude && longitude) { formData.append('latitude', latitude); formData.append('longitude', longitude); }
+        if (googleMapsLink) formData.append('location', googleMapsLink);
+      }
+      
+      const response = await fetch(SCRIPT_URL, { method: 'POST', body: formData, mode: 'cors' });
+      if (!response.ok) throw new Error('خطأ HTTP! الحالة: ' + response.status);
+      const data = await response.json();
+      
+      if (data.success) {
+        if (data.customerId) { currentCustomerId = data.customerId; customerExists = true; }
+        currentCustomer = { id: currentCustomerId, name, phone, whatsapp, area, address, latitude, longitude, mapsLink: googleMapsLink };
+        showSuccess('✅ تم حفظ المعلومات بنجاح');
+        setTimeout(() => {
+          if (isEditingCustomer) {
+            displayCustomerData(currentCustomer);
+            document.getElementById('customer-info-form').style.display = 'none';
+            document.getElementById('customer-data-section').style.display = 'block';
+          } else {
+            document.getElementById('customer-info-form').style.display = 'none';
+            showNewOrderSection();
+            document.getElementById('new-order-section').style.display = 'block';
+          }
+        }, 1500);
+      } else {
+        throw new Error(data.message || 'فشل حفظ المعلومات');
+      }
+    } catch (error) {
+      showError('حدث خطأ أثناء حفظ المعلومات: ' + error.message);
+    } finally {
+      saveBtn.disabled = false;
+      saveLoading.style.display = 'none';
+      saveText.textContent = 'حفظ المعلومات';
+    }
+  }
+  
+  // ===== CORE VENDOR ROUTING FUNCTION =====
+  async function submitNewOrder() {
+    hideMessages();
+    
+    if (currentOrderStatus.toLowerCase() !== 'active') {
+      alert('لا يمكن تقديم طلبات جديدة حالياً لأن الطلبات مغلقة.');
+      return;
+    }
+    if (!isAccountActive && customerExists) {
+      alert('حسابك غير نشط. يرجى التواصل مع الإدارة لتفعيل الحساب.');
+      return;
+    }
+
+    // Validate vendor dropdown selection
+    const vendorSelect = document.getElementById('vendor-select');
+    const vendorError = document.getElementById('vendor-error');
+    if (!vendorSelect.value) {
+      vendorError.style.display = 'block';
+      vendorSelect.focus();
+      return;
+    }
+    vendorError.style.display = 'none';
+
+    const selectedVendor = vendorSelect.value;
+    // Route to correct sheet based on vendor selection
+    const targetSheet = selectedVendor === 'fayoumi' ? SHEET_FAYOUMI : SHEET_ORDERS;
+    
+    console.log('🎯 Submitting order → vendor:', selectedVendor, '| sheet:', targetSheet);
+    
+    const name = document.getElementById('customer-name').value.trim();
+    const phone = document.getElementById('customer-phone').value.trim();
+    const whatsapp = document.getElementById('customer-whatsapp').value.trim();
+    const area = document.getElementById('customer-area').value.trim();
+    const address = document.getElementById('customer-address').value.trim();
+    const latitude = document.getElementById('latitude').value.trim();
+    const longitude = document.getElementById('longitude').value.trim();
+    const googleMapsLink = document.getElementById('google-maps-link').value.trim();
+    const userTimezone = document.getElementById('user-timezone').value;
+    const userTimestamp = getUserLocalTimestamp();
+    
+    if (!name || !phone || !whatsapp || !area || !address) {
+      alert('من فضلك أكمل معلومات العميل أولاً ثم اضغط على "حفظ المعلومات"');
+      return;
+    }
+    
+    const orderText = document.getElementById('new-order-text').value.trim();
+    if (!orderText) {
+      alert('من فضلك اكتب تفاصيل طلبك أولاً');
+      return;
+    }
+    
+    const submitBtn = document.getElementById('submit-new-btn');
+    const submitLoading = document.getElementById('submit-new-loading');
+    const submitText = document.getElementById('submit-new-text');
+    submitBtn.disabled = true;
+    submitLoading.style.display = 'inline-block';
+    submitText.textContent = 'جاري الإرسال...';
+    
+    try {
+      const formData = new FormData();
+      formData.append('action', 'submitOrder');
+      formData.append('phone', phone);
+      formData.append('whatsapp', whatsapp);
+      formData.append('name', name);
+      formData.append('area', area);
+      formData.append('address', address);
+      formData.append('orderText', orderText);
+      formData.append('userTimezone', userTimezone);
+      formData.append('userTimestamp', userTimestamp);
+      // Vendor routing - tell backend which sheet to write to
+      formData.append('sheet', targetSheet);
+      formData.append('vendor', selectedVendor);
+      
+      if (currentRound) formData.append('round', currentRound);
+      
+      // Fix: always send latest location — not only for new customers (returning customers may update theirs)
+      if (latitude && longitude) { formData.append('latitude', latitude); formData.append('longitude', longitude); }
+      if (googleMapsLink) formData.append('location', googleMapsLink);
+
+      if (hasPreviousActiveOrder) formData.append('note', 'Customer placed another order');
+      
+      const response = await fetch(SCRIPT_URL, { method: 'POST', body: formData, mode: 'cors' });
+      if (!response.ok) throw new Error('HTTP error! status: ' + response.status);
+      const result = await response.json();
+      
+      if (result.success) {
+        document.getElementById('customer-info-form').style.display = 'none';
+        document.getElementById('new-order-section').style.display = 'none';
+        
+        const vendorLabel = VENDOR_LABELS[selectedVendor] || selectedVendor;
+        const badgeClass = selectedVendor === 'malhama' ? 'malhama' : 'fayoumi';
+
+        const successMessage = document.getElementById('success-message');
+        successMessage.innerHTML = 
+          '<h3>✅ تم إرسال الطلب بنجاح!</h3>' +
+          '<p>🏪 <strong>المتجر:</strong> <span class="vendor-badge ' + badgeClass + '">' + vendorLabel + '</span></p>' +
+          (result.orderId ? '<p><strong>رقم الطلب:</strong> ' + result.orderId + '</p>' : '') +
+          (result.customerId ? '<p><strong>رقم العميل:</strong> ' + result.customerId + '</p>' : '') +
+          '<p>📍 <strong>موقع التسليم:</strong> ' + address + '</p>' +
+          '<p>🕒 <strong>وقت الطلب:</strong> ' + userTimestamp + '</p>' +
+          (latitude && longitude ? '<p>📍 <strong>الإحداثيات:</strong> ' + parseFloat(latitude).toFixed(6) + ', ' + parseFloat(longitude).toFixed(6) + '</p>' : '') +
+          (googleMapsLink ? '<p>🗺️ <strong>رابط الخرائط:</strong> <a href="' + googleMapsLink + '" target="_blank">عرض الموقع</a></p>' : '') +
+          '<p>عزيزي/عزيزتي <strong>' + name + '</strong></p>' +
+          '<p>شكراً لاستخدامك HomiCart! 💙</p>';
+        successMessage.style.display = 'block';
+        
+        currentCustomerId = result.customerId;
+        customerExists = true;
+        hasPreviousActiveOrder = true;
+        
+        setTimeout(() => {
+          resetForm();
+          successMessage.style.display = 'none';
+        }, 10000);
+      } else {
+        throw new Error(result.message || 'فشل إرسال الطلب');
+      }
+    } catch (error) {
+      showError('حدث خطأ أثناء إرسال الطلب: ' + error.message);
+    } finally {
+      submitBtn.disabled = false;
+      submitLoading.style.display = 'none';
+      submitText.textContent = 'إرسال الطلب الجديد';
+    }
+  }
+  
+  async function checkOrderStatus() {
+    try {
+      const url = SCRIPT_URL + '?action=getOrderStatus&_=' + Date.now();
+      const response = await fetch(url, { method: 'GET', cache: 'no-cache', mode: 'cors' });
+      if (!response.ok) throw new Error('HTTP error! status: ' + response.status);
+      const data = await response.json();
+      if (data.success) {
+        currentOrderStatus = data.status || 'Active';
+        currentRound = data.round || '';
+        updateOrderStatusDisplay();
+      } else {
+        currentOrderStatus = 'Active';
+        currentRound = '';
+        updateOrderStatusDisplay();
+        showError('⚠️ تعذر التحقق من حالة النظام. يمكنك المحاولة.');
+      }
+    } catch (error) {
+      currentOrderStatus = 'Active';
+      currentRound = '';
+      updateOrderStatusDisplay();
+      showError('⚠️ تعذر الاتصال بالخادم. يمكنك المحاولة.');
+    }
+  }
+  
+  function updateOrderStatusDisplay() {
+    const statusElement = document.getElementById('round-status');
+    const statusText = document.getElementById('round-status-text');
+    if (currentOrderStatus.toLowerCase() === 'active') {
+      statusElement.className = 'round-status';
+      statusText.textContent = currentRound ? ('✅ الطلبات مفتوحة - ' + currentRound) : '✅ الطلبات مفتوحة - يمكنك تقديم طلب جديد';
+      enableForm();
+    } else {
+      statusElement.className = 'round-status closed';
+      statusText.textContent = '⛔ الطلبات مغلقة حالياً - يرجى الانتظار حتى يتم فتح الطلبات';
+      disableForm();
+    }
+  }
+  
+  // Fix: enableForm and disableForm were broken — targeting non-existent IDs and CSS classes
+  const FORM_ACTION_BTNS = [
+    'submit-new-btn', 'save-customer-btn', 'start-new-order-btn',
+    'edit-order-btn', 'new-order-anyway-btn', 'edit-customer-info-btn'
+  ];
+
+  function enableForm() {
+    document.querySelectorAll('input, textarea, select').forEach(function(el) { el.disabled = false; });
+    FORM_ACTION_BTNS.forEach(function(id) {
+      var btn = document.getElementById(id);
+      if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; }
+    });
+  }
+
+  function disableForm() {
+    FORM_ACTION_BTNS.forEach(function(id) {
+      var btn = document.getElementById(id);
+      if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.style.cursor = 'not-allowed'; }
+    });
+  }
+  
+  function showError(message) {
+    const errorMessage = document.getElementById('error-message');
+    errorMessage.innerHTML = '<p>' + message + '</p>';
+    errorMessage.style.display = 'block';
+    setTimeout(() => { errorMessage.style.display = 'none'; }, 5000);
+  }
+  
+  function showSuccess(message) {
+    const successMessage = document.getElementById('success-message');
+    successMessage.innerHTML = '<p>' + message + '</p>';
+    successMessage.style.display = 'block';
+    setTimeout(() => { successMessage.style.display = 'none'; }, 5000);
+  }
+  
+  function showInfo(message) {
+    const successMessage = document.getElementById('success-message');
+    successMessage.innerHTML = '<p>ℹ️ ' + message + '</p>';
+    successMessage.style.display = 'block';
+    setTimeout(() => { successMessage.style.display = 'none'; }, 3000);
+  }
+  
+  function hideMessages() {
+    document.getElementById('success-message').style.display = 'none';
+    document.getElementById('error-message').style.display = 'none';
+  }
+  
+  function resetForm() {
+    document.getElementById('mobile-number').value = '';
+    document.getElementById('customer-name').value = '';
+    document.getElementById('customer-phone').value = '';
+    document.getElementById('customer-whatsapp').value = '';
+    document.getElementById('customer-area').value = '';
+    document.getElementById('customer-address').value = '';
+    document.getElementById('new-order-text').value = '';
+    document.getElementById('vendor-select').value = '';
+    document.getElementById('order-text-wrapper').style.display = 'none';
+    document.getElementById('new-order-cancel-only').style.display = 'block';
+    document.getElementById('vendor-error').style.display = 'none';
+    
+    resetLocation();
+    
+    document.querySelectorAll('.error, .success').forEach(element => { element.textContent = ''; });
+    
+    document.getElementById('previous-order-alert').style.display = 'none';
+    document.getElementById('customer-data-section').style.display = 'none';
+    document.getElementById('customer-info-form').style.display = 'none';
+    document.getElementById('view-order-section').style.display = 'none';
+    document.getElementById('edit-order-section').style.display = 'none';
+    document.getElementById('new-order-section').style.display = 'none';
+    document.getElementById('duplicate-order-warning').style.display = 'none';
+    document.getElementById('multi-order-edit-container').innerHTML = '';
+    
+    document.querySelectorAll('.type-btn').forEach(btn => { btn.classList.remove('active'); });
+    
+    selectedOrderType = null;
+    currentCustomer = null;
+    currentOrder = null;
+    currentCustomerId = '';
+    currentCustomerPhone = '';
+    isAccountActive = true;
+    customerExists = false;
+    isEditingCustomer = false;
+    existingOrderId = null;
+    hasLocation = false;
+    locationConfirmed = false;
+    hasPreviousActiveOrder = false;
+    previousOrderData = null;
+    allPreviousOrders = [];
+    currentLatitude = null;
+    currentLongitude = null;
+    currentAccuracy = null;
+    mapInitialized = false;
+    if (map) { map.remove(); map = null; }
+    
+    hideMessages();
+    document.getElementById('mobile-number').focus();
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>حسابي - HomiCart</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+      direction: rtl;
+      text-align: right;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 15px;
+    }
+
+    header {
+      background: linear-gradient(135deg, #2e5cff, #6c8eff);
+      color: white;
+      padding: 15px 20px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+
+    header h1 { font-size: 24px; }
+
+    .header-actions {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .btn-back {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid white;
+      color: white;
+      padding: 8px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s;
+    }
+
+    .btn-back:hover {
+      background: rgba(255,255,255,0.4);
+    }
+
+    .main-content {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .profile-card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+
+    .profile-avatar {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #2e5cff, #6c8eff);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      margin: 0 auto 15px;
+      color: white;
+    }
+
+    .profile-name {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .profile-phone {
+      color: #666;
+      font-size: 13px;
+      margin-bottom: 15px;
+    }
+
+    .edit-profile-btn {
+      background: #2e5cff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+
+    .edit-profile-btn:hover {
+      background: #1e4cc8;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .nav-link {
+      background: white;
+      padding: 12px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: #333;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .nav-link:hover {
+      background: #f0f4ff;
+      color: #2e5cff;
+      box-shadow: 0 4px 12px rgba(46,92,255,0.15);
+    }
+
+    .nav-link.active {
+      background: #f0f4ff;
+      color: #2e5cff;
+      border-right: 4px solid #2e5cff;
+      padding-right: 11px;
+    }
+
+    .content-section {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    .section-title {
+      font-size: 22px;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .order-card {
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border-left: 4px solid #2e5cff;
+    }
+
+    .order-header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 15px;
+      margin-bottom: 10px;
+      align-items: start;
+    }
+
+    .order-id {
+      font-weight: 600;
+      color: #333;
+    }
+
+    .order-date {
+      color: #666;
+      font-size: 13px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-new { background: #e3f2fd; color: #1976d2; }
+    .status-processing { background: #fff3e0; color: #f57c00; }
+    .status-delivery { background: #f3e5f5; color: #7b1fa2; }
+    .status-delivered { background: #e8f5e9; color: #388e3c; }
+
+    .order-items {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 10px;
+    }
+
+    .order-total {
+      font-weight: 600;
+      color: #2e5cff;
+      margin-bottom: 10px;
+    }
+
+    .order-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .btn {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: #2e5cff;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1e4cc8;
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #2e5cff;
+      box-shadow: 0 0 0 3px rgba(46,92,255,0.1);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active { display: flex; }
+
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #999;
+    }
+
+    .promotions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .promo-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .promo-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(102,126,234,0.3);
+    }
+
+    .promo-title {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .promo-code {
+      font-size: 12px;
+      opacity: 0.9;
+      margin-bottom: 10px;
+    }
+
+    .promo-discount {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .review-section {
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .review-stars {
+      color: #ffc107;
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+
+    .review-text {
+      color: #666;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 768px) {
+      .main-content { grid-template-columns: 1fr; }
+      header { flex-direction: column; gap: 10px; text-align: center; }
+      .form-row { grid-template-columns: 1fr; }
+      .order-header { grid-template-columns: 1fr; }
+      .promotions-grid { grid-template-columns: 1fr; }
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #999;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #2e5cff;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🏪 حسابي</h1>
+  <div class="header-actions">
+    <a href="index.html" class="btn-back">← العودة للتطبيق</a>
+  </div>
+</header>
+
+<div class="container">
+  <div class="main-content">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="profile-card">
+        <div class="profile-avatar">👤</div>
+        <div class="profile-name" id="profileName">تحميل...</div>
+        <div class="profile-phone" id="profilePhone">-</div>
+        <button class="edit-profile-btn" onclick="openEditModal()">تعديل الملف الشخصي</button>
+      </div>
+
+      <div class="nav-links">
+        <div class="nav-link active" onclick="switchSection('orders')">📦 طلباتي</div>
+        <div class="nav-link" onclick="switchSection('profile')">👤 الملف الشخصي</div>
+        <div class="nav-link" onclick="switchSection('promotions')">🎉 العروض والكوبونات</div>
+        <div class="nav-link" onclick="switchSection('reviews')">⭐ التقييمات</div>
+        <div class="nav-link" onclick="switchSection('favorites')">❤️ المفضلة</div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div>
+
+      <!-- Orders Section -->
+      <div id="ordersSection" class="content-section">
+        <h2 class="section-title">📦 طلباتي</h2>
+        <div id="ordersContainer"></div>
+      </div>
+
+      <!-- Profile Section -->
+      <div id="profileSection" class="content-section" style="display: none;">
+        <h2 class="section-title">👤 الملف الشخصي</h2>
+        <div class="form-group">
+          <label>الاسم الكامل</label>
+          <input type="text" id="fullName" disabled>
+        </div>
+        <div class="form-group">
+          <label>رقم الهاتف</label>
+          <input type="tel" id="phone" disabled>
+        </div>
+        <div class="form-group">
+          <label>رقم WhatsApp</label>
+          <input type="tel" id="whatsapp">
+        </div>
+        <div class="form-group">
+          <label>المنطقة</label>
+          <input type="text" id="area">
+        </div>
+        <div class="form-group">
+          <label>العنوان الافتراضي</label>
+          <textarea id="address" rows="3"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="saveProfile()">💾 حفظ التغييرات</button>
+      </div>
+
+      <!-- Promotions Section -->
+      <div id="promotionsSection" class="content-section" style="display: none;">
+        <h2 class="section-title">🎉 العروض والكوبونات</h2>
+        <p style="color: #666; margin-bottom: 20px;">استمتع بأفضل العروض الحصرية للعملاء المتكررين</p>
+        <div class="promotions-grid">
+          <div class="promo-card">
+            <div class="promo-title">عرض ترحيب</div>
+            <div class="promo-code">WELCOME20</div>
+            <div class="promo-discount">خصم 20%</div>
+          </div>
+          <div class="promo-card">
+            <div class="promo-title">عرض الثلاثاء</div>
+            <div class="promo-code">TUESDAY15</div>
+            <div class="promo-discount">خصم 15%</div>
+          </div>
+          <div class="promo-card">
+            <div class="promo-title">عرض الطلب الكبير</div>
+            <div class="promo-code">BULK50</div>
+            <div class="promo-discount">خصم 50 د.إ</div>
+          </div>
+          <div class="promo-card">
+            <div class="promo-title">عرض الصديق</div>
+            <div class="promo-code">REFERRAL</div>
+            <div class="promo-discount">خصم مشترك</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reviews Section -->
+      <div id="reviewsSection" class="content-section" style="display: none;">
+        <h2 class="section-title">⭐ تقييماتي</h2>
+        <p style="color: #666; margin-bottom: 20px;">ساعدنا بمراجعاتك وآرائك</p>
+        <div id="reviewsContainer"></div>
+        <button class="btn btn-primary" onclick="openReviewModal()" style="margin-top: 20px;">
+          ➕ إضافة تقييم جديد
+        </button>
+      </div>
+
+      <!-- Favorites Section -->
+      <div id="favoritesSection" class="content-section" style="display: none;">
+        <h2 class="section-title">❤️ المفضلة</h2>
+        <p style="color: #666; margin-bottom: 20px;">احفظ أفضل الأطباق المفضلة لديك</p>
+        <div id="favoritesContainer"></div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h2 style="margin-bottom: 20px;">تعديل الملف الشخصي</h2>
+    <form onsubmit="updateProfile(event)">
+      <div class="form-group">
+        <label>الاسم الكامل</label>
+        <input type="text" id="editName" required>
+      </div>
+      <div class="form-group">
+        <label>رقم WhatsApp</label>
+        <input type="tel" id="editWhatsapp">
+      </div>
+      <div class="form-group">
+        <label>المنطقة</label>
+        <input type="text" id="editArea">
+      </div>
+      <div class="form-group">
+        <label>العنوان الافتراضي</label>
+        <textarea id="editAddress" rows="3"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">💾 حفظ</button>
+    </form>
+  </div>
+</div>
+
+<!-- Review Modal -->
+<div id="reviewModal" class="modal">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeModal('reviewModal')">✕</button>
+    <h2 style="margin-bottom: 20px;">أضف تقييمك</h2>
+    <form onsubmit="submitReview(event)">
+      <div class="form-group">
+        <label>اختر طلبك</label>
+        <select id="reviewOrder" required>
+          <option value="">-- اختر طلب --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>التقييم</label>
+        <div style="display: flex; gap: 10px; font-size: 24px;">
+          <span onclick="setRating(5)">⭐</span>
+          <span onclick="setRating(4)">⭐</span>
+          <span onclick="setRating(3)">⭐</span>
+          <span onclick="setRating(2)">⭐</span>
+          <span onclick="setRating(1)">⭐</span>
+        </div>
+        <input type="hidden" id="rating" value="5">
+      </div>
+      <div class="form-group">
+        <label>تعليقك</label>
+        <textarea id="reviewComment" rows="3" placeholder="شارك تجربتك معنا..."></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">إرسال التقييم</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const API_URL = 'https://script.google.com/macros/s/AKfycbz7AeGB7lZr3Dm7V2-oZSIw0v_cqlfhVEn9q6iJnnLlzXom4JlcndX2TDo94r-ptuMEFg/exec';
+
+  let currentCustomer = null;
+
+  async function loadCustomerProfile() {
+    const phone = prompt('أدخل رقم هاتفك:');
+    if (!phone) {
+      window.location.href = 'index.html';
+      return;
+    }
+
+    try {
+      const response = await fetch(API_URL + '?action=getCustomer&phone=' + encodeURIComponent(phone));
+      const data = await response.json();
+
+      if (data.success && data.customer) {
+        currentCustomer = data.customer;
+        document.getElementById('profileName').textContent = currentCustomer.name || 'العميل';
+        document.getElementById('profilePhone').textContent = phone;
+        document.getElementById('fullName').value = currentCustomer.name || '';
+        document.getElementById('phone').value = phone;
+        document.getElementById('whatsapp').value = currentCustomer.whatsapp || '';
+        document.getElementById('area').value = currentCustomer.area || '';
+        document.getElementById('address').value = currentCustomer.address || '';
+
+        loadOrders(phone);
+      } else {
+        alert('تم إنشاء ملف شخصي جديد');
+        currentCustomer = { name: '', phone: phone };
+      }
+    } catch (e) {
+      alert('خطأ في تحميل البيانات');
+    }
+  }
+
+  async function loadOrders(phone) {
+    try {
+      const response = await fetch(API_URL + '?action=getLatestOrderByPhone&phone=' + encodeURIComponent(phone));
+      const data = await response.json();
+
+      if (data.success && data.order) {
+        const ordersHtml = `
+          <div class="order-card">
+            <div class="order-header">
+              <div>
+                <div class="order-id">رقم الطلب: ${data.order.id}</div>
+                <div class="order-date">${data.order.date || 'تاريخ غير محدد'}</div>
+              </div>
+              <span class="status-badge status-${data.order.status?.toLowerCase() || 'new'}">
+                ${getStatusLabel(data.order.status)}
+              </span>
+            </div>
+            <div class="order-items">${data.order.items || 'لا توجد أصناف'}</div>
+            <div class="order-total">الإجمالي: ${data.order.total || '0'} د.إ</div>
+            <div class="order-actions">
+              <button class="btn btn-primary" onclick="reorderNow('${data.order.id}')">🔄 أعد الطلب</button>
+              <button class="btn btn-secondary" onclick="viewOrderDetails('${data.order.id}')">📖 التفاصيل</button>
+            </div>
+          </div>
+        `;
+        document.getElementById('ordersContainer').innerHTML = ordersHtml;
+      } else {
+        document.getElementById('ordersContainer').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📦</div>
+            <p>لم تكن لديك طلبات سابقة</p>
+            <p style="font-size: 12px; margin-top: 10px;">ابدأ بطلب جديد الآن!</p>
+          </div>
+        `;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function getStatusLabel(status) {
+    const labels = {
+      'new': 'طلب جديد',
+      'processing': 'قيد المعالجة',
+      'delivery': 'قيد التوصيل',
+      'delivered': 'مسلم',
+      'cancelled': 'ملغي'
+    };
+    return labels[status?.toLowerCase()] || status || 'غير محدد';
+  }
+
+  function switchSection(section) {
+    // Hide all sections
+    document.querySelectorAll('[id$="Section"]').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+
+    // Show selected section
+    const sectionEl = document.getElementById(section + 'Section');
+    if (sectionEl) {
+      sectionEl.style.display = 'block';
+      event.target.classList.add('active');
+    }
+  }
+
+  function openEditModal() {
+    if (!currentCustomer) return;
+    document.getElementById('editName').value = currentCustomer.name || '';
+    document.getElementById('editWhatsapp').value = currentCustomer.whatsapp || '';
+    document.getElementById('editArea').value = currentCustomer.area || '';
+    document.getElementById('editAddress').value = currentCustomer.address || '';
+    document.getElementById('editModal').classList.add('active');
+  }
+
+  function closeModal(modalId = 'editModal') {
+    document.getElementById(modalId)?.classList.remove('active');
+  }
+
+  function updateProfile(event) {
+    event.preventDefault();
+    alert('سيتم حفظ البيانات الجديدة');
+    closeModal();
+  }
+
+  function saveProfile() {
+    alert('تم حفظ البيانات');
+  }
+
+  function reorderNow(orderId) {
+    alert('سيتم إعادة الطلب: ' + orderId);
+    window.location.href = 'index.html';
+  }
+
+  function viewOrderDetails(orderId) {
+    alert('تفاصيل الطلب: ' + orderId);
+  }
+
+  function openReviewModal() {
+    document.getElementById('reviewModal').classList.add('active');
+  }
+
+  function setRating(stars) {
+    document.getElementById('rating').value = stars;
+  }
+
+  function submitReview(event) {
+    event.preventDefault();
+    alert('شكراً لتقييمك!');
+    closeModal('reviewModal');
+  }
+
+  // Initialize
+  window.addEventListener('load', loadCustomerProfile);
+</script>
+
+</body>
+</html>
