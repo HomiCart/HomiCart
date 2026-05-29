@@ -35,19 +35,12 @@ const SS_ID = '1txQXRi-19VIDNHQej5vnqYku5-clPOj3QR_JqXKYQI0';
 // Service account key (place your downloaded JSON here to enable direct Sheets access)
 const SA_FILE = path.join(BASE_DIR, 'backend', 'service-account.json');
 
-// Apps Script fallback (if no service account and you have a deployed Web App)
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/REPLACE_WITH_YOUR_SCRIPT_ID/exec';
+// Apps Script URL — handles BOTH orders (POST) AND Drive images (GET)
+// ← Your deployed Web App URL (v15.1 with getDriveImages)
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRW2K-GbHfawvZMpxk5ExfyYg5EIhFpUgTy-nHaMjtNR1ZiWn-9BuZpRSWACTEGLqNlA/exec';
 
-// Local mock fallback
+// Local mock fallback (used when Apps Script is not reachable)
 const MOCK_DB_FILE = path.join(BASE_DIR, 'data', 'local_orders.json');
-
-// ═══════════════════════════════════════════════════════════════
-//  APPS SCRIPT URL  ← SINGLE URL for BOTH orders AND Drive images
-//  After deploying backend/Code.gs (v15.1):
-//    Deploy → New Deployment → Web App → Execute as Me → Anyone
-//  Then paste the URL here.  No API key needed!
-// ═══════════════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/REPLACE_WITH_YOUR_SCRIPT_ID/exec';
 
 // Drive folder IDs (used by /api/drive-images → Apps Script getDriveImages)
 const DRIVE_FOLDERS = {
