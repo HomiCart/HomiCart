@@ -1276,15 +1276,28 @@
   //    a call to your cloud storage API.
   // ═══════════════════════════════════════════════════════════════
   // ═══════════════════════════════════════════════════════════════
-  //  GOOGLE DRIVE FOLDER IDs
-  //  Images are loaded from Drive — no local copies needed.
-  //  To add a new store: add an entry below with its Drive folder ID.
-  //  To switch back to local files: set driveFolder to '' or remove it.
+  //  IMAGE CONFIG
+  //  driveFolder: Google Drive folder ID  → auto-reads all images inside
+  //  directUrls : array of direct image URLs (Cloudinary, ImgBB, etc.)
+  //               → paste URLs here for instant loading, no Drive needed
+  //
+  //  You can mix both: driveFolder for existing images, directUrls for fast ones.
+  //  directUrls takes priority if provided.
   // ═══════════════════════════════════════════════════════════════
   const DRIVE_CONFIG = {
     backgrounds  : '123evaENwY1Tv6lGhaOR6SBTaexLNRFX_',  // hero + card backgrounds
     AlRoknAlMasry: '128tbcnmTV58imd2eYQzFxEZELDe0tvt_',  // Al Rokn Al Masry menu
     AlFayoumy    : '1EVV0EI-wfcqVexNxBmKw_jc7i1SMeMyo',  // Al Fayoumy menu
+  };
+
+  // ── OPTIONAL: Replace Drive with direct fast URLs ────────────────
+  // Paste image URLs here to skip Drive entirely (instant loading).
+  // Leave arrays empty ([]) to keep using Drive.
+  // Example: directUrls: ['https://kommodo.ai/i/abc', 'https://i.ibb.co/xyz.jpg']
+  const DIRECT_URLS = {
+    AlRoknAlMasry : [],   // ← paste Al Rokn menu image URLs here
+    AlFayoumy     : [],   // ← paste Al Fayoumy menu image URLs here
+    backgrounds   : [],   // ← paste background image URLs here
   };
 
   const MENU_CONFIG = {
@@ -1346,9 +1359,19 @@
     return typeof s === 'string' && /^[A-Za-z0-9_-]{25,}$/.test(s) && !s.includes('/');
   }
 
-  // Fetch images: server proxy on localhost, Apps Script base64 on GitHub Pages
+  // Convert a direct URL array into the same { name, url } format as Drive images
+  function _directUrlsToFiles(urls) {
+    return urls.filter(Boolean).map((u, i) => ({ name: 'image-' + (i+1), id: null, url: u, fullUrl: u }));
+  }
+
+  // Fetch images: direct URLs (instant) > server proxy > Apps Script base64
   async function fetchImages(source) {
     if (!source) return [];
+    // Check if a directUrls key matches this source (Drive folder ID → config key lookup)
+    const directKey = Object.keys(DRIVE_CONFIG).find(k => DRIVE_CONFIG[k] === source);
+    if (directKey && DIRECT_URLS[directKey] && DIRECT_URLS[directKey].length) {
+      return _directUrlsToFiles(DIRECT_URLS[directKey]);
+    }
     try {
       if (_isDriveId(source)) {
         if (HAS_SERVER) {
@@ -1371,22 +1394,50 @@
     }
   }
 
+  // ── localStorage image cache ────────────────────────────────────
+  // Images are cached for 24 h — first visit is slow, all others instant.
+  const IMG_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours in ms
+
+  function _cacheKey(id) { return 'hc_img_' + id; }
+
+  function _getCachedImage(id) {
+    try {
+      const raw = localStorage.getItem(_cacheKey(id));
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (Date.now() > obj.exp) { localStorage.removeItem(_cacheKey(id)); return null; }
+      return obj.url;
+    } catch(e) { return null; }
+  }
+
+  function _setCachedImage(id, dataUrl) {
+    try {
+      localStorage.setItem(_cacheKey(id), JSON.stringify({ url: dataUrl, exp: Date.now() + IMG_CACHE_TTL }));
+    } catch(e) { /* localStorage full — skip caching */ }
+  }
+
   // GitHub Pages fallback: list files via Apps Script, fetch each as base64
+  // Cached images load instantly; only uncached ones go to Apps Script.
   async function _fetchDriveViaScript(folderId) {
     try {
       const listRes  = await fetch(`${APPS_SCRIPT_DIRECT}?action=getDriveImages&folderId=${encodeURIComponent(folderId)}&_t=${Date.now()}`);
       if (!listRes.ok) return [];
       const listData = await listRes.json();
-      const files    = (listData.files || []).slice(0, 12); // cap at 12 images
+      const files    = (listData.files || []).slice(0, 12);
       if (!files.length) return [];
 
-      // Fetch all images as base64 in parallel
       const results = await Promise.all(files.map(async f => {
+        // Check cache first — instant if found
+        const cached = _getCachedImage(f.id);
+        if (cached) return { name: f.name, id: f.id, url: cached, fullUrl: cached };
+
+        // Not cached — fetch from Apps Script, then cache
         try {
           const imgRes  = await fetch(`${APPS_SCRIPT_DIRECT}?action=getImageBase64&id=${encodeURIComponent(f.id)}`);
           const imgData = await imgRes.json();
           if (!imgData.success || !imgData.data) return null;
           const dataUrl = `data:${imgData.mimeType};base64,${imgData.data}`;
+          _setCachedImage(f.id, dataUrl);   // store for next visit
           return { name: f.name, id: f.id, url: dataUrl, fullUrl: dataUrl };
         } catch(e) { return null; }
       }));

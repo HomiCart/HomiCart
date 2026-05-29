@@ -709,11 +709,24 @@
 				// Localhost: server proxy serves the image directly
 				imgUrl = API_BASE + '/api/drive-proxy?id=' + pick.id;
 			} else {
-				// GitHub Pages: fetch image as base64 from Apps Script, convert to data URL
-				var imgRes  = await fetch(SCRIPT_URL + '?action=getImageBase64&id=' + pick.id);
-				var imgData = await imgRes.json();
-				if (!imgData.success || !imgData.data) return;
-				imgUrl = 'data:' + imgData.mimeType + ';base64,' + imgData.data;
+				// GitHub Pages: check localStorage cache first (instant), else fetch from Apps Script
+				var cacheKey = 'hc_hero_' + pick.id;
+				var cached   = null;
+				try {
+					var c = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+					if (c && Date.now() < c.exp) cached = c.url;
+				} catch(_) {}
+
+				if (cached) {
+					imgUrl = cached;
+				} else {
+					var imgRes  = await fetch(SCRIPT_URL + '?action=getImageBase64&id=' + pick.id);
+					var imgData = await imgRes.json();
+					if (!imgData.success || !imgData.data) return;
+					imgUrl = 'data:' + imgData.mimeType + ';base64,' + imgData.data;
+					// Cache for 24 hours
+					try { localStorage.setItem(cacheKey, JSON.stringify({ url: imgUrl, exp: Date.now() + 86400000 })); } catch(_) {}
+				}
 			}
 
 			// Preload then swap — no visible flash
