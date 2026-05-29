@@ -337,10 +337,9 @@ function getDriveImages(folderId) {
       imageFiles.push({
         name   : file.getName(),
         id     : id,
-        // thumbnail — fast, works for all public images
-        url    : 'https://drive.google.com/thumbnail?id=' + id + '&sz=w1200',
-        // full-resolution direct link
-        fullUrl: 'https://lh3.googleusercontent.com/d/' + id,
+        // Direct view URL — works once file is made public via setupDriveFolders()
+        url    : 'https://drive.google.com/uc?export=view&id=' + id,
+        fullUrl: 'https://drive.google.com/uc?export=view&id=' + id,
       });
     }
 
@@ -405,24 +404,56 @@ function cancelTempOrder(tempId, sheetName) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  AUTHORIZE DRIVE — run this ONCE from the editor to grant
-//  DriveApp permission. A popup will ask you to Allow access.
-//  After clicking Allow, all getDriveImages calls will work.
+//  setupDriveFolders  — run this ONCE from the editor.
+//
+//  What it does:
+//    • Makes every image file in all 3 Drive folders publicly
+//      accessible (Anyone with the link → Viewer)
+//    • After this runs, direct image URLs like
+//      https://drive.google.com/uc?export=view&id=FILE_ID
+//      will load in any browser without login
+//
+//  Requires: appsscript.json scope must be "drive" (not "drive.readonly")
+//  See: backend/appsscript.json in the repo
 // ══════════════════════════════════════════════════════════════
-function authorizeDriveAccess() {
-  try {
-    // This MUST call DriveApp so Google prompts for Drive permission
-    const folder = DriveApp.getFolderById('1EVV0EI-wfcqVexNxBmKw_jc7i1SMeMyo');
-    const files  = folder.getFiles();
-    let count = 0;
-    while (files.hasNext()) { files.next(); count++; }
-    console.log('✅ Drive access granted! AlFayoumy folder has ' + count + ' files.');
-    return { success: true, message: 'Drive access authorized!', files: count };
-  } catch (err) {
-    console.error('❌ Drive error:', err.toString());
-    return { success: false, message: err.toString() };
-  }
+function setupDriveFolders() {
+  const FOLDER_IDS = [
+    '123evaENwY1Tv6lGhaOR6SBTaexLNRFX_',  // Backgrounds
+    '1EVV0EI-wfcqVexNxBmKw_jc7i1SMeMyo',  // AlFayoumy menu
+    '128tbcnmTV58imd2eYQzFxEZELDe0tvt_',  // AlRoknAlMasry menu
+  ];
+
+  let totalFiles = 0;
+  const results  = [];
+
+  FOLDER_IDS.forEach(function(folderId) {
+    try {
+      const folder = DriveApp.getFolderById(folderId);
+      // Make folder itself publicly viewable
+      folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      const iter = folder.getFiles();
+      let count  = 0;
+      while (iter.hasNext()) {
+        const file = iter.next();
+        // Make every file inside individually publicly accessible
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        count++;
+        totalFiles++;
+      }
+      results.push({ folderId: folderId, name: folder.getName(), files: count, status: '✅' });
+      console.log('✅ ' + folder.getName() + ': ' + count + ' files made public');
+    } catch(err) {
+      results.push({ folderId: folderId, error: err.toString(), status: '❌' });
+      console.error('❌ Error for folder ' + folderId + ': ' + err.toString());
+    }
+  });
+
+  console.log('Done! ' + totalFiles + ' files are now publicly accessible.');
+  return { success: true, totalFiles: totalFiles, folders: results };
 }
+
+// Keep authorizeDriveAccess as an alias
+function authorizeDriveAccess() { return setupDriveFolders(); }
 
 // ========== Core Functions (unchanged from v15.0) ==========
 

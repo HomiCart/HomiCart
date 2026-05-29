@@ -1324,6 +1324,21 @@
 
   const PAGE_TS = Date.now();
 
+  // Build a display-ready image URL:
+  // • Drive URLs (absolute https://) → use thumbnail format, no cache-bust needed
+  // • Local server paths (/Menu/...) → prepend API_BASE + add ?t= cache-buster
+  function _imgUrl(rawUrl) {
+    if (!rawUrl) return '';
+    // Any Google/Drive URL — return as-is (no cache-busting, they're already unique per file)
+    if (rawUrl.startsWith('https://drive.google.com') ||
+        rawUrl.startsWith('https://lh3.googleusercontent.com')) {
+      return rawUrl;
+    }
+    // Local server path — add API_BASE prefix + cache-bust timestamp
+    const base = rawUrl.startsWith('http') ? rawUrl : (API_BASE + rawUrl);
+    return base + (base.includes('?') ? '&' : '?') + 't=' + PAGE_TS;
+  }
+
   // ─────────────────────────────────────────────────────────────
   //  Smart image fetching: Drive-first, local fallback
   //  • Drive folder ID (no slashes, 25+ chars) → /api/drive-images
@@ -1384,7 +1399,7 @@
       const driveId = cfg?.driveFolder || '';
       if (driveId) {
         const imgs = await fetchImages(driveId);
-        if (imgs.length > 0) return imgs[0].fullUrl || imgs[0].url;
+        if (imgs.length > 0) return _imgUrl(imgs[0].url); // thumbnail — reliable in CSS
       }
       // Fallback: keep local photo path (works on localhost)
       return s.photo;
@@ -1463,7 +1478,7 @@
     // ── Build menu card ────────────────────────────────────────
     let menuCard = '';
     if (menuImages.length) {
-      const firstImg = `${API_BASE}${menuImages[0].url}?t=${PAGE_TS}`;
+      const firstImg = _imgUrl(menuImages[0].url);
       const count    = menuImages.length;
       menuCard = `
         <div class="menu-preview-card" onclick="openSlideshow(window._menuImages, 0)">
@@ -1496,7 +1511,7 @@
     // ── Build discounts card ───────────────────────────────────
     let discountCard = '';
     if (discountImages.length) {
-      const firstImg = `${API_BASE}${discountImages[0].url}?t=${PAGE_TS}`;
+      const firstImg = _imgUrl(discountImages[0].url);
       const count    = discountImages.length;
       discountCard = `
         <div class="menu-preview-card discount-preview-card" onclick="openSlideshow(window._discountImages, 0)">
@@ -1600,7 +1615,7 @@
   function _ssRender() {
     const images = window._ssImages || [];
     const total  = images.length;
-    document.getElementById('ssImg').src            = `${API_BASE}${images[ssIndex].url}?t=${PAGE_TS}`;
+    document.getElementById('ssImg').src            = _imgUrl(images[ssIndex].url);
     document.getElementById('ssCounter').textContent = `${ssIndex + 1} / ${total}`;
     document.querySelectorAll('.ss-dot').forEach((d, i) => d.classList.toggle('active', i === ssIndex));
     document.getElementById('ssPrev').classList.toggle('hidden', total <= 1);
@@ -1677,7 +1692,7 @@
       if (!images.length) return '';
       return images.map((img, i) => `
         <div class="order-thumb" onclick="openSlideshow(window._${setKey}Images, ${i})" title="اضغط لتكبير">
-          <img src="${API_BASE}${img.url}?t=${PAGE_TS}" loading="lazy" alt="">
+          <img src="${_imgUrl(img.url)}" loading="lazy" alt="">
           <div class="order-thumb-zoom"><i class="fas fa-expand"></i></div>
         </div>`).join('');
     }

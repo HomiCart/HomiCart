@@ -591,22 +591,24 @@ function _forwardToScript(body, depth, callback) {
 _forwardToScript._next = APPS_SCRIPT_URL;
 
 }).listen(PORT, () => {
-  console.log('');
-  const sa       = _loadSA();
-  const mockMode = !sa && APPS_SCRIPT_URL.includes('REPLACE_WITH');
+  // _loadSA() is in the request-handler scope — use a direct file check here instead
+  const hasSA    = fs.existsSync(SA_FILE);
+  const mockMode = !hasSA && APPS_SCRIPT_URL.includes('REPLACE_WITH');
   console.log('');
   console.log('  ✅  HomiCart server running');
   console.log('  🌐  http://localhost:' + PORT + '/frontend/app-v3-local.html');
   console.log('  📁  Serving: ' + BASE_DIR);
-  if (sa) {
-    console.log('  ☁️   Google Sheets API  — direct write to spreadsheet');
-    console.log('  📧  Service account: ' + sa.client_email);
+  if (hasSA) {
+    try {
+      const sa = JSON.parse(fs.readFileSync(SA_FILE, 'utf8'));
+      console.log('  ☁️   Google Sheets API  — direct write to spreadsheet');
+      console.log('  📧  Service account: ' + sa.client_email);
+    } catch(e) { console.log('  ⚠️   service-account.json found but unreadable'); }
   } else if (!mockMode) {
-    console.log('  🔗  Apps Script proxy enabled');
+    console.log('  🔗  Apps Script proxy active →', APPS_SCRIPT_URL.slice(0, 60) + '...');
   } else {
     console.log('  🧪  MOCK MODE  — orders saved locally: ' + MOCK_DB_FILE);
     console.log('  📊  View orders: http://localhost:' + PORT + '/api/orders');
-    console.log('  ──  To connect Google Sheets: add backend/service-account.json');
   }
   console.log('');
 });
