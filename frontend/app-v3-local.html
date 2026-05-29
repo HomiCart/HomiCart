@@ -1329,45 +1329,70 @@
   // • Local server paths (/Menu/...) → prepend API_BASE + add ?t= cache-buster
   function _imgUrl(rawUrl) {
     if (!rawUrl) return '';
-    // Any Google/Drive URL — return as-is (no cache-busting, they're already unique per file)
-    if (rawUrl.startsWith('https://drive.google.com') ||
-        rawUrl.startsWith('https://lh3.googleusercontent.com')) {
-      return rawUrl;
-    }
-    // Local server path — add API_BASE prefix + cache-bust timestamp
+    if (rawUrl.startsWith('data:')) return rawUrl;          // base64 data URL — use as-is
+    if (rawUrl.startsWith('https://')) return rawUrl;       // absolute URL — use as-is
+    // Proxy path like /api/drive-proxy?id=... — prepend API_BASE
+    if (rawUrl.startsWith('/api/')) return API_BASE + rawUrl;
+    // Local server path — add API_BASE prefix + cache-bust
     const base = rawUrl.startsWith('http') ? rawUrl : (API_BASE + rawUrl);
     return base + (base.includes('?') ? '&' : '?') + 't=' + PAGE_TS;
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Smart image fetching: Drive-first, local fallback
-  //  • Drive folder ID (no slashes, 25+ chars) → /api/drive-images
-  //  • Local path (contains /)                → /api/list-images
-  // ─────────────────────────────────────────────────────────────
+  // Apps Script URL for direct calls when server is unavailable (GitHub Pages)
+  const APPS_SCRIPT_DIRECT = 'https://script.google.com/macros/s/AKfycbwRW2K-GbHfawvZMpxk5ExfyYg5EIhFpUgTy-nHaMjtNR1ZiWn-9BuZpRSWACTEGLqNlA/exec';
+  const HAS_SERVER = window.location.hostname === 'localhost' || window.location.protocol === 'file:';
+
   function _isDriveId(s) {
     return typeof s === 'string' && /^[A-Za-z0-9_-]{25,}$/.test(s) && !s.includes('/');
   }
 
+  // Fetch images: server proxy on localhost, Apps Script base64 on GitHub Pages
   async function fetchImages(source) {
     if (!source) return [];
     try {
       if (_isDriveId(source)) {
-        const res = await fetch(
-          `${API_BASE}/api/drive-images?folderId=${encodeURIComponent(source)}&_t=${Date.now()}`,
-          { cache: 'no-store' }
-        );
-        if (!res.ok) return [];
-        return (await res.json()).files || [];
+        if (HAS_SERVER) {
+          // Localhost: server fetches + proxies Drive images
+          const res = await fetch(`${API_BASE}/api/drive-images?folderId=${encodeURIComponent(source)}&_t=${Date.now()}`, { cache: 'no-store' });
+          if (!res.ok) return [];
+          return (await res.json()).files || [];
+        } else {
+          // GitHub Pages: call Apps Script directly, get base64 data URLs
+          return await _fetchDriveViaScript(source);
+        }
       } else {
-        const res = await fetch(
-          `${API_BASE}/api/list-images?folder=${encodeURIComponent(source)}&_t=${Date.now()}`,
-          { cache: 'no-store' }
-        );
+        const res = await fetch(`${API_BASE}/api/list-images?folder=${encodeURIComponent(source)}&_t=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) return [];
         return (await res.json()).files || [];
       }
     } catch (err) {
       console.warn('[fetchImages] failed:', source, err.message);
+      return [];
+    }
+  }
+
+  // GitHub Pages fallback: list files via Apps Script, fetch each as base64
+  async function _fetchDriveViaScript(folderId) {
+    try {
+      const listRes  = await fetch(`${APPS_SCRIPT_DIRECT}?action=getDriveImages&folderId=${encodeURIComponent(folderId)}&_t=${Date.now()}`);
+      if (!listRes.ok) return [];
+      const listData = await listRes.json();
+      const files    = (listData.files || []).slice(0, 12); // cap at 12 images
+      if (!files.length) return [];
+
+      // Fetch all images as base64 in parallel
+      const results = await Promise.all(files.map(async f => {
+        try {
+          const imgRes  = await fetch(`${APPS_SCRIPT_DIRECT}?action=getImageBase64&id=${encodeURIComponent(f.id)}`);
+          const imgData = await imgRes.json();
+          if (!imgData.success || !imgData.data) return null;
+          const dataUrl = `data:${imgData.mimeType};base64,${imgData.data}`;
+          return { name: f.name, id: f.id, url: dataUrl, fullUrl: dataUrl };
+        } catch(e) { return null; }
+      }));
+      return results.filter(Boolean);
+    } catch(e) {
+      console.warn('[_fetchDriveViaScript] failed:', e.message);
       return [];
     }
   }

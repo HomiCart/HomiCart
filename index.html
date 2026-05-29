@@ -527,7 +527,7 @@
 			<li class="active"><a href="index.html">الرئيسية</a></li>
 			<li><a href="#features-section">المميزات</a></li>
 			<li><a href="#steps-section">كيف يعمل</a></li>
-			<li><a href="frontend/app-v3-local.html">التطبيق</a></li>
+			<li><a href="index.html">التطبيق</a></li>
 		</ul>
 		<ul class="icons">
 			<li><a href="#" class="icon brands fa-whatsapp"><span class="label">WhatsApp</span></a></li>
@@ -680,6 +680,50 @@
 			if (!explanationOpen) toggleExplanation();
 		}, 700);
 	}
+
+	/* ── Load hero background from Google Drive ──
+	   Works on both localhost (server proxy) and GitHub Pages (Apps Script direct) */
+	(async function loadHeroBg() {
+		var BG_FOLDER  = '123evaENwY1Tv6lGhaOR6SBTaexLNRFX_';
+		var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRW2K-GbHfawvZMpxk5ExfyYg5EIhFpUgTy-nHaMjtNR1ZiWn-9BuZpRSWACTEGLqNlA/exec';
+		var API_BASE   = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
+		var hasServer  = !!API_BASE || window.location.hostname === 'localhost';
+
+		try {
+			// Step 1 — Get list of background images
+			var listUrl = hasServer
+				? API_BASE + '/api/drive-images?folderId=' + BG_FOLDER + '&_t=' + Date.now()
+				: SCRIPT_URL + '?action=getDriveImages&folderId=' + BG_FOLDER + '&_t=' + Date.now();
+
+			var listRes = await fetch(listUrl, { cache: 'no-store' });
+			if (!listRes.ok) return;
+			var listData = await listRes.json();
+			if (!listData.files || !listData.files.length) return;
+
+			var pick   = listData.files[Math.floor(Math.random() * listData.files.length)];
+			var heroBg = document.querySelector('.hero-bg-inner');
+			if (!heroBg) return;
+
+			var imgUrl;
+			if (hasServer) {
+				// Localhost: server proxy serves the image directly
+				imgUrl = API_BASE + '/api/drive-proxy?id=' + pick.id;
+			} else {
+				// GitHub Pages: fetch image as base64 from Apps Script, convert to data URL
+				var imgRes  = await fetch(SCRIPT_URL + '?action=getImageBase64&id=' + pick.id);
+				var imgData = await imgRes.json();
+				if (!imgData.success || !imgData.data) return;
+				imgUrl = 'data:' + imgData.mimeType + ';base64,' + imgData.data;
+			}
+
+			// Preload then swap — no visible flash
+			var img = new Image();
+			img.onload = function() { heroBg.style.backgroundImage = "url('" + imgUrl + "')"; };
+			img.src = imgUrl;
+		} catch(e) {
+			console.log('Hero: using static fallback.');
+		}
+	})();
 </script>
 
 </body>
