@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HomiCart — اطلب الآن</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600;700;800;900&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow-x: hidden; min-height: 100vh; }
+
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: #060b12;
+      direction: rtl;
+      text-align: right;
+      color: #fff;
+    }
+    h1,h2,h3,h4,h5,h6 { font-family: 'Alexandria', sans-serif; }
+
+    /* ── Fixed bg ───────────────────────────────────────────── */
+    .page-bg {
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(24,191,239,.06) 0%, transparent 65%),
+        linear-gradient(160deg, #060b12 0%, #0d1520 50%, #060b12 100%);
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    header {
+      position: sticky; top: 0; z-index: 200;
+      background: rgba(6,11,18,.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(24,191,239,.18);
+      padding: 13px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,.40);
+    }
+    .header-logo {
+      font-family: 'Alexandria', sans-serif;
+      font-size: 1.2rem; font-weight: 800;
+      color: #fff; text-decoration: none;
+      display: flex; align-items: center; gap: .45rem;
+    }
+    .header-logo i { color: #18bfef; }
+    .header-nav { display: flex; align-items: center; gap: .65rem; }
+    .nav-btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .48rem 1.15rem;
+      border-radius: 50px;
+      font-family: 'Cairo', sans-serif;
+      font-size: .88rem; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+      transition: background .22s, border-color .22s, transform .22s;
+    }
+    .nav-btn-ghost {
+      background: rgba(24,191,239,.10);
+      color: #18bfef;
+      border: 1.5px solid rgba(24,191,239,.30);
+    }
+    .nav-btn-ghost:hover {
+      background: rgba(24,191,239,.22);
+      border-color: rgba(24,191,239,.60);
+      transform: translateX(3px);
+    }
+    .nav-btn-solid {
+      background: linear-gradient(135deg,#18bfef,#0d9bcb);
+      color: #fff; border: none;
+      box-shadow: 0 3px 14px rgba(24,191,239,.28);
+    }
+    .nav-btn-solid:hover { filter: brightness(1.1); transform: translateY(-2px); }
+
+    /* ── Main layout ─────────────────────────────────────────── */
+    .main-wrap {
+      position: relative; z-index: 1;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 4rem;
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 2.5rem;
+      align-items: start;
+    }
+
+    /* ── Store badge (top of page) ───────────────────────────── */
+    .store-headline {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: .5rem;
+      animation: fadeUp .45s ease both;
+    }
+    .store-pill {
+      display: inline-flex; align-items: center; gap: .45rem;
+      background: linear-gradient(135deg,#18bfef,#0d9bcb);
+      color: #fff;
+      font-family: 'Alexandria', sans-serif;
+      font-size: .82rem; font-weight: 700;
+      padding: .32rem 1.1rem; border-radius: 50px;
+    }
+    .store-title {
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      font-weight: 800;
+      color: #fff;
+    }
+    .teal-rule {
+      width: 50px; height: 3px;
+      background: linear-gradient(90deg,#18bfef,#0d9bcb);
+      border-radius: 50px;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       GALLERY PANEL  (sticky left column)
+    ══════════════════════════════════════════════════════════ */
+    .gallery-panel {
+      position: sticky;
+      top: 80px;
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(24,191,239,.25) transparent;
+      animation: fadeUp .5s ease both .1s;
+    }
+    .gallery-panel::-webkit-scrollbar { width: 4px; }
+    .gallery-panel::-webkit-scrollbar-thumb {
+      background: rgba(24,191,239,.25); border-radius: 4px;
+    }
+
+    .gallery-section { margin-bottom: 2rem; }
+    .gallery-section-title {
+      display: flex; align-items: center; gap: .55rem;
+      font-family: 'Cairo', sans-serif;
+      font-size: .85rem; font-weight: 700;
+      color: rgba(255,255,255,.45);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+      padding-bottom: .6rem;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .gallery-section-title i { color: #18bfef; font-size: .8rem; }
+
+    /* Thumbnail grid */
+    .thumb-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .7rem;
+    }
+    .thumb-item {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 1.5px solid rgba(255,255,255,.07);
+      background: rgba(255,255,255,.04);
+      transition: border-color .25s, transform .25s, box-shadow .25s;
+      animation: fadeUp .4s ease both;
+    }
+    .thumb-item:hover {
+      border-color: rgba(24,191,239,.50);
+      transform: scale(1.04);
+      box-shadow: 0 6px 20px rgba(0,0,0,.45);
+    }
+    .thumb-item img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: transform .35s ease;
+    }
+    .thumb-item:hover img { transform: scale(1.08); }
+    .thumb-zoom {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(6,11,18,.45);
+      opacity: 0;
+      transition: opacity .25s;
+    }
+    .thumb-zoom i { color: #fff; font-size: 1.2rem; }
+    .thumb-item:hover .thumb-zoom { opacity: 1; }
+
+    .thumb-empty {
+      grid-column: 1 / -1;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      color: rgba(255,255,255,.25);
+      font-size: .85rem;
+      border: 1px dashed rgba(255,255,255,.10);
+      border-radius: 12px;
+    }
+    .thumb-empty i { display: block; font-size: 1.5rem; margin-bottom: .5rem; color: rgba(24,191,239,.20); }
+
+    /* ══════════════════════════════════════════════════════════
+       ORDER FORM PANEL
+    ══════════════════════════════════════════════════════════ */
+    .form-panel {
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 24px;
+      padding: 2.5rem 2.2rem;
+      animation: fadeUp .5s ease both .15s;
+    }
+    .form-panel-header {
+      margin-bottom: 2rem;
+    }
+    .form-panel-header h2 {
+      font-size: 1.5rem; font-weight: 800;
+      color: #fff; margin-bottom: .3rem;
+    }
+    .form-panel-header p {
+      color: rgba(255,255,255,.38);
+      font-size: .88rem;
+      line-height: 1.65;
+    }
+
+    .form-field { margin-bottom: 1.5rem; }
+    .form-label {
+      display: block;
+      font-family: 'Cairo', sans-serif;
+      font-size: .88rem;
+      font-weight: 700;
+      color: rgba(255,255,255,.60);
+      margin-bottom: .55rem;
+    }
+    .form-label .req { color: #18bfef; margin-right: .2rem; }
+
+    .form-input,
+    .form-textarea {
+      width: 100%;
+      background: rgba(255,255,255,.05);
+      border: 1.5px solid rgba(255,255,255,.10);
+      border-radius: 12px;
+      color: #fff;
+      font-family: 'Cairo', sans-serif;
+      font-size: .95rem;
+      padding: .82rem 1.1rem;
+      transition: border-color .22s, background .22s, box-shadow .22s;
+      outline: none;
+      direction: rtl;
+    }
+    .form-input::placeholder,
+    .form-textarea::placeholder {
+      color: rgba(255,255,255,.22);
+    }
+    .form-input:focus,
+    .form-textarea:focus {
+      border-color: rgba(24,191,239,.55);
+      background: rgba(24,191,239,.05);
+      box-shadow: 0 0 0 3px rgba(24,191,239,.10);
+    }
+    .form-input.error,
+    .form-textarea.error {
+      border-color: rgba(255,80,80,.55);
+      box-shadow: 0 0 0 3px rgba(255,80,80,.10);
+    }
+    .form-textarea {
+      resize: vertical;
+      min-height: 140px;
+      line-height: 1.7;
+    }
+    .form-textarea.order-big { min-height: 180px; }
+
+    /* Character counter */
+    .char-hint {
+      text-align: left;
+      font-size: .75rem;
+      color: rgba(255,255,255,.22);
+      margin-top: .3rem;
+    }
+
+    /* Error message */
+    .field-error {
+      font-size: .8rem;
+      color: #ff6b6b;
+      margin-top: .35rem;
+      display: none;
+    }
+    .field-error.show { display: block; }
+
+    /* Divider */
+    .form-divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,.07);
+      margin: 1.8rem 0;
+    }
+
+    /* Submit button */
+    .btn-submit {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .6rem;
+      width: 100%;
+      background: linear-gradient(135deg, #25d366 0%, #1aad54 100%);
+      color: #fff;
+      font-family: 'Alexandria', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 800;
+      padding: 1rem 2rem;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 6px 26px rgba(37,211,102,.30);
+      transition: filter .22s, transform .22s, box-shadow .22s;
+      letter-spacing: .02em;
+      margin-top: .5rem;
+    }
+    .btn-submit:hover {
+      filter: brightness(1.08);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 34px rgba(37,211,102,.48);
+    }
+    .btn-submit:active { transform: translateY(0); }
+    .btn-submit i { font-size: 1.2rem; }
+
+    .submit-note {
+      text-align: center;
+      font-size: .78rem;
+      color: rgba(255,255,255,.25);
+      margin-top: .9rem;
+      line-height: 1.6;
+    }
+
+    /* ── Image viewer (full-screen) ───────────────────────────── */
+    .viewer-modal {
+      display: none;
+      position: fixed; inset: 0; z-index: 3000;
+      background: rgba(4,8,14,.97);
+      backdrop-filter: blur(8px);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .viewer-modal.active { display: flex; animation: fadeUp .22s ease; }
+
+    .viewer-topbar {
+      position: absolute; top: 0; left: 0; right: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.4rem;
+      background: linear-gradient(to bottom, rgba(0,0,0,.65), transparent);
+      z-index: 10;
+    }
+    .viewer-counter {
+      font-family: 'Cairo', sans-serif; font-size: .88rem;
+      color: rgba(255,255,255,.65);
+      background: rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.10);
+      padding: .3rem .9rem; border-radius: 50px;
+    }
+    .viewer-close {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: rgba(255,255,255,.08);
+      border: 1.5px solid rgba(255,255,255,.18);
+      color: #fff; font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background .2s, transform .3s;
+    }
+    .viewer-close:hover { background: rgba(255,255,255,.18); transform: rotate(90deg); }
+
+    .viewer-img-wrap {
+      width: 100%; flex: 1;
+      display: flex; align-items: center; justify-content: center;
+      padding: 4.5rem 5rem 3rem;
+    }
+    .viewer-img {
+      max-width: 100%; max-height: 78vh;
+      object-fit: contain; border-radius: 10px;
+      box-shadow: 0 24px 70px rgba(0,0,0,.55);
+      transition: opacity .28s ease, transform .28s ease;
+      user-select: none;
+    }
+    .viewer-img.fade-out { opacity: 0; transform: scale(.97); }
+
+    .viewer-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      z-index: 10;
+      width: 52px; height: 52px; border-radius: 50%;
+      background: rgba(255,255,255,.07);
+      border: 1.5px solid rgba(255,255,255,.15);
+      color: rgba(255,255,255,.75); font-size: 1.15rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background .2s, border-color .2s, color .2s, transform .22s;
+    }
+    .viewer-arrow:hover {
+      background: rgba(24,191,239,.22);
+      border-color: rgba(24,191,239,.5);
+      color: #18bfef;
+    }
+    .viewer-arrow.v-prev { right: 1.2rem; }
+    .viewer-arrow.v-prev:hover { transform: translateY(-50%) translateX(3px); }
+    .viewer-arrow.v-next { left: 1.2rem; }
+    .viewer-arrow.v-next:hover { transform: translateY(-50%) translateX(-3px); }
+    .viewer-arrow.hidden { opacity: 0; pointer-events: none; }
+
+    .viewer-dots {
+      position: absolute; bottom: 1.4rem; left: 0; right: 0;
+      display: flex; justify-content: center; align-items: center;
+      gap: .5rem; z-index: 10; flex-wrap: wrap; padding: 0 1rem;
+    }
+    .v-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(255,255,255,.22); cursor: pointer;
+      transition: background .22s, transform .22s, width .22s;
+      flex-shrink: 0;
+    }
+    .v-dot.active {
+      background: #18bfef; transform: scale(1.35);
+      width: 22px; border-radius: 4px;
+    }
+
+    /* ── Success toast ──────────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 2rem; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: rgba(37,211,102,.15);
+      border: 1.5px solid rgba(37,211,102,.35);
+      color: #fff;
+      font-family: 'Cairo', sans-serif;
+      font-size: .92rem;
+      padding: .8rem 1.8rem;
+      border-radius: 50px;
+      display: flex; align-items: center; gap: .55rem;
+      z-index: 9999;
+      backdrop-filter: blur(10px);
+      transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .35s ease;
+      opacity: 0;
+      white-space: nowrap;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    .toast i { color: #25d366; }
+
+    /* ── Keyframes ──────────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .main-wrap {
+        grid-template-columns: 1fr;
+        padding: 1.5rem 1rem 3rem;
+        gap: 1.8rem;
+      }
+      .gallery-panel {
+        position: static;
+        max-height: none;
+        overflow: visible;
+      }
+      .thumb-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    @media (max-width: 500px) {
+      .thumb-grid { grid-template-columns: repeat(3, 1fr); }
+      .form-panel { padding: 1.6rem 1.2rem; }
+      .viewer-img-wrap { padding: 4rem 1rem 3rem; }
+      .viewer-arrow { width: 42px; height: 42px; font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="page-bg"></div>
+
+<!-- Header -->
+<header>
+  <a href="homepage.html" class="header-logo">
+    <i class="fas fa-shopping-bag"></i> HomiCart
+  </a>
+  <div class="header-nav">
+    <a href="app-v3-local.html" class="nav-btn nav-btn-ghost">
+      <i class="fas fa-arrow-right"></i> رجوع للمتاجر
+    </a>
+    <a href="homepage.html" class="nav-btn nav-btn-solid">
+      <i class="fas fa-house"></i> الرئيسية
+    </a>
+  </div>
+</header>
+
+<div class="main-wrap">
+
+  <!-- Store headline -->
+  <div class="store-headline">
+    <div class="store-pill"><i class="fas fa-store"></i> <span id="storeTagline">المتجر</span></div>
+    <div>
+      <div class="store-title" id="storeTitle">اطلب الآن</div>
+      <div class="teal-rule" style="margin-top:.45rem"></div>
+    </div>
+  </div>
+
+  <!-- ═══ GALLERY PANEL ════════════════════════════════════ -->
+  <div class="gallery-panel">
+
+    <div class="gallery-section">
+      <div class="gallery-section-title">
+        <i class="fas fa-images"></i> المنيو
+      </div>
+      <div class="thumb-grid" id="menuThumbGrid">
+        <div class="thumb-empty">
+          <i class="fas fa-spinner fa-spin"></i>
+          جاري التحميل...
+        </div>
+      </div>
+    </div>
+
+    <div class="gallery-section" id="discountSection">
+      <div class="gallery-section-title">
+        <i class="fas fa-tag"></i> العروض والخصومات
+      </div>
+      <div class="thumb-grid" id="discountThumbGrid">
+        <div class="thumb-empty">
+          <i class="fas fa-spinner fa-spin"></i>
+          جاري التحميل...
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ ORDER FORM ════════════════════════════════════════ -->
+  <div class="form-panel">
+    <div class="form-panel-header">
+      <h2><i class="fas fa-pen-to-square" style="color:#18bfef;margin-left:.4rem;font-size:1.2rem"></i> اكتب طلبك</h2>
+      <p>راجع المنيو على اليسار، اكتب الأصناف اللي عايزها، وابعت الطلب على واتساب.</p>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label"><span class="req">*</span> اسمك</label>
+      <input type="text" id="fieldName" class="form-input" placeholder="مثال: أحمد محمد">
+      <div class="field-error" id="errName">الاسم مطلوب</div>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label"><span class="req">*</span> رقم الهاتف</label>
+      <input type="tel" id="fieldPhone" class="form-input" placeholder="+971 50 123 4567" dir="ltr" style="text-align:right">
+      <div class="field-error" id="errPhone">رقم الهاتف مطلوب</div>
+    </div>
+
+    <hr class="form-divider">
+
+    <div class="form-field">
+      <label class="form-label"><span class="req">*</span> الطلب — اكتب الأصناف والكميات</label>
+      <textarea id="fieldOrder" class="form-textarea order-big"
+        placeholder="مثال:&#10;دجاج بلدي — 2 كيلو&#10;دجاج رومي — 1 كيلو&#10;كيلو كبدة..."></textarea>
+      <div class="char-hint" id="orderCharHint">0 / 1000 حرف</div>
+      <div class="field-error" id="errOrder">يرجى كتابة طلبك</div>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label">ملاحظات إضافية <span style="color:rgba(255,255,255,.3);font-size:.8rem">(اختياري)</span></label>
+      <textarea id="fieldNotes" class="form-textarea"
+        placeholder="مثال: التوصيل بعد الساعة 6 مساءً، أو أي طلبات خاصة..."></textarea>
+    </div>
+
+    <button class="btn-submit" onclick="submitOrder()">
+      <i class="fab fa-whatsapp"></i> إرسال الطلب الآن
+    </button>
+    <p class="submit-note">
+      سيتم فتح واتساب مع تفاصيل طلبك جاهزة للإرسال
+    </p>
+  </div>
+
+</div><!-- /main-wrap -->
+
+<!-- ═══ Full-screen image viewer ════════════════════════════ -->
+<div id="viewerModal" class="viewer-modal">
+  <div class="viewer-topbar">
+    <div class="viewer-counter" id="viewerCounter">1 / 1</div>
+    <button class="viewer-close" onclick="closeViewer()"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="viewer-img-wrap">
+    <img id="viewerImg" class="viewer-img" src="" alt="">
+  </div>
+  <button class="viewer-arrow v-prev" id="vPrev" onclick="viewerGo(-1)"><i class="fas fa-chevron-right"></i></button>
+  <button class="viewer-arrow v-next" id="vNext" onclick="viewerGo(1)"><i class="fas fa-chevron-left"></i></button>
+  <div class="viewer-dots" id="viewerDots"></div>
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast">
+  <i class="fas fa-check-circle"></i>
+  <span id="toastMsg">تم!</span>
+</div>
+
+<script>
+  // ═══════════════════════════════════════════════════════════════
+  //  CONFIG — edit WHATSAPP_NUMBER to your actual number
+  //  Format: country code + number, no + or spaces
+  //  Example UAE: 971501234567
+  // ═══════════════════════════════════════════════════════════════
+  const WHATSAPP_NUMBER = '971XXXXXXXXX';   // ← replace with real number
+
+  const MENU_CONFIG = {
+    'Al Rokn AL masry': {
+      name            : 'الركن المصري',
+      tag             : 'لحوم طازجة',
+      folder          : 'Menu/Al Rokn AL masry',
+      discountsFolder : 'Menu/Al Rokn AL masry/discounts',
+    },
+    'Al Fayoumy': {
+      name            : 'الفيومي',
+      tag             : 'دواجن طازجة',
+      folder          : 'Menu/Al Fayoumy',
+      discountsFolder : 'Menu/Al Fayoumy/discounts',
+    },
+  };
+
+  // API base — works both from file:// and localhost
+  const API_BASE = window.location.protocol === 'file:'
+    ? 'http://localhost:3000'
+    : '';
+
+  const PAGE_TS = Date.now();
+
+  async function fetchImages(folderPath) {
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/list-images?folder=${encodeURIComponent(folderPath)}&_t=${Date.now()}`,
+        { cache: 'no-store' }
+      );
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.files || [];
+    } catch { return []; }
+  }
+
+  // ── Parse URL params ──────────────────────────────────────────
+  const params  = new URLSearchParams(window.location.search);
+  const storeKey = params.get('store') || '';
+  const cfg      = MENU_CONFIG[storeKey] || Object.values(MENU_CONFIG)[0];
+
+  document.getElementById('storeTitle').textContent    = `اطلب من ${cfg.name}`;
+  document.getElementById('storeTagline').textContent  = cfg.tag;
+
+  // ── Load and render thumbnails ─────────────────────────────────
+  (async () => {
+    const [menuImgs, discountImgs] = await Promise.all([
+      fetchImages(cfg.folder),
+      fetchImages(cfg.discountsFolder),
+    ]);
+
+    window._viewerSets = { menu: menuImgs, discount: discountImgs };
+    renderThumbs('menuThumbGrid',    menuImgs,    'menu');
+    renderThumbs('discountThumbGrid', discountImgs, 'discount');
+  })();
+
+  function renderThumbs(gridId, images, setKey) {
+    const grid = document.getElementById(gridId);
+    if (!images.length) {
+      grid.innerHTML = `
+        <div class="thumb-empty">
+          <i class="fas fa-images"></i>
+          لا توجد صور حالياً
+        </div>`;
+      return;
+    }
+    grid.innerHTML = images.map((img, i) => `
+      <div class="thumb-item" onclick="openViewer('${setKey}', ${i})"
+           style="animation-delay:${i * 55}ms">
+        <img src="${API_BASE}${img.url}?t=${PAGE_TS}"
+             loading="lazy"
+             onerror="this.src=''"
+             alt="صورة ${i+1}">
+        <div class="thumb-zoom"><i class="fas fa-expand"></i></div>
+      </div>`).join('');
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  IMAGE VIEWER
+  // ══════════════════════════════════════════════════════════════
+  let vSet   = [];
+  let vIndex = 0;
+
+  function openViewer(setKey, startIndex) {
+    vSet   = window._viewerSets?.[setKey] || [];
+    vIndex = startIndex;
+    if (!vSet.length) return;
+    // Build dots
+    document.getElementById('viewerDots').innerHTML = vSet
+      .map((_, i) => `<div class="v-dot${i === startIndex ? ' active' : ''}"
+        onclick="viewerJump(${i})"></div>`).join('');
+    _vRender();
+    document.getElementById('viewerModal').classList.add('active');
+    document.addEventListener('keydown', _vKey);
+  }
+
+  function closeViewer() {
+    document.getElementById('viewerModal').classList.remove('active');
+    document.removeEventListener('keydown', _vKey);
+  }
+
+  function viewerGo(dir) {
+    if (vSet.length <= 1) return;
+    const img = document.getElementById('viewerImg');
+    img.classList.add('fade-out');
+    setTimeout(() => {
+      vIndex = (vIndex + dir + vSet.length) % vSet.length;
+      _vRender();
+      img.classList.remove('fade-out');
+    }, 260);
+  }
+
+  function viewerJump(i) {
+    if (i === vIndex || !vSet.length) return;
+    const img = document.getElementById('viewerImg');
+    img.classList.add('fade-out');
+    setTimeout(() => { vIndex = i; _vRender(); img.classList.remove('fade-out'); }, 260);
+  }
+
+  function _vRender() {
+    const total = vSet.length;
+    document.getElementById('viewerImg').src           = `${API_BASE}${vSet[vIndex].url}?t=${PAGE_TS}`;
+    document.getElementById('viewerCounter').textContent = `${vIndex + 1} / ${total}`;
+    document.querySelectorAll('.v-dot').forEach((d, i) => d.classList.toggle('active', i === vIndex));
+    document.getElementById('vPrev').classList.toggle('hidden', total <= 1);
+    document.getElementById('vNext').classList.toggle('hidden', total <= 1);
+  }
+
+  function _vKey(e) {
+    if (e.key === 'ArrowLeft')  viewerGo(1);
+    if (e.key === 'ArrowRight') viewerGo(-1);
+    if (e.key === 'Escape')     closeViewer();
+  }
+
+  // Touch / swipe on viewer
+  (() => {
+    let tx = 0;
+    const modal = document.getElementById('viewerModal');
+    modal.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+    modal.addEventListener('touchend',   e => {
+      const diff = tx - e.changedTouches[0].clientX;
+      if (Math.abs(diff) > 48) viewerGo(diff > 0 ? 1 : -1);
+    });
+    modal.addEventListener('click', e => { if (e.target === modal) closeViewer(); });
+  })();
+
+  // ── Character counter ─────────────────────────────────────────
+  document.getElementById('fieldOrder').addEventListener('input', function() {
+    document.getElementById('orderCharHint').textContent =
+      `${this.value.length} / 1000 حرف`;
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  //  FORM VALIDATION & SUBMIT → WhatsApp
+  // ══════════════════════════════════════════════════════════════
+  function validate() {
+    let ok = true;
+    const fields = [
+      { id: 'fieldName',  errId: 'errName',  check: v => v.trim().length >= 2 },
+      { id: 'fieldPhone', errId: 'errPhone', check: v => v.trim().length >= 8 },
+      { id: 'fieldOrder', errId: 'errOrder', check: v => v.trim().length >= 3 },
+    ];
+    fields.forEach(f => {
+      const el  = document.getElementById(f.id);
+      const err = document.getElementById(f.errId);
+      const valid = f.check(el.value);
+      el.classList.toggle('error', !valid);
+      err.classList.toggle('show',  !valid);
+      if (!valid) ok = false;
+    });
+    return ok;
+  }
+
+  function submitOrder() {
+    // Clear previous errors
+    document.querySelectorAll('.form-input, .form-textarea').forEach(el => el.classList.remove('error'));
+    document.querySelectorAll('.field-error').forEach(el => el.classList.remove('show'));
+
+    if (!validate()) {
+      showToast('يرجى تعبئة الحقول المطلوبة ⚠️', false);
+      return;
+    }
+
+    const name   = document.getElementById('fieldName').value.trim();
+    const phone  = document.getElementById('fieldPhone').value.trim();
+    const order  = document.getElementById('fieldOrder').value.trim();
+    const notes  = document.getElementById('fieldNotes').value.trim();
+
+    const msg = [
+      `🛒 *طلب جديد عبر HomiCart*`,
+      ``,
+      `🏪 المتجر: ${cfg.name}`,
+      `👤 الاسم: ${name}`,
+      `📱 الهاتف: ${phone}`,
+      `─────────────────`,
+      `📋 *الطلب:*`,
+      order,
+      notes ? `─────────────────\n📝 *ملاحظات:*\n${notes}` : '',
+    ].filter(Boolean).join('\n');
+
+    const waUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+    window.open(waUrl, '_blank');
+    showToast('جاري فتح واتساب... ✅');
+  }
+
+  function showToast(msg, success = true) {
+    const t = document.getElementById('toast');
+    const i = t.querySelector('i');
+    document.getElementById('toastMsg').textContent = msg;
+    i.className = success ? 'fas fa-check-circle' : 'fas fa-triangle-exclamation';
+    i.style.color = success ? '#25d366' : '#f5c842';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+</script>
+</body>
+</html>

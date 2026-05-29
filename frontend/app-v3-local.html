@@ -1,0 +1,1771 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HomiCart - اطلب الآن</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600;700;800;900&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow-x: hidden; min-height: 100vh; }
+
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: #060b12;
+      direction: rtl;
+      text-align: right;
+      color: #fff;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Alexandria', sans-serif;
+    }
+
+    /* ══════════════════════════════
+       FIXED BG — matches homepage
+    ══════════════════════════════ */
+    .page-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(24,191,239,.06) 0%, transparent 65%),
+        linear-gradient(160deg, #060b12 0%, #0d1520 50%, #060b12 100%);
+    }
+
+    /* ══════════════════════════════
+       HEADER
+    ══════════════════════════════ */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: rgba(6,11,18,.85);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(24,191,239,.20);
+      padding: 14px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,.40);
+    }
+
+    .header-logo {
+      font-family: 'Alexandria', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #fff;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      letter-spacing: .02em;
+    }
+    .header-logo i { color: #18bfef; }
+
+    .back-btn {
+      display: none;
+      align-items: center;
+      gap: .4rem;
+      background: rgba(24,191,239,.10);
+      color: #18bfef;
+      border: 1.5px solid rgba(24,191,239,.30);
+      border-radius: 50px;
+      padding: .48rem 1.15rem;
+      font-family: 'Cairo', sans-serif;
+      font-size: .88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .22s, border-color .22s, transform .22s;
+    }
+    .back-btn:hover {
+      background: rgba(24,191,239,.22);
+      border-color: rgba(24,191,239,.60);
+      transform: translateX(3px);
+    }
+
+    .home-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      background: linear-gradient(135deg, #18bfef 0%, #0d9bcb 100%);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: .52rem 1.25rem;
+      font-family: 'Alexandria', sans-serif;
+      font-size: .88rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 3px 14px rgba(24,191,239,.30);
+      transition: filter .22s, transform .22s, box-shadow .22s;
+      letter-spacing: .02em;
+    }
+    .home-btn:hover {
+      filter: brightness(1.12);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(24,191,239,.50);
+    }
+    .home-btn i { font-size: .82rem; }
+
+    /* ══════════════════════════════
+       CONTAINER
+    ══════════════════════════════ */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 4rem;
+    }
+
+    /* ══════════════════════════════
+       PAGE TRANSITIONS
+    ══════════════════════════════ */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ══════════════════════════════
+       PAGE HEADER
+    ══════════════════════════════ */
+    .page-header {
+      text-align: center;
+      margin-bottom: 3rem;
+      animation: fadeUp .55s ease both;
+    }
+    .page-header .eyebrow {
+      display: inline-block;
+      background: linear-gradient(135deg,#18bfef,#0d9bcb);
+      color: #fff;
+      font-family: 'Cairo', sans-serif;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      padding: .3rem 1.1rem;
+      border-radius: 50px;
+      margin-bottom: .9rem;
+    }
+    .page-header h2 {
+      font-size: clamp(1.7rem, 4vw, 2.4rem);
+      font-weight: 800;
+      color: #fff;
+      text-shadow: 0 2px 20px rgba(0,0,0,.5);
+      line-height: 1.3;
+    }
+    .page-header p {
+      color: rgba(255,255,255,.55);
+      margin-top: .55rem;
+      font-size: .97rem;
+      line-height: 1.7;
+    }
+
+    /* ══════════════════════════════
+       TEAL DIVIDER LINE
+    ══════════════════════════════ */
+    .teal-rule {
+      width: 60px;
+      height: 3px;
+      background: linear-gradient(90deg, #18bfef, #0d9bcb);
+      border-radius: 50px;
+      margin: 1rem auto 0;
+    }
+
+    /* ══════════════════════════════
+       STORE CARDS — cinematic
+    ══════════════════════════════ */
+    .stores-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 2rem;
+    }
+
+    .store-card {
+      position: relative;
+      border-radius: 20px;
+      overflow: hidden;
+      height: 400px;
+      cursor: pointer;
+      border: 1px solid rgba(24,191,239,.15);
+      box-shadow: 0 8px 36px rgba(0,0,0,.45);
+      opacity: 0;
+      transform: translateY(30px);
+      transition:
+        opacity .0s,
+        transform .0s,
+        box-shadow .35s ease,
+        border-color .35s ease;
+    }
+    .store-card.visible {
+      animation: cardEntrance .65s ease forwards;
+    }
+    .store-card:nth-child(1) { animation-delay: .08s; }
+    .store-card:nth-child(2) { animation-delay: .20s; }
+    .store-card:nth-child(3) { animation-delay: .32s; }
+    .store-card:nth-child(4) { animation-delay: .44s; }
+    .store-card:nth-child(5) { animation-delay: .56s; }
+    .store-card:nth-child(6) { animation-delay: .68s; }
+
+    @keyframes cardEntrance {
+      from { opacity: 0; transform: translateY(32px) scale(.97); }
+      to   { opacity: 1; transform: translateY(0)   scale(1);    }
+    }
+
+    .store-card:hover {
+      border-color: rgba(24,191,239,.55);
+      box-shadow: 0 20px 55px rgba(0,0,0,.55), 0 0 0 2px rgba(24,191,239,.25);
+    }
+
+    /* Photo background with Ken Burns on hover */
+    .store-card-bg {
+      position: absolute;
+      inset: -8%;
+      background-size: cover;
+      background-position: center;
+      filter: brightness(0.55) saturate(1.25) contrast(1.10);
+      transition: transform .65s cubic-bezier(.25,.46,.45,.94),
+                  filter .55s ease;
+      will-change: transform;
+    }
+    .store-card:hover .store-card-bg {
+      transform: scale(1.09);
+      filter: brightness(0.42) saturate(1.35) contrast(1.15);
+    }
+
+    /* Gradient overlay — bottom heavy */
+    .store-card-overlay {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(to bottom,
+          transparent 0%,
+          rgba(6,11,18,.15) 35%,
+          rgba(6,11,18,.70) 65%,
+          rgba(6,11,18,.93) 100%),
+        linear-gradient(135deg,
+          rgba(24,191,239,.04) 0%,
+          transparent 60%);
+      transition: background .35s ease;
+    }
+    .store-card:hover .store-card-overlay {
+      background:
+        linear-gradient(to bottom,
+          rgba(6,11,18,.05) 0%,
+          rgba(6,11,18,.20) 35%,
+          rgba(6,11,18,.78) 65%,
+          rgba(6,11,18,.96) 100%);
+    }
+
+    /* Top badge */
+    .store-badge {
+      position: absolute;
+      top: 1.2rem;
+      right: 1.2rem;
+      z-index: 3;
+      background: rgba(6,11,18,.55);
+      border: 1px solid rgba(24,191,239,.40);
+      backdrop-filter: blur(8px);
+      color: #18bfef;
+      font-family: 'Cairo', sans-serif;
+      font-size: .78rem;
+      font-weight: 700;
+      padding: .28rem .9rem;
+      border-radius: 50px;
+      display: flex;
+      align-items: center;
+      gap: .3rem;
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: opacity .35s .1s ease, transform .35s .1s ease;
+    }
+    .store-card:hover .store-badge {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .store-badge i { font-size: .7rem; }
+
+    /* Content area */
+    .store-card-content {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 2rem 1.75rem;
+      z-index: 3;
+    }
+
+    .store-card-icon {
+      font-size: 2.6rem;
+      display: block;
+      margin-bottom: .6rem;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,.4));
+      transform: translateY(4px);
+      transition: transform .35s ease;
+    }
+    .store-card:hover .store-card-icon {
+      transform: translateY(0) scale(1.1);
+    }
+
+    .store-card-name {
+      font-family: 'Alexandria', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #fff;
+      text-shadow: 0 2px 14px rgba(0,0,0,.55);
+      margin-bottom: .3rem;
+      line-height: 1.2;
+    }
+
+    .store-card-meta {
+      font-family: 'Cairo', sans-serif;
+      font-size: .85rem;
+      color: rgba(255,255,255,.55);
+      margin-bottom: 1.3rem;
+    }
+    .store-card-meta i { color: #18bfef; margin-left: .3rem; font-size: .75rem; }
+
+    /* Teal pill CTA */
+    .btn-teal {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .45rem;
+      background: linear-gradient(135deg, #18bfef 0%, #0d9bcb 100%);
+      color: #fff;
+      font-family: 'Alexandria', sans-serif;
+      font-size: .97rem;
+      font-weight: 700;
+      padding: .75rem 1.8rem;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      transition: filter .22s, transform .22s, box-shadow .22s;
+      box-shadow: 0 4px 18px rgba(24,191,239,.30);
+      text-decoration: none;
+      letter-spacing: .02em;
+    }
+    .btn-teal:hover {
+      filter: brightness(1.10);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 26px rgba(24,191,239,.48);
+    }
+
+    /* ══════════════════════════════
+       BREADCRUMB
+    ══════════════════════════════ */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin-bottom: 1.5rem;
+      font-size: .88rem;
+      color: rgba(255,255,255,.40);
+      animation: fadeUp .4s ease both;
+    }
+    .bc-link {
+      color: #18bfef;
+      cursor: pointer;
+      font-weight: 600;
+      transition: color .2s;
+    }
+    .bc-link:hover { color: #5dd3f3; }
+    .breadcrumb i { font-size: .68rem; }
+
+    /* ══════════════════════════════
+       MENU PREVIEW CARD  (single card per store)
+    ══════════════════════════════ */
+    .menu-preview-wrap {
+      display: flex;
+      justify-content: center;
+    }
+    .menu-preview-card {
+      position: relative;
+      width: 100%;
+      max-width: 680px;
+      height: 460px;
+      border-radius: 22px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 1px solid rgba(24,191,239,.22);
+      box-shadow: 0 16px 56px rgba(0,0,0,.55);
+      opacity: 0;
+      transform: translateY(28px) scale(.97);
+    }
+    .menu-preview-card.visible {
+      animation: cardEntrance .65s ease forwards;
+    }
+    .menu-preview-bg {
+      position: absolute;
+      inset: -8%;
+      background-size: cover;
+      background-position: center;
+      filter: brightness(0.42) saturate(1.2) contrast(1.08);
+      transition: transform .65s cubic-bezier(.25,.46,.45,.94), filter .5s ease;
+      will-change: transform;
+    }
+    .menu-preview-card:hover .menu-preview-bg {
+      transform: scale(1.07);
+      filter: brightness(0.32) saturate(1.3) contrast(1.1);
+    }
+    .menu-preview-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(6,11,18,.10) 0%,
+        rgba(6,11,18,.35) 45%,
+        rgba(6,11,18,.88) 80%,
+        rgba(6,11,18,.97) 100%
+      );
+    }
+    .menu-preview-content {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 2.2rem 2.5rem;
+      text-align: center;
+      z-index: 3;
+    }
+    .menu-preview-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      background: rgba(24,191,239,.12);
+      border: 1px solid rgba(24,191,239,.35);
+      color: #18bfef;
+      font-family: 'Cairo', sans-serif;
+      font-size: .82rem;
+      font-weight: 700;
+      padding: .28rem 1rem;
+      border-radius: 50px;
+      margin-bottom: .9rem;
+    }
+    .menu-preview-title {
+      font-family: 'Alexandria', sans-serif;
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: #fff;
+      text-shadow: 0 2px 16px rgba(0,0,0,.6);
+      margin-bottom: 1.3rem;
+    }
+    .btn-view-menu {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      background: linear-gradient(135deg, #18bfef 0%, #0d9bcb 100%);
+      color: #fff;
+      font-family: 'Alexandria', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      padding: .88rem 2.8rem;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 22px rgba(24,191,239,.38);
+      transition: filter .22s, transform .22s, box-shadow .22s;
+      letter-spacing: .02em;
+    }
+    .btn-view-menu:hover {
+      filter: brightness(1.12);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(24,191,239,.55);
+    }
+
+    /* Two-button row inside cards */
+    .card-btns {
+      display: flex;
+      flex-direction: column;
+      gap: .65rem;
+    }
+    .btn-view-menu,
+    .btn-order-now { width: 100%; }
+
+    /* اطلب الآن — green order CTA */
+    .btn-order-now {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      background: linear-gradient(135deg, #25d366 0%, #1aad54 100%);
+      color: #fff;
+      font-family: 'Alexandria', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      padding: .88rem 2.8rem;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(37,211,102,.28);
+      transition: filter .22s, transform .22s, box-shadow .22s;
+      letter-spacing: .02em;
+    }
+    .btn-order-now:hover {
+      filter: brightness(1.1);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(37,211,102,.48);
+    }
+
+    /* Order button inside no-discount empty card */
+    .no-discount-card .btn-order-now {
+      padding: .7rem 2rem;
+      font-size: .95rem;
+      margin-top: .4rem;
+    }
+
+    /* ══════════════════════════════
+       SLIDESHOW MODAL
+    ══════════════════════════════ */
+    .slideshow-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: rgba(4,8,14,.97);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .slideshow-modal.active {
+      display: flex;
+      animation: fadeUp .22s ease;
+    }
+
+    /* Top bar */
+    .ss-topbar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.4rem;
+      background: linear-gradient(to bottom, rgba(0,0,0,.65) 0%, transparent 100%);
+      z-index: 10;
+    }
+    .ss-counter {
+      font-family: 'Cairo', sans-serif;
+      font-size: .88rem;
+      color: rgba(255,255,255,.65);
+      background: rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.10);
+      padding: .3rem .9rem;
+      border-radius: 50px;
+    }
+    .ss-close {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.08);
+      border: 1.5px solid rgba(255,255,255,.18);
+      color: #fff;
+      font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background .2s, transform .3s;
+    }
+    .ss-close:hover { background: rgba(255,255,255,.18); transform: rotate(90deg); }
+
+    /* Image area */
+    .ss-img-wrap {
+      width: 100%;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4.5rem 5rem 3rem;
+      overflow: hidden;
+    }
+    .ss-img {
+      max-width: 100%;
+      max-height: 78vh;
+      object-fit: contain;
+      border-radius: 10px;
+      box-shadow: 0 24px 70px rgba(0,0,0,.55);
+      transition: opacity .28s ease, transform .28s ease;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+    .ss-img.fade-out { opacity: 0; transform: scale(.97); }
+
+    /* Arrows */
+    .ss-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10;
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.07);
+      border: 1.5px solid rgba(255,255,255,.15);
+      color: rgba(255,255,255,.75);
+      font-size: 1.15rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background .2s, border-color .2s, color .2s, transform .22s;
+    }
+    .ss-arrow:hover {
+      background: rgba(24,191,239,.22);
+      border-color: rgba(24,191,239,.5);
+      color: #18bfef;
+    }
+    .ss-arrow.ss-prev { right: 1.2rem; }
+    .ss-arrow.ss-prev:hover { transform: translateY(-50%) translateX(3px); }
+    .ss-arrow.ss-next { left: 1.2rem; }
+    .ss-arrow.ss-next:hover { transform: translateY(-50%) translateX(-3px); }
+    .ss-arrow.hidden { opacity: 0; pointer-events: none; }
+
+    /* Dots */
+    .ss-dots {
+      position: absolute;
+      bottom: 1.4rem;
+      left: 0; right: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: .5rem;
+      z-index: 10;
+      flex-wrap: wrap;
+      padding: 0 1rem;
+    }
+    .ss-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.22);
+      cursor: pointer;
+      transition: background .22s, transform .22s, width .22s;
+      flex-shrink: 0;
+    }
+    .ss-dot.active {
+      background: #18bfef;
+      transform: scale(1.35);
+      width: 22px;
+      border-radius: 4px;
+    }
+
+    /* ══════════════════════════════
+       TWO-CARD ROW  (menu + discounts)
+    ══════════════════════════════ */
+    .cards-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.8rem;
+      align-items: start;
+    }
+    /* In the grid, cards stretch to fill their column */
+    .cards-row .menu-preview-wrap { display: contents; }
+    .cards-row .menu-preview-card { max-width: none; }
+
+    /* ══════════════════════════════
+       DISCOUNT CARD  (no-images state)
+    ══════════════════════════════ */
+    .no-discount-card {
+      min-height: 460px;
+      border-radius: 22px;
+      background: rgba(255,255,255,.025);
+      border: 1.5px dashed rgba(24,191,239,.18);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2.5rem 2rem;
+      text-align: center;
+      gap: 1.25rem;
+    }
+    .no-discount-icon {
+      width: 76px; height: 76px;
+      border-radius: 50%;
+      background: rgba(24,191,239,.06);
+      border: 1.5px solid rgba(24,191,239,.18);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.9rem;
+      color: rgba(24,191,239,.38);
+    }
+    .no-discount-title {
+      font-family: 'Alexandria', sans-serif;
+      font-size: 1.08rem;
+      font-weight: 700;
+      color: rgba(255,255,255,.50);
+    }
+    .no-discount-msg {
+      font-family: 'Cairo', sans-serif;
+      font-size: .88rem;
+      color: rgba(255,255,255,.28);
+      line-height: 1.75;
+      max-width: 240px;
+    }
+    .no-discount-soon {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      font-family: 'Cairo', sans-serif;
+      font-size: .78rem;
+      color: rgba(24,191,239,.40);
+      border: 1px solid rgba(24,191,239,.15);
+      border-radius: 50px;
+      padding: .28rem .9rem;
+      margin-top: .3rem;
+    }
+
+    /* Discount preview card accent overrides */
+    .discount-preview-card .menu-preview-badge {
+      background: rgba(255,180,0,.10);
+      border-color: rgba(255,180,0,.30);
+      color: #f5c842;
+    }
+    .discount-preview-card .btn-view-menu {
+      background: linear-gradient(135deg, #f5c842 0%, #e0a500 100%);
+      box-shadow: 0 4px 22px rgba(245,200,66,.30);
+    }
+    .discount-preview-card .btn-view-menu:hover {
+      box-shadow: 0 8px 32px rgba(245,200,66,.50);
+    }
+
+    @media (max-width: 700px) {
+      .cards-row { grid-template-columns: 1fr; }
+      .no-discount-card { min-height: 300px; }
+    }
+
+    /* ══════════════════════════════
+       ORDERING INLINE LAYOUT
+       Menu thumbnails + order form side by side
+    ══════════════════════════════ */
+    .ordering-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.8rem;
+      align-items: start;
+    }
+
+    /* Images side */
+    .ordering-images {
+      background: rgba(255,255,255,.025);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 18px;
+      padding: 1.3rem 1.2rem;
+      position: sticky;
+      top: 80px;
+    }
+    .ordering-images-label {
+      font-family: 'Cairo', sans-serif;
+      font-size: .78rem; font-weight: 700;
+      color: rgba(255,255,255,.38);
+      text-transform: uppercase; letter-spacing: .08em;
+      display: flex; align-items: center; gap: .4rem;
+      margin-bottom: .9rem;
+      padding-bottom: .8rem;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .ordering-images-label i { color: #18bfef; }
+    .ordering-thumbs {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: .6rem;
+    }
+    .order-thumb {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 1.5px solid rgba(255,255,255,.07);
+      background: rgba(255,255,255,.04);
+      transition: border-color .22s, transform .22s, box-shadow .22s;
+    }
+    .order-thumb:hover {
+      border-color: rgba(24,191,239,.45);
+      transform: scale(1.04);
+      box-shadow: 0 4px 16px rgba(0,0,0,.40);
+    }
+    .order-thumb img { width:100%; height:100%; object-fit:cover; }
+    .order-thumb-zoom {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(6,11,18,.50);
+      opacity: 0; transition: opacity .2s;
+    }
+    .order-thumb:hover .order-thumb-zoom { opacity: 1; }
+    .order-thumb-zoom i { color: #fff; font-size: 1.1rem; }
+    .order-thumb-section {
+      font-family: 'Cairo', sans-serif;
+      font-size: .72rem; color: rgba(24,191,239,.55);
+      margin: .7rem 0 .4rem;
+      text-transform: uppercase; letter-spacing: .07em;
+    }
+
+    /* Form side */
+    .ordering-form {
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 18px;
+      padding: 1.6rem 1.5rem;
+      position: sticky;
+      top: 80px;
+    }
+    .ordering-form-head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.3rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .ordering-form-title {
+      font-family: 'Alexandria', sans-serif;
+      font-size: 1.05rem; font-weight: 700; color: #fff;
+      display: flex; align-items: center; gap: .45rem;
+    }
+    .ordering-form-title i { color: #18bfef; }
+    .ordering-form-x {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      color: rgba(255,255,255,.45);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: .85rem;
+      transition: background .2s; flex-shrink: 0;
+    }
+    .ordering-form-x:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .ordering-btns {
+      display: flex; gap: .75rem; margin-top: 1.1rem;
+    }
+
+    @media (max-width: 780px) {
+      .ordering-layout { grid-template-columns: 1fr; }
+      .ordering-images { position: static; }
+      .ordering-thumbs { grid-template-columns: repeat(4,1fr); }
+      .ordering-form   { position: static; }
+    }
+    @media (max-width: 420px) {
+      .ordering-thumbs { grid-template-columns: repeat(3,1fr); }
+    }
+
+    /* ══════════════════════════════
+       ORDER BOTTOM PANEL (kept as fallback, currently unused)
+    ══════════════════════════════ */
+    .order-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.68);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      z-index: 400;
+      opacity: 0; pointer-events: none;
+      transition: opacity .3s ease;
+    }
+    .order-overlay.show { opacity: 1; pointer-events: all; }
+
+    .order-panel {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 500;
+      background: linear-gradient(180deg, #0d1825 0%, #060e18 100%);
+      border-top: 1.5px solid rgba(24,191,239,.28);
+      border-radius: 22px 22px 0 0;
+      box-shadow: 0 -16px 56px rgba(0,0,0,.60);
+      transform: translateY(100%);
+      transition: transform .45s cubic-bezier(.32,.72,0,1);
+      max-height: 88vh;
+      overflow-y: auto;
+    }
+    .order-panel.open { transform: translateY(0); }
+
+    .order-panel-handle {
+      width: 44px; height: 4px;
+      background: rgba(255,255,255,.18);
+      border-radius: 2px;
+      margin: .9rem auto .3rem;
+    }
+
+    .order-panel-inner { padding: .6rem 1.8rem 2.8rem; }
+
+    .order-panel-head {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-bottom: 1.1rem;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      margin-bottom: 1.4rem;
+    }
+    .order-panel-title {
+      font-family: 'Alexandria', sans-serif;
+      font-size: 1.1rem; font-weight: 700; color: #fff;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .order-panel-title i { color: #18bfef; }
+    .order-panel-x {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(255,255,255,.5);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: .9rem;
+      transition: background .2s;
+    }
+    .order-panel-x:hover { background: rgba(255,255,255,.16); color: #fff; }
+
+    .order-items-ta {
+      width: 100%;
+      background: rgba(255,255,255,.05);
+      border: 1.5px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      color: #fff;
+      font-family: 'Cairo', sans-serif;
+      font-size: .95rem; line-height: 1.75;
+      padding: 1rem 1.1rem;
+      min-height: 155px;
+      resize: vertical;
+      direction: rtl; outline: none;
+      transition: border-color .22s, background .22s, box-shadow .22s;
+    }
+    .order-items-ta::placeholder { color: rgba(255,255,255,.22); }
+    .order-items-ta:focus {
+      border-color: rgba(24,191,239,.50);
+      background: rgba(24,191,239,.04);
+      box-shadow: 0 0 0 3px rgba(24,191,239,.08);
+    }
+
+    .order-panel-err {
+      min-height: 1.2rem;
+      color: #ff6b6b;
+      font-family: 'Cairo', sans-serif;
+      font-size: .83rem;
+      margin-top: .45rem;
+    }
+
+    .order-panel-btns {
+      display: flex; gap: .8rem; margin-top: 1.3rem;
+    }
+    .btn-op-save {
+      flex: 1;
+      display: flex; align-items: center; justify-content: center; gap: .45rem;
+      background: linear-gradient(135deg, #18bfef 0%, #0d9bcb 100%);
+      color: #fff;
+      font-family: 'Alexandria', sans-serif;
+      font-size: 1rem; font-weight: 700;
+      padding: .9rem; border-radius: 50px; border: none; cursor: pointer;
+      box-shadow: 0 4px 18px rgba(24,191,239,.30);
+      transition: filter .22s, transform .22s;
+    }
+    .btn-op-save:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+    .btn-op-save:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    .btn-op-cancel {
+      display: flex; align-items: center; justify-content: center; gap: .4rem;
+      background: rgba(255,80,80,.09);
+      color: rgba(255,130,130,.85);
+      font-family: 'Cairo', sans-serif;
+      font-size: .93rem; font-weight: 600;
+      padding: .9rem 1.4rem; border-radius: 50px;
+      border: 1.5px solid rgba(255,80,80,.22);
+      cursor: pointer;
+      transition: background .2s, border-color .2s;
+    }
+    .btn-op-cancel:hover { background: rgba(255,80,80,.18); border-color: rgba(255,80,80,.45); }
+
+    /* ══════════════════════════════
+       LOADING SPINNER
+    ══════════════════════════════ */
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 5rem 2rem;
+      grid-column: 1 / -1;
+      gap: 1.1rem;
+      color: rgba(255,255,255,.35);
+      font-family: 'Cairo', sans-serif;
+      font-size: .95rem;
+    }
+    .loading-state i {
+      font-size: 2rem;
+      color: #18bfef;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 5rem 2rem;
+      grid-column: 1 / -1;
+      gap: .8rem;
+      color: rgba(255,255,255,.30);
+    }
+    .empty-state i { font-size: 2.5rem; color: rgba(24,191,239,.25); }
+
+    /* ══════════════════════════════
+       KEYFRAMES
+    ══════════════════════════════ */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ══════════════════════════════
+       COMING SOON CARDS
+    ══════════════════════════════ */
+    .store-card.coming-soon {
+      cursor: default;
+      border-color: rgba(24,191,239,.12);
+    }
+    .store-card.coming-soon:hover {
+      border-color: rgba(24,191,239,.30);
+      box-shadow: 0 12px 42px rgba(0,0,0,.45), 0 0 0 1px rgba(24,191,239,.18);
+    }
+
+    /* Animated gradient bg instead of photo */
+    .cs-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 70% at 50% 30%, rgba(24,191,239,.07) 0%, transparent 65%),
+        linear-gradient(155deg, #0a1520 0%, #060e18 55%, #06101c 100%);
+      overflow: hidden;
+    }
+    .cs-bg::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        repeating-linear-gradient(
+          60deg,
+          transparent 0px,
+          transparent 38px,
+          rgba(24,191,239,.025) 38px,
+          rgba(24,191,239,.025) 39px
+        );
+    }
+    /* Subtle pulsing ring behind the icon */
+    .cs-pulse {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -58%);
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(24,191,239,.18);
+      animation: csPulse 2.8s ease-in-out infinite;
+    }
+    .cs-pulse::before {
+      content: '';
+      position: absolute;
+      inset: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(24,191,239,.12);
+      animation: csPulse 2.8s ease-in-out infinite .6s;
+    }
+    @keyframes csPulse {
+      0%,100% { transform: translate(-50%,-58%) scale(1);   opacity: .6; }
+      50%      { transform: translate(-50%,-58%) scale(1.15); opacity: 1;  }
+    }
+
+    /* Coming Soon badge — always visible (no hover needed) */
+    .store-card.coming-soon .store-badge {
+      opacity: 1;
+      transform: translateY(0);
+      background: rgba(24,191,239,.12);
+      border-color: rgba(24,191,239,.35);
+      color: #18bfef;
+    }
+
+    /* Lock icon in centre */
+    .cs-lock-icon {
+      font-size: 2.4rem;
+      color: rgba(24,191,239,.45);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -58%);
+      filter: drop-shadow(0 0 12px rgba(24,191,239,.25));
+      animation: csFloat 3.5s ease-in-out infinite;
+      z-index: 2;
+    }
+    @keyframes csFloat {
+      0%,100% { transform: translate(-50%,-58%) translateY(0); }
+      50%      { transform: translate(-50%,-58%) translateY(-7px); }
+    }
+
+    /* Coming soon button — ghost style */
+    .btn-cs {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .45rem;
+      background: rgba(24,191,239,.08);
+      color: rgba(24,191,239,.70);
+      font-family: 'Alexandria', sans-serif;
+      font-size: .97rem;
+      font-weight: 700;
+      padding: .75rem 1.8rem;
+      border-radius: 50px;
+      border: 1.5px dashed rgba(24,191,239,.35);
+      cursor: default;
+      width: 100%;
+      letter-spacing: .02em;
+      pointer-events: none;
+    }
+
+    .cs-name-muted {
+      color: rgba(255,255,255,.38) !important;
+    }
+    .cs-meta-muted {
+      color: rgba(255,255,255,.25) !important;
+    }
+
+    /* ══════════════════════════════
+       RESPONSIVE
+    ══════════════════════════════ */
+    @media (max-width: 700px) {
+      .stores-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+      .store-card  { height: 340px; }
+      .menu-gallery { grid-template-columns: repeat(2,1fr); gap: 1rem; }
+      .container { padding: 2rem 1rem 3rem; }
+      .store-card-name { font-size: 1.3rem; }
+    }
+    @media (max-width: 400px) {
+      .menu-gallery { grid-template-columns: 1fr; }
+      .store-card { height: 300px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Fixed dark background -->
+<div class="page-bg"></div>
+
+<!-- Header -->
+<header>
+  <a href="homepage.html" class="header-logo">
+    <i class="fas fa-shopping-bag"></i> HomiCart
+  </a>
+  <div style="display:flex; align-items:center; gap:.7rem;">
+    <button class="back-btn" id="backBtn" onclick="goBack()">
+      <i class="fas fa-arrow-right"></i> رجوع
+    </button>
+    <a href="homepage.html" class="home-btn">
+      <i class="fas fa-house"></i> الرئيسية
+    </a>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ═══ STORES PAGE ═══ -->
+  <div id="storePage" class="page active">
+    <div class="page-header">
+      <span class="eyebrow">المتاجر المتاحة</span>
+      <h2>اختر متجرك</h2>
+      <div class="teal-rule"></div>
+      <p>اختر من المحلات المشتركة معانا واطلب اللي بتحبه بسهولة</p>
+    </div>
+    <div class="stores-grid" id="storesContainer"></div>
+  </div>
+
+  <!-- ═══ MENU PAGE ═══ -->
+  <div id="menuPage" class="page">
+    <div class="breadcrumb">
+      <span class="bc-link" onclick="goBack()">
+        <i class="fas fa-store"></i>&nbsp;المتاجر
+      </span>
+      <i class="fas fa-chevron-left"></i>
+      <span id="storeName" style="color:rgba(255,255,255,.75)"></span>
+    </div>
+    <div class="page-header">
+      <span class="eyebrow" id="storeEyebrow"></span>
+      <h2 id="menuTitle"></h2>
+      <div class="teal-rule"></div>
+      <p>اضغط على أي صورة لتكبيرها</p>
+    </div>
+    <div id="menuContainer"></div>
+  </div>
+
+</div>
+
+<!-- Order overlay -->
+<div id="orderOverlay" class="order-overlay" onclick="cancelOrderPanel()"></div>
+
+<!-- Order bottom panel -->
+<div id="orderPanel" class="order-panel">
+  <div class="order-panel-handle"></div>
+  <div class="order-panel-inner">
+    <div class="order-panel-head">
+      <div class="order-panel-title">
+        <i class="fas fa-cart-plus"></i>
+        اكتب طلبك من <span id="opStoreName"></span>
+      </div>
+      <button class="order-panel-x" onclick="cancelOrderPanel()"><i class="fas fa-times"></i></button>
+    </div>
+    <textarea id="opItemsInput" class="order-items-ta"
+      placeholder="اكتب الأصناف اللي عايزها وكمياتها ...&#10;مثال:&#10;دجاج بلدي — 2 كيلو&#10;دجاج رومي — 1 كيلو&#10;لحم مفروم — 500 جرام"></textarea>
+    <div id="opError" class="order-panel-err"></div>
+    <div class="order-panel-btns">
+      <button class="btn-op-save" id="opSaveBtn" onclick="saveOrder()">
+        <i class="fas fa-check"></i>
+        <span id="opSaveTxt">سجل الطلب</span>
+      </button>
+      <button class="btn-op-cancel" onclick="cancelOrderPanel()">
+        <i class="fas fa-xmark"></i> إلغاء الطلب
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Slideshow Modal -->
+<div id="slideshowModal" class="slideshow-modal">
+  <div class="ss-topbar">
+    <div class="ss-counter" id="ssCounter">1 / 1</div>
+    <button class="ss-close" onclick="closeSlideshow()"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="ss-img-wrap">
+    <img id="ssImg" class="ss-img" src="" alt="منيو">
+  </div>
+  <button class="ss-arrow ss-prev" id="ssPrev" onclick="slideGo(-1)">
+    <i class="fas fa-chevron-right"></i>
+  </button>
+  <button class="ss-arrow ss-next" id="ssNext" onclick="slideGo(1)">
+    <i class="fas fa-chevron-left"></i>
+  </button>
+  <div class="ss-dots" id="ssDots"></div>
+</div>
+
+<script>
+  const stores = [
+    {
+      id: 'alkrkn',
+      name: 'الركن المصري',
+      icon: '🥩',
+      folder: 'Al Rokn AL masry',
+      photo: '../Photos/Meat/Screenshot%202026-05-26%20164420.png',
+      tag: 'لحوم طازجة'
+    },
+    {
+      id: 'alfayoumi',
+      name: 'الفيومي',
+      icon: '🍗',
+      folder: 'Al Fayoumy',
+      photo: '../Photos/Chiken/pexels-alleksana-6107729.jpg',
+      tag: 'دواجن طازجة'
+    }
+  ];
+
+  // ── Placeholder cards — replace name/tag/icon when a new shop joins ──
+  const comingSoonStores = [
+    { name: 'متجر جديد', icon: '🛒', tag: 'قريباً' },
+    { name: 'متجر جديد', icon: '🛍️', tag: 'قريباً' },
+    { name: 'متجر جديد', icon: '🥦', tag: 'قريباً' },
+    { name: 'متجر جديد', icon: '🧆', tag: 'قريباً' },
+  ];
+
+  // ═══════════════════════════════════════════════════════════════
+  //  MENU FOLDER CONFIG
+  //  ── The ONLY place you need to change paths ──
+  //
+  //  'folder' is relative to the HomiCart root (D:\MyBusiness\HomiCart\)
+  //  Add images to the folder on disk → cards appear automatically.
+  //  Remove images → cards disappear automatically.
+  //
+  //  TO SWITCH TO GOOGLE DRIVE / S3 / other cloud later:
+  //  → Keep this config as-is for the store name & label
+  //  → Replace ONLY the fetchImages() function below with
+  //    a call to your cloud storage API.
+  // ═══════════════════════════════════════════════════════════════
+  const MENU_CONFIG = {
+    'Al Rokn AL masry': {
+      name            : 'الركن المصري',
+      folder          : 'Menu/Al Rokn AL masry',            // ← menu images
+      discountsFolder : 'Menu/Al Rokn AL masry/discounts',  // ← discount/offer images
+      itemLabel       : 'لحم',
+    },
+    'Al Fayoumy': {
+      name            : 'الفيومي',
+      folder          : 'Menu/Al Fayoumy',                  // ← menu images
+      discountsFolder : 'Menu/Al Fayoumy/discounts',        // ← discount/offer images
+      itemLabel       : 'دجاج',
+    },
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  //  fetchImages — reads live folder contents from the server API
+  //  Replace this function ONLY if switching to cloud storage.
+  //
+  //  Cache-busting strategy:
+  //   • API call  → always fresh  (cache:'no-store' + unique timestamp)
+  //   • Images    → fresh per page load  (PAGE_TS appended to src)
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── Server base URL ────────────────────────────────────────────
+  // When the page is opened directly as file://, relative URLs like
+  // /api/list-images won't reach the server.  We detect this and
+  // point everything to http://localhost:3000 automatically.
+  // If you later host this online, change the fallback URL below.
+  const API_BASE = window.location.protocol === 'file:'
+    ? 'http://localhost:3000'
+    : '';   // empty = use same host (works when served via the server)
+
+  // Single timestamp per page load — image URLs stay stable within a
+  // session but are treated as new by the browser on every reload.
+  const PAGE_TS = Date.now();
+
+  async function fetchImages(folderPath) {
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/list-images?folder=${encodeURIComponent(folderPath)}&_t=${Date.now()}`,
+        { cache: 'no-store' }   // bypass browser cache completely for the file list
+      );
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.files || [];
+    } catch (err) {
+      console.warn('fetchImages failed:', err);
+      return [];
+    }
+  }
+
+  let currentStore = null;
+
+  /* ── Show / hide page ── */
+  function showPage(pageId) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+    const backBtn = document.getElementById('backBtn');
+    backBtn.style.display = pageId === 'storePage' ? 'none' : 'inline-flex';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Trigger entrance animations
+    requestAnimationFrame(() => {
+      document.querySelectorAll(`#${pageId} .store-card, #${pageId} .menu-item`)
+        .forEach(el => {
+          setTimeout(() => el.classList.add('visible'), 50);
+        });
+    });
+  }
+
+  /* ── Render stores ── */
+  function renderStores() {
+    // Real store cards
+    const realHtml = stores.map(s => `
+      <div class="store-card" onclick="selectStore('${s.folder}', '${s.name}', '${s.tag}')">
+        <div class="store-card-bg" style="background-image:url('${s.photo}')"></div>
+        <div class="store-card-overlay"></div>
+        <div class="store-badge"><i class="fas fa-tag"></i>${s.tag}</div>
+        <div class="store-card-content">
+          <span class="store-card-icon">${s.icon}</span>
+          <div class="store-card-name">${s.name}</div>
+          <div class="store-card-meta"><i class="fas fa-map-marker-alt"></i> عجمان، الإمارات</div>
+          <button class="btn-teal">
+            <i class="fas fa-shopping-cart"></i> اطلب منه
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+    // Coming soon placeholder cards
+    const csHtml = comingSoonStores.map(s => `
+      <div class="store-card coming-soon">
+        <div class="cs-bg"></div>
+        <div class="cs-pulse"></div>
+        <i class="fas fa-clock cs-lock-icon"></i>
+        <div class="store-card-overlay" style="background:linear-gradient(to bottom,transparent 0%,rgba(6,11,18,.55) 60%,rgba(6,11,18,.92) 100%)"></div>
+        <div class="store-badge"><i class="fas fa-hourglass-half"></i> قريباً</div>
+        <div class="store-card-content">
+          <span class="store-card-icon">${s.icon}</span>
+          <div class="store-card-name cs-name-muted">${s.name}</div>
+          <div class="store-card-meta cs-meta-muted"><i class="fas fa-map-marker-alt" style="color:rgba(24,191,239,.3)"></i> قيد الإعداد</div>
+          <button class="btn-cs">
+            <i class="fas fa-clock"></i> Coming Soon
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+    document.getElementById('storesContainer').innerHTML = realHtml + csHtml;
+
+    // Animate in all cards
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.store-card').forEach((c, i) => {
+        setTimeout(() => c.classList.add('visible'), 80 + i * 120);
+      });
+    });
+  }
+
+  /* ── Select store → fetch menu + discount images → show two cards ── */
+  async function selectStore(folder, name, tag) {
+    currentStore = { folder, name };
+    window._currentStore = { folder, name, tag }; // saved so cancelOrderMode() can restore
+    document.getElementById('storeName').textContent    = name;
+    document.getElementById('menuTitle').textContent    = name;
+    document.getElementById('storeEyebrow').textContent = tag || 'المنيو';
+
+    document.getElementById('menuContainer').innerHTML = `
+      <div class="loading-state">
+        <i class="fas fa-spinner"></i>
+        <span>جاري تحميل المنيو...</span>
+      </div>`;
+    showPage('menuPage');
+
+    // Fetch menu images AND discount images simultaneously
+    const config = MENU_CONFIG[folder];
+    const [menuImages, discountImages] = await Promise.all([
+      config ? fetchImages(config.folder)          : Promise.resolve([]),
+      config ? fetchImages(config.discountsFolder) : Promise.resolve([]),
+    ]);
+
+    // ── Build menu card ────────────────────────────────────────
+    let menuCard = '';
+    if (menuImages.length) {
+      const firstImg = `${API_BASE}${menuImages[0].url}?t=${PAGE_TS}`;
+      const count    = menuImages.length;
+      menuCard = `
+        <div class="menu-preview-card" onclick="openSlideshow(window._menuImages, 0)">
+          <div class="menu-preview-bg" style="background-image:url('${firstImg}')"></div>
+          <div class="menu-preview-overlay"></div>
+          <div class="menu-preview-content">
+            <div class="menu-preview-badge">
+              <i class="fas fa-images"></i>
+              ${count} ${count === 1 ? 'صورة' : 'صور'}
+            </div>
+            <div class="menu-preview-title">منيو ${name}</div>
+            <div class="card-btns">
+              <button class="btn-view-menu" onclick="event.stopPropagation(); openSlideshow(window._menuImages, 0)">
+                <i class="fas fa-eye"></i> عرض المنيو
+              </button>
+              <a class="btn-order-now" href="javascript:void(0)" onclick="event.stopPropagation(); orderNow('${folder}')">
+                <i class="fas fa-shopping-cart"></i> اطلب الآن
+              </a>
+            </div>
+          </div>
+        </div>`;
+    } else {
+      menuCard = `
+        <div class="no-discount-card">
+          <div class="no-discount-icon"><i class="fas fa-images"></i></div>
+          <div class="no-discount-title">لا توجد صور للمنيو حالياً</div>
+        </div>`;
+    }
+
+    // ── Build discounts card ───────────────────────────────────
+    let discountCard = '';
+    if (discountImages.length) {
+      const firstImg = `${API_BASE}${discountImages[0].url}?t=${PAGE_TS}`;
+      const count    = discountImages.length;
+      discountCard = `
+        <div class="menu-preview-card discount-preview-card" onclick="openSlideshow(window._discountImages, 0)">
+          <div class="menu-preview-bg" style="background-image:url('${firstImg}')"></div>
+          <div class="menu-preview-overlay"></div>
+          <div class="menu-preview-content">
+            <div class="menu-preview-badge">
+              <i class="fas fa-tag"></i>
+              ${count} ${count === 1 ? 'عرض' : 'عروض'}
+            </div>
+            <div class="menu-preview-title">عروض وخصومات</div>
+            <div class="card-btns">
+              <button class="btn-view-menu" onclick="event.stopPropagation(); openSlideshow(window._discountImages, 0)">
+                <i class="fas fa-percent"></i> عرض العروض
+              </button>
+              <a class="btn-order-now" href="javascript:void(0)" onclick="event.stopPropagation(); orderNow('${folder}')">
+                <i class="fas fa-shopping-cart"></i> اطلب الآن
+              </a>
+            </div>
+          </div>
+        </div>`;
+    } else {
+      discountCard = `
+        <div class="no-discount-card">
+          <div class="no-discount-icon"><i class="fas fa-tag"></i></div>
+          <div class="no-discount-title">عروض وخصومات</div>
+          <div class="no-discount-msg">
+            عذراً، لا توجد عروض أو خصومات متاحة حالياً.<br>تابعنا للحصول على أحدث العروض قريباً.
+          </div>
+          <span class="no-discount-soon"><i class="fas fa-clock"></i> قريباً</span>
+          <a class="btn-order-now" href="javascript:void(0)" onclick="orderNow('${folder}')">
+            <i class="fas fa-shopping-cart"></i> اطلب الآن
+          </a>
+        </div>`;
+    }
+
+    // Cache for slideshow access
+    window._menuImages     = menuImages;
+    window._discountImages = discountImages;
+
+    document.getElementById('menuContainer').innerHTML = `
+      <div class="cards-row">${menuCard}${discountCard}</div>`;
+
+    // Staggered entrance animation for both cards
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.menu-preview-card').forEach((card, i) => {
+        setTimeout(() => card.classList.add('visible'), 60 + i * 140);
+      });
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     SLIDESHOW  — works for both menu and discount images
+     Pass the image array directly: openSlideshow(images, index)
+  ══════════════════════════════════════════════════════════ */
+  let ssIndex = 0;
+
+  function openSlideshow(images, startIndex = 0) {
+    if (!images || !images.length) return;
+    // Store current set in a neutral key
+    window._ssImages = images;
+    ssIndex = startIndex;
+    // Rebuild dots for this image set
+    document.getElementById('ssDots').innerHTML = images
+      .map((_, i) => `<div class="ss-dot${i === startIndex ? ' active' : ''}" onclick="jumpToSlide(${i})"></div>`)
+      .join('');
+    _ssRender();
+    document.getElementById('slideshowModal').classList.add('active');
+    document.addEventListener('keydown', _ssKey);
+  }
+
+  function closeSlideshow() {
+    document.getElementById('slideshowModal').classList.remove('active');
+    document.removeEventListener('keydown', _ssKey);
+  }
+
+  function slideGo(dir) {
+    const images = window._ssImages || [];
+    if (images.length <= 1) return;
+    const img = document.getElementById('ssImg');
+    img.classList.add('fade-out');
+    setTimeout(() => {
+      ssIndex = (ssIndex + dir + images.length) % images.length;
+      _ssRender();
+      img.classList.remove('fade-out');
+    }, 260);
+  }
+
+  function jumpToSlide(i) {
+    const images = window._ssImages || [];
+    if (i === ssIndex || !images.length) return;
+    const img = document.getElementById('ssImg');
+    img.classList.add('fade-out');
+    setTimeout(() => {
+      ssIndex = i;
+      _ssRender();
+      img.classList.remove('fade-out');
+    }, 260);
+  }
+
+  function _ssRender() {
+    const images = window._ssImages || [];
+    const total  = images.length;
+    document.getElementById('ssImg').src            = `${API_BASE}${images[ssIndex].url}?t=${PAGE_TS}`;
+    document.getElementById('ssCounter').textContent = `${ssIndex + 1} / ${total}`;
+    document.querySelectorAll('.ss-dot').forEach((d, i) => d.classList.toggle('active', i === ssIndex));
+    document.getElementById('ssPrev').classList.toggle('hidden', total <= 1);
+    document.getElementById('ssNext').classList.toggle('hidden', total <= 1);
+  }
+
+  function _ssKey(e) {
+    if (e.key === 'ArrowLeft')  slideGo(1);
+    if (e.key === 'ArrowRight') slideGo(-1);
+    if (e.key === 'Escape')     closeSlideshow();
+  }
+
+  // Touch / swipe support
+  (() => {
+    let tx = 0;
+    const modal = document.getElementById('slideshowModal');
+    modal.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+    modal.addEventListener('touchend',   e => {
+      const diff = tx - e.changedTouches[0].clientX;
+      if (Math.abs(diff) > 48) slideGo(diff > 0 ? 1 : -1);
+    });
+    modal.addEventListener('click', e => { if (e.target === modal) closeSlideshow(); });
+  })();
+
+  /* ── Go back ── */
+  function goBack() {
+    currentStore = null;
+    showPage('storePage');
+    // Re-trigger store card animations
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.store-card').forEach(c => {
+        c.classList.remove('visible');
+        setTimeout(() => c.classList.add('visible'), 60);
+      });
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     APPS SCRIPT CONFIG
+     Paste your deployed Web App URL below (after deploying Code.gs)
+  ══════════════════════════════════════════════════════════ */
+  const APPS_SCRIPT_URL_LOCAL = `${API_BASE}/api/sheets`;  // proxied through server.js
+
+  const SHEET_NAMES = {
+    'Al Rokn AL masry' : 'AlRoknAlMasry',
+    'Al Fayoumy'       : 'AlFayoumi',
+  };
+
+  async function _callScript(action, data) {
+    const res = await fetch(APPS_SCRIPT_URL_LOCAL, {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({ action, ...data }),
+    });
+    return res.json();
+  }
+
+  /* ── Open ORDER view: thumbnails on left, form on right ────── */
+  let _opSaved = false;
+  let _opTempId = null;
+
+  function orderNow(storeKey) {
+    const cfg = MENU_CONFIG[storeKey];
+    if (!cfg) return;
+    window._opStore = { storeKey, cfg, sheetName: SHEET_NAMES[storeKey] };
+    _opSaved = false; _opTempId = null;
+
+    // Build thumbnail HTML from already-loaded images
+    const menuImgs     = window._menuImages     || [];
+    const discountImgs = window._discountImages || [];
+
+    function thumbsHTML(images, setKey) {
+      if (!images.length) return '';
+      return images.map((img, i) => `
+        <div class="order-thumb" onclick="openSlideshow(window._${setKey}Images, ${i})" title="اضغط لتكبير">
+          <img src="${API_BASE}${img.url}?t=${PAGE_TS}" loading="lazy" alt="">
+          <div class="order-thumb-zoom"><i class="fas fa-expand"></i></div>
+        </div>`).join('');
+    }
+
+    const menuSection = menuImgs.length ? `
+      <div class="order-thumb-section"><i class="fas fa-images"></i> المنيو</div>
+      ${thumbsHTML(menuImgs, 'menu')}` : '';
+
+    const discSection = discountImgs.length ? `
+      <div class="order-thumb-section"><i class="fas fa-tag"></i> العروض</div>
+      ${thumbsHTML(discountImgs, 'discount')}` : '';
+
+    const noImgs = !menuImgs.length && !discountImgs.length
+      ? `<p style="color:rgba(255,255,255,.28);font-family:'Cairo',sans-serif;font-size:.85rem;text-align:center;padding:2rem 0">لا توجد صور</p>`
+      : '';
+
+    document.getElementById('menuContainer').innerHTML = `
+      <div class="ordering-layout">
+
+        <!-- LEFT: all menu/discount images as thumbnails -->
+        <div class="ordering-images">
+          <div class="ordering-images-label">
+            <i class="fas fa-images"></i>
+            اضغط على أي صورة لتكبيرها
+          </div>
+          <div class="ordering-thumbs">
+            ${menuSection}${discSection}${noImgs}
+          </div>
+        </div>
+
+        <!-- RIGHT: order form -->
+        <div class="ordering-form">
+          <div class="ordering-form-head">
+            <div class="ordering-form-title">
+              <i class="fas fa-cart-plus"></i>
+              طلبك من ${cfg.name}
+            </div>
+            <button class="ordering-form-x" onclick="cancelOrderMode()" title="إلغاء">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <textarea id="opItemsInput" class="order-items-ta"
+            placeholder="اكتب الأصناف اللي عايزها وكمياتها ...&#10;مثال:&#10;دجاج بلدي — 2 كيلو&#10;دجاج رومي — 1 كيلو&#10;لحم مفروم — 500 جرام"
+            rows="8"></textarea>
+          <div id="opError" class="order-panel-err"></div>
+          <div class="ordering-btns">
+            <button class="btn-op-save" id="opSaveBtn" onclick="saveOrder()">
+              <i class="fas fa-check"></i>
+              <span id="opSaveTxt">سجل الطلب</span>
+            </button>
+            <button class="btn-op-cancel" onclick="cancelOrderMode()">
+              <i class="fas fa-xmark"></i> إلغاء
+            </button>
+          </div>
+        </div>
+
+      </div>`;
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => document.getElementById('opItemsInput')?.focus(), 350);
+  }
+
+  /* ── Cancel order mode → restore normal menu view ────────────── */
+  function cancelOrderMode() {
+    if (_opSaved && _opTempId && window._opStore) {
+      _callScript('cancelOrder', { tempId: _opTempId, sheetName: window._opStore.sheetName })
+        .catch(() => {});
+      _opSaved = false; _opTempId = null;
+    }
+    // Restore the regular menu/discount cards view
+    const s = window._currentStore;
+    if (s) selectStore(s.folder, s.name, s.tag);
+  }
+
+  // Keep old name as alias (referenced from HTML panel)
+  function cancelOrderPanel() { cancelOrderMode(); }
+
+  /* ── Save order → sheets → redirect to confirm page ────────── */
+  async function saveOrder() {
+    const items = document.getElementById('opItemsInput').value.trim();
+    const err   = document.getElementById('opError');
+    if (!items) {
+      err.textContent = 'يرجى كتابة الأصناف المطلوبة أولاً';
+      document.getElementById('opItemsInput').focus();
+      return;
+    }
+    err.textContent = '';
+    const btn = document.getElementById('opSaveBtn');
+    btn.disabled = true;
+    document.getElementById('opSaveTxt').textContent = 'جاري الحفظ ...';
+
+    const store  = window._opStore;
+    const tempId = 'TEMP-' + Date.now() + '-' + Math.random().toString(36).substr(2,6).toUpperCase();
+
+    try {
+      const result = await _callScript('saveTempOrder', {
+        tempId,
+        sheetName: store.sheetName,
+        items,
+      });
+      if (result.error) throw new Error(result.error);
+
+      _opSaved  = true;
+      _opTempId = tempId;
+
+      // Persist order details so confirm.html can read them
+      localStorage.setItem('homiCart_pendingOrder', JSON.stringify({
+        tempId,
+        sheetName : store.sheetName,
+        storeName : store.cfg.name,
+        storeKey  : store.storeKey,
+        items,
+        savedAt   : Date.now(),
+      }));
+
+      // Navigate (panel will NOT cancel the order now — _opSaved flag is kept)
+      _opSaved = false; // prevent cancel on navigate
+      document.getElementById('orderPanel').classList.remove('open');
+      document.getElementById('orderOverlay').classList.remove('show');
+      document.body.style.overflow = '';
+      window.location.href = 'confirm.html';
+
+    } catch (e) {
+      btn.disabled = false;
+      document.getElementById('opSaveTxt').textContent = 'سجل الطلب';
+      err.textContent = 'تعذر حفظ الطلب — تأكد من اتصال الإنترنت وأن السيرفر يعمل.';
+      console.error('[saveOrder]', e);
+    }
+  }
+
+  // Boot — show stores immediately
+  renderStores();
+</script>
+
+</body>
+</html>

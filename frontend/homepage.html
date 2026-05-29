@@ -1,0 +1,686 @@
+<!DOCTYPE HTML>
+<html lang="ar" dir="rtl">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+	<title>HomiCart - نظام الطلب الجماعي الموحد</title>
+	<link rel="stylesheet" href="../Templates/html5up-massively/assets/css/fontawesome-all.min.css" />
+	<link rel="stylesheet" href="../Templates/html5up-massively/assets/css/main.css" />
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600;700;800;900&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+	<noscript><link rel="stylesheet" href="../Templates/html5up-massively/assets/css/noscript.css" /></noscript>
+	<style>
+
+		/* ─── Global Arabic / RTL ─────────────────────────── */
+		body { direction: rtl; text-align: right; font-family: 'Cairo', sans-serif; }
+
+		/* Main / display font — headings, logo, badges, buttons */
+		h1, h2, h3, h4, h5, h6,
+		.logo, button, input[type="submit"],
+		.section-accent, .step-num-badge,
+		.panel-label, .btn, .button {
+			font-family: 'Alexandria', sans-serif !important;
+		}
+
+		/* Body / small font — all running text */
+		p, a, li, label, input, textarea,
+		span, small, blockquote, td, th {
+			font-family: 'Cairo', sans-serif !important;
+		}
+
+		/* ═══════════════════════════════════════════════════
+		   HERO — SINGLE PHOTO BACKGROUND
+		═══════════════════════════════════════════════════ */
+		#intro {
+			direction: rtl;
+			position: relative;
+			overflow: hidden;
+		}
+
+		/* Photo container */
+		.hero-bg {
+			position: absolute;
+			inset: 0;
+			z-index: 0;
+			overflow: hidden;
+		}
+
+		/* Inner layer — 8% bleed on all sides gives Ken Burns room to travel */
+		.hero-bg-inner {
+			position: absolute;
+			inset: -8%;
+			background-image: url('../Photos/MixCollage-26-May-2026-09-59-PM-5016.jpg');
+			background-size: cover;
+			background-position: center center;
+			/* Colour grading: darken to brand depth, boost richness, shift warm tones toward teal */
+			filter:
+				brightness(0.52)
+				saturate(1.35)
+				contrast(1.12)
+				hue-rotate(4deg);
+			will-change: transform;
+			animation: kb-hero 28s ease-in-out infinite alternate;
+		}
+
+		@keyframes kb-hero {
+			0%   { transform: scale(1.0)  translate( 0%,  0%); }
+			100% { transform: scale(1.12) translate(-2%,  1.5%); }
+		}
+
+		/* ── Master overlay — multi-layer depth effect ── */
+		.hero-overlay {
+			position: absolute;
+			inset: 0;
+			z-index: 1;
+			background:
+				/* deep vignette centred behind the text block */
+				radial-gradient(
+					ellipse 70% 60% at 50% 62%,
+					rgba(6,11,18,.72) 0%,
+					transparent       68%
+				),
+				/* soft top-to-strong-bottom depth */
+				linear-gradient(
+					to bottom,
+					rgba(6,11,18,.25)  0%,
+					rgba(6,11,18,.18) 38%,
+					rgba(6,11,18,.52) 72%,
+					rgba(6,11,18,.82) 100%
+				),
+				/* subtle teal brand wash */
+				linear-gradient(
+					135deg,
+					rgba(24,191,239,.06) 0%,
+					rgba(24,191,239,.02) 100%
+				);
+		}
+
+		/* ── Hero text ── */
+		#intro > *:not(.hero-bg):not(.hero-overlay) {
+			position: relative;
+			z-index: 5;
+		}
+
+		#intro h1 {
+			font-size: clamp(1.65rem, 3.6vw, 2.85rem);
+			line-height: 1.55;
+			max-width: 860px;
+			font-weight: 800;
+			text-shadow: 0 2px 24px rgba(0,0,0,.60);
+		}
+
+		#intro > p {
+			font-size: 1.15rem;
+			line-height: 1.85;
+			max-width: 620px;
+			text-shadow: 0 1px 10px rgba(0,0,0,.45);
+		}
+
+		#intro .actions {
+			display: flex;
+			flex-direction: row;
+			justify-content: center;
+			align-items: center;
+			flex-wrap: wrap;
+			gap: 1rem;
+			margin-top: 2rem;
+		}
+
+		/* ── Primary CTA — "اطلب الآن" ── */
+		#intro .hero-btn-primary {
+			display: inline-flex;
+			align-items: center;
+			gap: .5rem;
+			background: linear-gradient(135deg, #18bfef 0%, #0d9bcb 100%);
+			color: #fff !important;
+			font-family: 'Alexandria', sans-serif !important;
+			font-size: 1.08rem;
+			font-weight: 700;
+			letter-spacing: .03em;
+			padding: .85rem 2.2rem;
+			border-radius: 50px;
+			border: none;
+			text-decoration: none;
+			transition: transform .25s ease, box-shadow .25s ease, filter .25s ease;
+			animation: ctaGlow 2.8s ease-in-out infinite;
+			box-shadow: 0 4px 20px rgba(24,191,239,.35);
+		}
+		#intro .hero-btn-primary:hover {
+			transform: translateY(-3px);
+			filter: brightness(1.1);
+			box-shadow: 0 8px 28px rgba(24,191,239,.55);
+			animation: none;
+		}
+
+@keyframes ctaGlow {
+			0%,100% { box-shadow: 0 4px 20px rgba(24,191,239,.35); }
+			50%     { box-shadow: 0 4px 32px rgba(24,191,239,.65), 0 0 0 6px rgba(24,191,239,.12); }
+		}
+
+		/* Mobile: stack buttons full-width */
+		@media (max-width: 480px) {
+			#intro .hero-btn-primary,
+			#intro .hero-btn-secondary {
+				width: 100%;
+				justify-content: center;
+				font-size: .97rem;
+				padding: .82rem 1.4rem;
+			}
+			#intro .actions { gap: .75rem; }
+		}
+
+		/* ═══════════════════════════════════════════════════
+		   HEADER / NAV RTL
+		═══════════════════════════════════════════════════ */
+		#header { direction: rtl; }
+		#header .logo {
+			position: absolute;
+			right: 1.5rem;
+			left: auto;
+		}
+		#nav { direction: rtl; }
+
+		/* ═══════════════════════════════════════════════════
+		   MAIN — EXPLANATION ARTICLE
+		═══════════════════════════════════════════════════ */
+		#main { direction: rtl; }
+		#main article, #main section { direction: rtl; }
+		#main article header.major { text-align: center; }
+		#main article p { text-align: right; }
+
+		/* ── Explanation accordion ── */
+		#explanation-article {
+			border-top: 3px solid #18bfef;
+		}
+
+		/* "ازاي هقدر أوفر؟" styled as a compact teal pill */
+		#explanation-article header.major h2 {
+			display: inline-block;
+			background: linear-gradient(135deg, #18bfef 0%, #0d9bcb 100%);
+			color: #fff !important;
+			font-size: 1.75rem !important;
+			font-weight: 700 !important;
+			padding: .75rem 2.6rem;
+			border-radius: 50px;
+			text-shadow: none;
+			box-shadow: 0 3px 14px rgba(24,191,239,.30);
+			line-height: 1.4;
+			text-align: center;
+		}
+
+		.explanation-panel {
+			opacity: 1;
+			margin-top: 2rem;
+			padding-top: 2rem;
+			border-top: 1px solid #ecf0f4;
+		}
+		.explanation-panel .inner-text p {
+			color: #555;
+			line-height: 2;
+			margin-bottom: 1.3rem;
+			font-size: 1.02rem;
+			text-align: right;
+		}
+		.explanation-panel .inner-text strong {
+			color: #1a6fa8;
+			font-weight: 700;
+		}
+
+		/* ═══════════════════════════════════════════════════
+		   SECTION ACCENT PILL
+		═══════════════════════════════════════════════════ */
+		.section-accent {
+			display: inline-block;
+			background: linear-gradient(135deg,#18bfef,#0d9bcb);
+			color: #fff;
+			font-size: .78rem;
+			font-weight: 700;
+			letter-spacing: .08em;
+			padding: .3rem 1rem;
+			border-radius: 100px;
+			margin-bottom: 1rem;
+		}
+
+		/* ═══════════════════════════════════════════════════
+		   FEATURES SECTION
+		═══════════════════════════════════════════════════ */
+		#features-section {
+			background: #f2f7fc;
+			padding: 4.5rem 2rem;
+		}
+
+		.features-grid-custom {
+			display: grid;
+			grid-template-columns: repeat(auto-fit,minmax(265px,1fr));
+			gap: 1.6rem;
+			max-width: 1080px;
+			margin: 2.5rem auto 0;
+		}
+
+		.feature-card-custom {
+			background: #fff;
+			border: 1px solid #dde8f5;
+			border-radius: 10px;
+			padding: 2rem 1.75rem;
+			text-align: center;
+			box-shadow: 0 2px 10px rgba(0,0,0,.05);
+			transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+		}
+		.feature-card-custom:hover {
+			transform: translateY(-7px);
+			box-shadow: 0 12px 32px rgba(24,119,191,.13);
+			border-color: rgba(24,191,239,.5);
+		}
+		.feature-card-custom .card-icon {
+			font-size: 2.4rem;
+			color: #18bfef;
+			margin-bottom: 1rem;
+			display: block;
+		}
+		.feature-card-custom h3 {
+			color: #1a2535;
+			font-size: 1.2rem;
+			margin-bottom: .7rem;
+			font-weight: 700;
+		}
+		.feature-card-custom p {
+			color: #6b7a8d;
+			font-size: .95rem;
+			line-height: 1.75;
+			margin: 0;
+		}
+
+		/* ═══════════════════════════════════════════════════
+		   STEPS SECTION
+		═══════════════════════════════════════════════════ */
+		#steps-section {
+			background: #fff;
+			padding: 4.5rem 2rem;
+		}
+
+		.steps-grid-custom {
+			display: grid;
+			grid-template-columns: repeat(auto-fit,minmax(145px,1fr));
+			gap: 2rem;
+			max-width: 960px;
+			margin: 2.5rem auto 0;
+		}
+
+		.step-card { text-align: center; }
+
+		.step-num-badge {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 60px;
+			height: 60px;
+			border-radius: 50%;
+			background: linear-gradient(135deg,#18bfef,#0d9bcb);
+			color: #fff;
+			font-size: 1.6rem;
+			font-weight: 800;
+			margin: 0 auto 1rem;
+			box-shadow: 0 4px 16px rgba(24,191,239,.30);
+		}
+
+		.step-card h3 { color: #1a2535; font-size: 1.05rem; margin-bottom: .45rem; font-weight: 700; }
+		.step-card p  { color: #6b7a8d; font-size: .88rem;  line-height: 1.55;    margin: 0; }
+
+		/* ═══════════════════════════════════════════════════
+		   FOOTER / COPYRIGHT
+		═══════════════════════════════════════════════════ */
+		#footer { direction: rtl; }
+		#footer .fields { direction: rtl; }
+		#footer label { text-align: right; display: block; }
+		#footer input, #footer textarea { text-align: right; direction: rtl; }
+		#copyright { direction: rtl; }
+
+		/* ═══════════════════════════════════════════════════
+		   BASE MOBILE SAFETY
+		═══════════════════════════════════════════════════ */
+		*, *::before, *::after { box-sizing: border-box; }
+		html, body { overflow-x: hidden; max-width: 100%; }
+		img, video { max-width: 100%; height: auto; }
+
+		/* ═══════════════════════════════════════════════════
+		   RESPONSIVE — TABLET LANDSCAPE  ≤ 980px
+		═══════════════════════════════════════════════════ */
+		@media (max-width: 980px) {
+			#intro h1 { font-size: clamp(1.5rem, 4vw, 2.4rem); }
+			.features-grid-custom { grid-template-columns: repeat(2, 1fr); }
+			.steps-grid-custom    { grid-template-columns: repeat(3, 1fr); }
+		}
+
+		/* ═══════════════════════════════════════════════════
+		   RESPONSIVE — TABLET PORTRAIT  ≤ 736px
+		═══════════════════════════════════════════════════ */
+		@media (max-width: 736px) {
+			#intro h1 {
+				font-size: 1.7rem;
+				line-height: 1.55;
+				padding: 0 .5rem;
+			}
+			#intro > p {
+				font-size: 1rem;
+				padding: 0 .5rem;
+			}
+			#explanation-article header.major h2 {
+				font-size: 1.35rem !important;
+				padding: .6rem 1.6rem;
+			}
+			.explanation-panel .inner-text {
+				padding: 1.5rem 1.25rem;
+			}
+			.features-grid-custom {
+				grid-template-columns: 1fr;
+				gap: 1.2rem;
+			}
+			.steps-grid-custom {
+				grid-template-columns: repeat(2, 1fr);
+				gap: 1.5rem;
+			}
+			#features-section,
+			#steps-section { padding: 3.5rem 1.5rem; }
+		}
+
+		/* ═══════════════════════════════════════════════════
+		   RESPONSIVE — MOBILE  ≤ 480px
+		═══════════════════════════════════════════════════ */
+		@media (max-width: 480px) {
+			/* Hero */
+			#intro h1 {
+				font-size: 1.35rem;
+				line-height: 1.6;
+				max-width: 100%;
+				padding: 0 .25rem;
+			}
+			#intro > p {
+				font-size: .95rem;
+				line-height: 1.75;
+				padding: 0 .25rem;
+			}
+			#intro .actions {
+				flex-direction: column;
+				align-items: stretch;
+				gap: .75rem;
+				padding: 0 1rem;
+			}
+			#intro .hero-btn-primary {
+				width: 100%;
+				justify-content: center;
+				font-size: 1rem;
+				padding: .9rem 1.2rem;
+			}
+
+			/* Explanation pill */
+			#explanation-article header.major h2 {
+				font-size: 1.15rem !important;
+				padding: .5rem 1.3rem;
+			}
+			.explanation-panel .inner-text {
+				padding: 1.25rem .9rem;
+			}
+			.explanation-panel .inner-text p {
+				font-size: .93rem;
+				line-height: 1.9;
+			}
+
+			/* Section headings */
+			#features-section header.major h2,
+			#steps-section    header.major h2 {
+				font-size: 1.45rem;
+			}
+			#features-section header.major p,
+			#steps-section    header.major p {
+				font-size: .9rem;
+			}
+
+			/* Features */
+			#features-section { padding: 2.5rem 1rem; }
+			.features-grid-custom { gap: 1rem; }
+			.feature-card-custom  { padding: 1.5rem 1.1rem; }
+			.feature-card-custom .card-icon { font-size: 2rem; }
+			.feature-card-custom h3 { font-size: 1.05rem; }
+			.feature-card-custom p  { font-size: .88rem; }
+
+			/* Steps */
+			#steps-section { padding: 2.5rem 1rem; }
+			.steps-grid-custom {
+				grid-template-columns: repeat(2, 1fr);
+				gap: 1.2rem;
+			}
+			.step-num-badge {
+				width: 52px;
+				height: 52px;
+				font-size: 1.3rem;
+			}
+			.step-card h3 { font-size: .95rem; }
+			.step-card p  { font-size: .82rem; }
+		}
+
+		/* ═══════════════════════════════════════════════════
+		   RESPONSIVE — SMALL MOBILE  ≤ 360px
+		═══════════════════════════════════════════════════ */
+		@media (max-width: 360px) {
+			#intro h1 { font-size: 1.2rem; }
+			.steps-grid-custom { grid-template-columns: 1fr 1fr; gap: .9rem; }
+			.step-num-badge { width: 46px; height: 46px; font-size: 1.1rem; }
+			.feature-card-custom { padding: 1.25rem .9rem; }
+		}
+
+	</style>
+</head>
+<body class="is-preload">
+<div id="wrapper" class="fade-in">
+
+	<!-- ═══════════════════════════════════════════════
+	     HERO / INTRO
+	═══════════════════════════════════════════════ -->
+	<div id="intro">
+
+		<!-- Full-width photo background -->
+		<div class="hero-bg" aria-hidden="true">
+			<div class="hero-bg-inner"></div>
+		</div>
+
+		<!-- Multi-layer cinematic overlay -->
+		<div class="hero-overlay" aria-hidden="true"></div>
+
+		<!-- ── Text content ── -->
+		<h1>اطلب كل اللي بتحبه من أي محل في أي إمارة ، وهيوصلك لحد باب بيتك بسهولة وبتكلفة أقل</h1>
+
+		<p>
+			الطلب الجماعي يخلي كل حاجة أوفر وأسهل.<br />
+			نظام بسيط يخليك تشتري اللي محتاجه بخصومات أعلى وتوصيل أقل
+		</p>
+
+		<ul class="actions">
+			<li>
+				<a href="javascript:void(0)" class="hero-btn-primary" onclick="openExplanation()">
+					أوفر ازاي ؟
+				</a>
+			</li>
+			<li>
+				<a href="app-v3-local.html" class="hero-btn-primary">
+					<i class="fas fa-shopping-cart"></i> اطلب الآن
+				</a>
+			</li>
+		</ul>
+
+	</div><!-- #intro -->
+
+	<!-- ═══════════════════════════════════════════════
+	     HEADER
+	═══════════════════════════════════════════════ -->
+	<header id="header">
+		<a href="homepage.html" class="logo">
+			<i class="fas fa-shopping-bag"></i>&nbsp;HomiCart
+		</a>
+	</header>
+
+	<!-- ═══════════════════════════════════════════════
+	     NAV
+	═══════════════════════════════════════════════ -->
+	<nav id="nav">
+		<ul class="links">
+			<li class="active"><a href="homepage.html">الرئيسية</a></li>
+			<li><a href="#features-section">المميزات</a></li>
+			<li><a href="#steps-section">كيف يعمل</a></li>
+			<li><a href="index.html">التطبيق</a></li>
+		</ul>
+		<ul class="icons">
+			<li><a href="#" class="icon brands fa-whatsapp"><span class="label">WhatsApp</span></a></li>
+			<li><a href="#" class="icon brands fa-facebook-f"><span class="label">Facebook</span></a></li>
+			<li><a href="#" class="icon brands fa-instagram"><span class="label">Instagram</span></a></li>
+		</ul>
+	</nav>
+
+	<!-- ═══════════════════════════════════════════════
+	     MAIN
+	═══════════════════════════════════════════════ -->
+	<div id="main">
+
+		<!-- Explanation accordion -->
+		<article class="post featured" id="explanation-article">
+			<header class="major">
+				<h2>ازاي هقدر أوفر؟</h2>
+				<p>نظام الطلب الجماعي — اشتري أذكى، وادفع أقل</p>
+			</header>
+
+			<div class="explanation-panel is-open" id="explanationPanel">
+				<div class="inner-text">
+					<p>ببساطة، إحنا عملنا طريقة أذكى نشتري بيها احتياجات بيوتنا من أي محل في أي إمارة داخل الإمارات، حتى لو المحل بعيد. عن طريق اننا نستفيد بخصم المجموعة وبدل ما كل عميل يطلب لوحده ويتحاسب على توصيل غالي، بنفتح باب الطلب لفترة محددة، ونجمّع طلباتنا مع طلبات ناس تانيه مهتمه بنفس المنتج و نبعته للمحل مرة واحدة يتجهز ويتوصل.</p>
+					<p><strong>الفكرة هنا اننا بتستفيد من "الطلب الجماعي"</strong> — يعني خصومات احسن و تكلفة توصيل أقل، وتنظيم افضل، وبناخد عروض منفصله كمان.</p>
+					<p><strong>خلال وقت التجميع ، تقدر تغير او تعدل او تلغي الاوردر بتاعك بامان تام.</strong></p>
+					<p>مهم ان ده يحصل قبل انتهاء مدة التجميع، لأن بعدها الطلب بيتسجل ومش بيبقى متاح تعديل، اضافة او الغاء، عشان البائع يقدر يلتزم بالتجهيز والتوصيل في الوقت المحدد.</p>
+					<p><strong>هنشتري من مين ؟</strong></p>
+					<p>إحنا مش بنشتغل مع أي محل عشوائي. بنختار المحلات اللي عندها أعلى تقييمات وجودة حقيقية في الإمارات، ومع الوقت هنضيف محلات أكتر في مناطق مختلفة عشان نوفر لك اختيارات أوسع.</p>
+					<p><strong>في الآخر، الفكرة كلها إنك تشتري اللي بتحبه وتوفر بذكاء:</strong><br />
+					نفس المنتج، نفس الجودة، بس بخصومات احسن وتوصيل أقل وتنظيم ممتاز.</p>
+				</div>
+			</div>
+		</article>
+
+		<!-- Features -->
+		<section id="features-section">
+			<header class="major" style="text-align:center;">
+				<span class="section-accent">مميزاتنا</span>
+				<h2>ليه أشتري مع Homicart</h2>
+				<p>مميزات فريدة تخليك تشتري أذكى وتوفر أكتر</p>
+			</header>
+			<div class="features-grid-custom">
+				<div class="feature-card-custom">
+					<span class="card-icon"><i class="fas fa-piggy-bank"></i></span>
+					<h3>خصومات كبيرة</h3>
+					<p>استفيد من خصم المجموعة واحصل على عروض وخصومات خاصة من كل محل ، خصومات مش هتقدر تحصل عليها لو هتشتري لوحدك</p>
+				</div>
+				<div class="feature-card-custom">
+					<span class="card-icon"><i class="fas fa-truck"></i></span>
+					<h3>توصيل أقل</h3>
+					<p>توصيل من امارة الى امارة دايما بيكون غالي لو طلبت لوحدك ، لكن لو مجموعة بتاخد سعر توصيل مختلف</p>
+				</div>
+				<div class="feature-card-custom">
+					<span class="card-icon"><i class="fas fa-star"></i></span>
+					<h3>محلات موثوقة</h3>
+					<p>بنختار بعناية المحلات اللي عندها اعلى تقييمات واعلى جودة مضمونه ، وبنجربها اكتر من مره قبل مانبدأ الطلب علشان نتاكد انك هتكون مبسوط بمشترياتك</p>
+				</div>
+				<div class="feature-card-custom">
+					<span class="card-icon"><i class="fas fa-edit"></i></span>
+					<h3>تعديل سهل</h3>
+					<p>خلال فترة التجميع، تقدر تغير أو تعدل أو تلغي طلبك بكل حرية قبل انتهاء الوقت.</p>
+				</div>
+				<div class="feature-card-custom">
+					<span class="card-icon"><i class="fas fa-check-circle"></i></span>
+					<h3>تنظيم ممتاز</h3>
+					<p>راجع فاتورتك مباشرة بعد تجهيز الطلب وقبل ماتستلم الاوردر</p>
+				</div>
+				<div class="feature-card-custom">
+					<span class="card-icon"><i class="fas fa-map-marker-alt"></i></span>
+					<h3>أي مكان بالإمارات</h3>
+					<p>اشتري من المحلات المشتركة معانا ، في اي إمارة — دبي شارقة وغيرها ، بدأنا بإمارة عجمان ، وقريبا ان شاء الله هنزود محلات في جميع الامارات</p>
+				</div>
+			</div>
+		</section>
+
+		<!-- Steps -->
+		<section id="steps-section">
+			<header class="major" style="text-align:center;">
+				<span class="section-accent">الخطوات</span>
+				<h2>كيفية العمل</h2>
+				<p>٦ خطوات بسيطة من الاختيار لحد ما يوصلك على بابك</p>
+			</header>
+			<div class="steps-grid-custom">
+				<div class="step-card"><div class="step-num-badge">١</div><h3>اختر متجرك</h3><p>ابحث عن المحل اللي بتحب منتجاته</p></div>
+				<div class="step-card"><div class="step-num-badge">٢</div><h3>اختر المنتجات</h3><p>أضف اللي بتحتاجه لسلتك</p></div>
+				<div class="step-card"><div class="step-num-badge">٣</div><h3>انتظر التجميع</h3><p>بنجمّع طلبات العملاء الآخرين</p></div>
+				<div class="step-card"><div class="step-num-badge">٤</div><h3>اطلب وادفع</h3><p>قدم طلبك بالسعر النهائي الموفر</p></div>
+				<div class="step-card"><div class="step-num-badge">٥</div><h3>استقبل طلبك</h3><p>استقبل أغراضك بسرعة وأمان</p></div>
+				<div class="step-card"><div class="step-num-badge">٦</div><h3>استمتع</h3><p>نفس الجودة بخصم أحسن وتوصيل أقل</p></div>
+			</div>
+		</section>
+
+	</div><!-- #main -->
+
+	<!-- ═══════════════════════════════════════════════
+	     FOOTER
+	═══════════════════════════════════════════════ -->
+	<footer id="footer">
+		<section class="split contact">
+			<section>
+				<h3>تابعنا</h3>
+				<ul class="icons alt">
+					<li><a href="#" class="icon brands alt fa-whatsapp"><span class="label">WhatsApp</span></a></li>
+					<li><a href="#" class="icon brands alt fa-facebook-f"><span class="label">Facebook</span></a></li>
+					<li><a href="#" class="icon brands alt fa-instagram"><span class="label">Instagram</span></a></li>
+				</ul>
+			</section>
+		</section>
+	</footer>
+
+	<div id="copyright">
+		<ul>
+			<li>&copy; 2026 HomiCart</li>
+			<li>نظام الطلب الجماعي الموحد في الإمارات</li>
+		</ul>
+	</div>
+
+</div><!-- #wrapper -->
+
+<!-- Scripts -->
+<script src="../Templates/html5up-massively/assets/js/jquery.min.js"></script>
+<script src="../Templates/html5up-massively/assets/js/jquery.scrollex.min.js"></script>
+<script src="../Templates/html5up-massively/assets/js/jquery.scrolly.min.js"></script>
+<script src="../Templates/html5up-massively/assets/js/browser.min.js"></script>
+<script src="../Templates/html5up-massively/assets/js/breakpoints.min.js"></script>
+<script src="../Templates/html5up-massively/assets/js/util.js"></script>
+<script src="../Templates/html5up-massively/assets/js/main.js"></script>
+
+<script>
+	/* ── Accordion ── */
+	var explanationOpen = false;
+
+	function toggleExplanation() {
+		var panel = document.getElementById('explanationPanel');
+		var btn   = document.getElementById('toggleBtn');
+		explanationOpen = !explanationOpen;
+		if (explanationOpen) {
+			panel.classList.add('is-open');
+			btn.innerHTML = '<i class="fas fa-chevron-up"></i>&nbsp; إخفاء التفاصيل';
+		} else {
+			panel.classList.remove('is-open');
+			btn.innerHTML = '<i class="fas fa-chevron-down"></i>&nbsp; اعرف أكتر';
+		}
+	}
+
+	function openExplanation() {
+		document.getElementById('explanation-article')
+			.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		setTimeout(function () {
+			if (!explanationOpen) toggleExplanation();
+		}, 700);
+	}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HomiCart — تأكيد الطلب</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;600;700;800;900&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html, body { min-height:100vh; overflow-x:hidden; }
+
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: #060b12;
+      color: #fff;
+      direction: rtl;
+      text-align: right;
+    }
+    h1,h2,h3,h4,h5 { font-family:'Alexandria',sans-serif; }
+
+    .page-bg {
+      position:fixed; inset:0; z-index:0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(24,191,239,.06) 0%, transparent 65%),
+        linear-gradient(160deg, #060b12 0%, #0d1520 50%, #060b12 100%);
+    }
+
+    /* ── Header ─────────────────────────────────── */
+    header {
+      position:sticky; top:0; z-index:200;
+      background:rgba(6,11,18,.88);
+      backdrop-filter:blur(14px);
+      border-bottom:1px solid rgba(24,191,239,.18);
+      padding:13px 28px;
+      display:flex; justify-content:space-between; align-items:center;
+      box-shadow:0 4px 24px rgba(0,0,0,.40);
+    }
+    .hdr-logo {
+      font-family:'Alexandria',sans-serif;
+      font-size:1.2rem; font-weight:800; color:#fff;
+      text-decoration:none;
+      display:flex; align-items:center; gap:.4rem;
+    }
+    .hdr-logo i { color:#18bfef; }
+    .hdr-nav { display:flex; gap:.6rem; }
+    .nav-pill {
+      display:inline-flex; align-items:center; gap:.4rem;
+      padding:.46rem 1.1rem; border-radius:50px;
+      font-family:'Cairo',sans-serif; font-size:.87rem; font-weight:600;
+      cursor:pointer; text-decoration:none; transition:filter .2s, transform .2s;
+    }
+    .nav-pill-ghost {
+      background:rgba(24,191,239,.10); color:#18bfef;
+      border:1.5px solid rgba(24,191,239,.30);
+    }
+    .nav-pill-ghost:hover { background:rgba(24,191,239,.20); border-color:rgba(24,191,239,.55); }
+    .nav-pill-solid {
+      background:linear-gradient(135deg,#18bfef,#0d9bcb); color:#fff; border:none;
+      box-shadow:0 3px 14px rgba(24,191,239,.28);
+    }
+    .nav-pill-solid:hover { filter:brightness(1.1); transform:translateY(-1px); }
+
+    /* ── Progress steps ──────────────────────────── */
+    .steps-bar {
+      display:flex; justify-content:center; align-items:center;
+      gap:0; padding:1.6rem 1rem 0;
+      position:relative; z-index:1;
+    }
+    .step {
+      display:flex; flex-direction:column; align-items:center; gap:.3rem;
+      position:relative; flex:1; max-width:160px;
+    }
+    .step-circle {
+      width:38px; height:38px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Alexandria',sans-serif; font-size:.88rem; font-weight:700;
+      border:2px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.04);
+      color:rgba(255,255,255,.35);
+      transition:all .35s ease;
+      position:relative; z-index:2;
+    }
+    .step.done .step-circle  { background:#18bfef; border-color:#18bfef; color:#fff; }
+    .step.active .step-circle { background:linear-gradient(135deg,#18bfef,#0d9bcb); border-color:#18bfef; color:#fff; box-shadow:0 0 0 5px rgba(24,191,239,.18); }
+    .step-label {
+      font-family:'Cairo',sans-serif; font-size:.73rem; font-weight:600;
+      color:rgba(255,255,255,.30); white-space:nowrap;
+      transition:color .35s;
+    }
+    .step.done .step-label, .step.active .step-label { color:rgba(255,255,255,.75); }
+    .step-connector {
+      flex:1; height:2px; background:rgba(255,255,255,.08); max-width:80px;
+      margin-bottom:1.4rem;
+      transition:background .35s;
+    }
+    .step-connector.done { background:#18bfef; }
+
+    /* ── Main wrapper ────────────────────────────── */
+    .main {
+      position:relative; z-index:1;
+      max-width:640px; margin:0 auto;
+      padding:2rem 1.5rem 5rem;
+    }
+
+    /* ── Order summary card ──────────────────────── */
+    .order-summary {
+      background:rgba(24,191,239,.06);
+      border:1px solid rgba(24,191,239,.18);
+      border-radius:18px;
+      padding:1.3rem 1.5rem;
+      margin-bottom:2rem;
+      animation:fadeUp .4s ease both;
+    }
+    .order-summary-row {
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom:.5rem;
+    }
+    .order-summary-label {
+      font-size:.8rem; font-weight:700; color:rgba(24,191,239,.7);
+      text-transform:uppercase; letter-spacing:.08em;
+    }
+    .order-summary-store {
+      font-family:'Alexandria',sans-serif;
+      font-size:1rem; font-weight:700; color:#fff;
+    }
+    .order-summary-items {
+      margin-top:.7rem; padding-top:.7rem;
+      border-top:1px solid rgba(255,255,255,.07);
+      font-family:'Cairo',sans-serif;
+      font-size:.88rem; color:rgba(255,255,255,.65);
+      line-height:1.75; white-space:pre-wrap;
+      word-break:break-word;
+    }
+
+    /* ── Generic card ────────────────────────────── */
+    .card {
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:20px;
+      padding:2rem 1.8rem;
+      animation:fadeUp .45s ease both;
+    }
+    .card-title {
+      font-size:1.25rem; font-weight:800; color:#fff;
+      margin-bottom:.35rem;
+      display:flex; align-items:center; gap:.5rem;
+    }
+    .card-title i { color:#18bfef; font-size:1.1rem; }
+    .card-sub {
+      font-family:'Cairo',sans-serif;
+      font-size:.87rem; color:rgba(255,255,255,.38);
+      margin-bottom:1.6rem; line-height:1.65;
+    }
+
+    /* ── Form elements ───────────────────────────── */
+    .field { margin-bottom:1.4rem; }
+    .label {
+      display:block;
+      font-family:'Cairo',sans-serif;
+      font-size:.86rem; font-weight:700;
+      color:rgba(255,255,255,.55);
+      margin-bottom:.5rem;
+    }
+    .label .req { color:#18bfef; margin-right:.18rem; }
+    .input {
+      width:100%;
+      background:rgba(255,255,255,.05);
+      border:1.5px solid rgba(255,255,255,.10);
+      border-radius:12px;
+      color:#fff;
+      font-family:'Cairo',sans-serif;
+      font-size:.95rem;
+      padding:.8rem 1rem;
+      outline:none; direction:rtl;
+      transition:border-color .22s, background .22s, box-shadow .22s;
+    }
+    .input::placeholder { color:rgba(255,255,255,.22); }
+    .input:focus {
+      border-color:rgba(24,191,239,.55);
+      background:rgba(24,191,239,.05);
+      box-shadow:0 0 0 3px rgba(24,191,239,.10);
+    }
+    .input.error { border-color:rgba(255,80,80,.55); box-shadow:0 0 0 3px rgba(255,80,80,.10); }
+    .field-err {
+      font-size:.78rem; color:#ff6b6b;
+      margin-top:.3rem; display:none;
+    }
+    .field-err.show { display:block; }
+
+    /* ── Buttons ─────────────────────────────────── */
+    .btn {
+      display:flex; align-items:center; justify-content:center; gap:.45rem;
+      width:100%; padding:.9rem;
+      border-radius:50px; border:none;
+      font-family:'Alexandria',sans-serif;
+      font-size:1rem; font-weight:700; cursor:pointer;
+      transition:filter .22s, transform .22s, box-shadow .22s;
+      letter-spacing:.02em;
+    }
+    .btn:disabled { opacity:.55; cursor:not-allowed; transform:none !important; }
+    .btn-teal {
+      background:linear-gradient(135deg,#18bfef 0%,#0d9bcb 100%); color:#fff;
+      box-shadow:0 4px 20px rgba(24,191,239,.30);
+    }
+    .btn-teal:hover:not(:disabled) { filter:brightness(1.1); transform:translateY(-2px); box-shadow:0 8px 28px rgba(24,191,239,.48); }
+    .btn-green {
+      background:linear-gradient(135deg,#25d366 0%,#1aad54 100%); color:#fff;
+      box-shadow:0 4px 20px rgba(37,211,102,.28);
+    }
+    .btn-green:hover:not(:disabled) { filter:brightness(1.08); transform:translateY(-2px); box-shadow:0 8px 30px rgba(37,211,102,.48); }
+    .btn-ghost {
+      background:rgba(255,255,255,.05);
+      border:1.5px solid rgba(255,255,255,.12);
+      color:rgba(255,255,255,.55);
+    }
+    .btn-ghost:hover { background:rgba(255,255,255,.10); color:#fff; }
+
+    /* ── Customer info card (existing customer) ──── */
+    .client-card {
+      background:rgba(24,191,239,.06);
+      border:1.5px solid rgba(24,191,239,.22);
+      border-radius:16px; padding:1.4rem 1.5rem;
+      margin-bottom:1.5rem;
+      animation:fadeUp .35s ease both;
+    }
+    .client-card-head {
+      display:flex; align-items:center; gap:.75rem; margin-bottom:1rem;
+    }
+    .client-avatar {
+      width:48px; height:48px; border-radius:50%;
+      background:linear-gradient(135deg,#18bfef,#0d9bcb);
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.4rem; font-weight:800; color:#fff;
+      font-family:'Alexandria',sans-serif;
+      flex-shrink:0;
+    }
+    .client-name {
+      font-family:'Alexandria',sans-serif;
+      font-size:1.05rem; font-weight:700; color:#fff;
+    }
+    .client-id-badge {
+      font-family:'Cairo',sans-serif;
+      font-size:.75rem; color:rgba(24,191,239,.8);
+      background:rgba(24,191,239,.10);
+      border:1px solid rgba(24,191,239,.20);
+      padding:.15rem .65rem; border-radius:50px;
+      display:inline-block; margin-top:.15rem;
+    }
+    .client-row {
+      display:flex; gap:.5rem; align-items:flex-start;
+      margin-bottom:.45rem;
+      font-family:'Cairo',sans-serif; font-size:.86rem;
+      color:rgba(255,255,255,.55);
+    }
+    .client-row i { color:#18bfef; font-size:.78rem; margin-top:.18rem; flex-shrink:0; }
+    .client-change-btn {
+      background:none; border:none;
+      color:rgba(24,191,239,.65); font-family:'Cairo',sans-serif;
+      font-size:.8rem; cursor:pointer; text-decoration:underline;
+      padding:.4rem 0; display:block; margin-top:.6rem;
+      transition:color .2s;
+    }
+    .client-change-btn:hover { color:#18bfef; }
+
+    /* ── Success screen ──────────────────────────── */
+    .success-screen {
+      text-align:center;
+      padding:3rem 1rem;
+      animation:fadeUp .5s ease both;
+    }
+    .success-icon {
+      width:90px; height:90px; border-radius:50%;
+      background:linear-gradient(135deg,#25d366,#1aad54);
+      display:flex; align-items:center; justify-content:center;
+      font-size:2.4rem; color:#fff;
+      margin:0 auto 1.5rem;
+      box-shadow:0 8px 32px rgba(37,211,102,.35);
+      animation:popIn .5s cubic-bezier(.34,1.56,.64,1) both .1s;
+    }
+    @keyframes popIn {
+      from { transform:scale(0) rotate(-10deg); opacity:0; }
+      to   { transform:scale(1) rotate(0deg);   opacity:1; }
+    }
+    .success-title {
+      font-size:1.6rem; font-weight:800; color:#fff; margin-bottom:.5rem;
+    }
+    .success-sub {
+      font-family:'Cairo',sans-serif;
+      font-size:.93rem; color:rgba(255,255,255,.45); margin-bottom:2rem;
+    }
+    .ids-row {
+      display:flex; gap:1rem; justify-content:center;
+      flex-wrap:wrap; margin-bottom:2.5rem;
+    }
+    .id-chip {
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:14px; padding:.8rem 1.4rem;
+      text-align:center;
+    }
+    .id-chip-label {
+      font-family:'Cairo',sans-serif; font-size:.72rem;
+      color:rgba(255,255,255,.35); margin-bottom:.25rem;
+    }
+    .id-chip-value {
+      font-family:'Alexandria',sans-serif; font-size:1.1rem;
+      font-weight:800; color:#18bfef;
+    }
+
+    /* ── Divider ─────────────────────────────────── */
+    hr.divider { border:none; border-top:1px solid rgba(255,255,255,.07); margin:1.5rem 0; }
+
+    /* ── Keyframes ───────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(16px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .spin { animation:spin .9s linear infinite; }
+
+    /* ── Responsive ──────────────────────────────── */
+    @media (max-width:500px) {
+      .main { padding:1.5rem 1rem 4rem; }
+      .card { padding:1.4rem 1.2rem; }
+      header { padding:12px 16px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page-bg"></div>
+
+<!-- Header -->
+<header>
+  <a href="homepage.html" class="hdr-logo">
+    <i class="fas fa-shopping-bag"></i> HomiCart
+  </a>
+  <div class="hdr-nav">
+    <a href="app-v3-local.html" class="nav-pill nav-pill-ghost">
+      <i class="fas fa-arrow-right"></i> المتاجر
+    </a>
+    <a href="homepage.html" class="nav-pill nav-pill-solid">
+      <i class="fas fa-house"></i> الرئيسية
+    </a>
+  </div>
+</header>
+
+<!-- Progress bar -->
+<div class="steps-bar" id="stepsBar">
+  <div class="step done" id="step1">
+    <div class="step-circle"><i class="fas fa-cart-plus"></i></div>
+    <div class="step-label">الطلب</div>
+  </div>
+  <div class="step-connector done"></div>
+  <div class="step active" id="step2">
+    <div class="step-circle">2</div>
+    <div class="step-label">بياناتك</div>
+  </div>
+  <div class="step-connector" id="conn2" ></div>
+  <div class="step" id="step3">
+    <div class="step-circle">3</div>
+    <div class="step-label">تأكيد</div>
+  </div>
+</div>
+
+<div class="main" id="mainContent"><!-- rendered by JS --></div>
+
+<script>
+  // ═══════════════════════════════════════════════════════════════
+  //  CONFIG
+  // ═══════════════════════════════════════════════════════════════
+  const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
+
+  async function _callScript(action, data) {
+    const res = await fetch(`${API_BASE}/api/sheets`, {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({ action, ...data }),
+    });
+    return res.json();
+  }
+
+  // ── Read pending order from localStorage ──────────────────────
+  const ORDER_KEY = 'homiCart_pendingOrder';
+  let pendingOrder = null;
+  try { pendingOrder = JSON.parse(localStorage.getItem(ORDER_KEY)); } catch(_) {}
+
+  if (!pendingOrder) {
+    // No pending order — send back to stores
+    document.getElementById('mainContent').innerHTML = `
+      <div style="text-align:center;padding:4rem 1rem;">
+        <i class="fas fa-triangle-exclamation" style="font-size:2.5rem;color:rgba(245,200,66,.5);display:block;margin-bottom:1rem"></i>
+        <p style="color:rgba(255,255,255,.45);font-family:'Cairo',sans-serif">لا يوجد طلب معلق — يرجى العودة واختيار متجر.</p>
+        <a href="app-v3-local.html" style="display:inline-block;margin-top:1.5rem;color:#18bfef;font-family:'Cairo',sans-serif;font-size:.9rem">← العودة للمتاجر</a>
+      </div>`;
+  } else {
+    renderPhoneStep();
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  STEP 2 — Phone entry
+  // ════════════════════════════════════════════════════════════════
+  function renderPhoneStep() {
+    _setStep(2);
+    document.getElementById('mainContent').innerHTML = `
+      ${_orderSummaryHTML()}
+      <div class="card">
+        <div class="card-title"><i class="fas fa-mobile-screen-button"></i> أدخل رقم هاتفك</div>
+        <div class="card-sub">سنتحقق من بياناتك أو نسجلك كعميل جديد.</div>
+        <div class="field">
+          <label class="label"><span class="req">*</span> رقم الهاتف</label>
+          <input type="tel" id="phoneInput" class="input"
+            placeholder="+971 50 123 4567" dir="ltr" style="text-align:right"
+            onkeydown="if(event.key==='Enter') lookupPhone()">
+          <div class="field-err" id="phoneErr">يرجى إدخال رقم هاتف صحيح</div>
+        </div>
+        <button class="btn btn-teal" id="lookupBtn" onclick="lookupPhone()">
+          <i class="fas fa-magnifying-glass"></i>
+          <span id="lookupTxt">تحقق من الرقم</span>
+        </button>
+      </div>`;
+    setTimeout(() => document.getElementById('phoneInput')?.focus(), 200);
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  PHONE LOOKUP
+  // ════════════════════════════════════════════════════════════════
+  async function lookupPhone() {
+    const phone = document.getElementById('phoneInput').value.trim();
+    if (phone.replace(/[\s\+\-\(\)]/g,'').length < 8) {
+      document.getElementById('phoneErr').classList.add('show');
+      document.getElementById('phoneInput').classList.add('error');
+      return;
+    }
+    document.getElementById('phoneErr').classList.remove('show');
+    document.getElementById('phoneInput').classList.remove('error');
+    const btn = document.getElementById('lookupBtn');
+    btn.disabled = true;
+    document.getElementById('lookupTxt').innerHTML = '<i class="fas fa-spinner spin"></i> جاري البحث ...';
+
+    try {
+      const result = await _callScript('lookupPhone', { phone });
+      if (result.error) throw new Error(result.error);
+      if (result.found) {
+        renderExistingCustomer(result.client);
+      } else {
+        renderNewCustomer(phone);
+      }
+    } catch(e) {
+      btn.disabled = false;
+      document.getElementById('lookupTxt').textContent = 'تحقق من الرقم';
+      document.getElementById('phoneErr').textContent = 'تعذر الاتصال بالسيرفر — حاول مجدداً.';
+      document.getElementById('phoneErr').classList.add('show');
+      console.error('[lookupPhone]', e);
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  EXISTING CUSTOMER
+  // ════════════════════════════════════════════════════════════════
+  function renderExistingCustomer(client) {
+    _setStep(3);
+    window._confirmedClient = client;
+    document.getElementById('mainContent').innerHTML = `
+      ${_orderSummaryHTML()}
+      <div class="card">
+        <div class="card-title"><i class="fas fa-circle-check"></i> أهلاً بعودتك!</div>
+        <div class="card-sub">تم التعرف على بياناتك — راجعها وأرسل طلبك.</div>
+        <div class="client-card">
+          <div class="client-card-head">
+            <div class="client-avatar">${client.name?.charAt(0) || '؟'}</div>
+            <div>
+              <div class="client-name">${client.name || '—'}</div>
+              <div class="client-id-badge">${client.clientId}</div>
+            </div>
+          </div>
+          <div class="client-row"><i class="fas fa-phone"></i>${client.phone || '—'}</div>
+          ${client.emirate ? `<div class="client-row"><i class="fas fa-location-dot"></i>${client.emirate}</div>` : ''}
+          ${client.address ? `<div class="client-row"><i class="fas fa-map-pin"></i>${client.address}</div>` : ''}
+          <button class="client-change-btn" onclick="renderPhoneStep()">استخدام رقم آخر</button>
+        </div>
+        <button class="btn btn-green" id="submitBtn" onclick="submitOrder()">
+          <i class="fab fa-whatsapp"></i>
+          <span id="submitTxt">إرسال الطلب</span>
+        </button>
+      </div>`;
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  NEW CUSTOMER — registration form
+  // ════════════════════════════════════════════════════════════════
+  function renderNewCustomer(phone) {
+    _setStep(3);
+    document.getElementById('mainContent').innerHTML = `
+      ${_orderSummaryHTML()}
+      <div class="card">
+        <div class="card-title"><i class="fas fa-user-plus"></i> تسجيل عميل جديد</div>
+        <div class="card-sub">الرقم غير مسجل — أضف بياناتك لإتمام الطلب.</div>
+
+        <div class="field">
+          <label class="label"><span class="req">*</span> الاسم الكامل</label>
+          <input type="text" id="regName" class="input" placeholder="مثال: أحمد محمد">
+          <div class="field-err" id="errName">الاسم مطلوب</div>
+        </div>
+        <div class="field">
+          <label class="label"><span class="req">*</span> رقم الهاتف</label>
+          <input type="tel" id="regPhone" class="input" value="${phone}"
+            dir="ltr" style="text-align:right" placeholder="+971 50 123 4567">
+          <div class="field-err" id="errPhone">رقم الهاتف مطلوب</div>
+        </div>
+        <div class="field">
+          <label class="label">الإمارة</label>
+          <input type="text" id="regEmirate" class="input" placeholder="مثال: عجمان">
+        </div>
+        <div class="field">
+          <label class="label">العنوان</label>
+          <input type="text" id="regAddress" class="input" placeholder="المنطقة، الشارع، المبنى ...">
+        </div>
+
+        <button class="btn btn-green" id="submitBtn" onclick="registerAndSubmit()">
+          <i class="fas fa-paper-plane"></i>
+          <span id="submitTxt">تسجيل وإرسال الطلب</span>
+        </button>
+        <button class="btn btn-ghost" style="margin-top:.7rem" onclick="renderPhoneStep()">
+          <i class="fas fa-arrow-right"></i> تغيير الرقم
+        </button>
+      </div>`;
+    setTimeout(() => document.getElementById('regName')?.focus(), 150);
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  REGISTER NEW CLIENT THEN SUBMIT
+  // ════════════════════════════════════════════════════════════════
+  async function registerAndSubmit() {
+    const name    = document.getElementById('regName').value.trim();
+    const phone   = document.getElementById('regPhone').value.trim();
+    const emirate = document.getElementById('regEmirate').value.trim();
+    const address = document.getElementById('regAddress').value.trim();
+
+    let ok = true;
+    if (!name)  { _showErr('regName',  'errName',  'الاسم مطلوب');           ok = false; }
+    if (!phone || phone.replace(/[\s\+\-\(\)]/g,'').length < 8) {
+                  _showErr('regPhone', 'errPhone', 'رقم الهاتف مطلوب');       ok = false; }
+    if (!ok) return;
+
+    _setBtnLoading('submitBtn', 'submitTxt', 'جاري التسجيل ...');
+    try {
+      const reg = await _callScript('registerClient', { name, phone, emirate, address });
+      if (reg.error) throw new Error(reg.error);
+      window._confirmedClient = { clientId: reg.clientId, name, phone, emirate, address };
+      await _doConfirmOrder();
+    } catch(e) {
+      _resetBtn('submitBtn', 'submitTxt', 'تسجيل وإرسال الطلب');
+      alert('حدث خطأ: ' + e.message);
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  SUBMIT ORDER (existing customer)
+  // ════════════════════════════════════════════════════════════════
+  async function submitOrder() {
+    _setBtnLoading('submitBtn', 'submitTxt', 'جاري الإرسال ...');
+    try {
+      await _doConfirmOrder();
+    } catch(e) {
+      _resetBtn('submitBtn', 'submitTxt', 'إرسال الطلب');
+      alert('حدث خطأ: ' + e.message);
+    }
+  }
+
+  // ── Core confirm logic ────────────────────────────────────────
+  async function _doConfirmOrder() {
+    const client = window._confirmedClient;
+    const result = await _callScript('confirmOrder', {
+      tempId    : pendingOrder.tempId,
+      sheetName : pendingOrder.sheetName,
+      clientId  : client.clientId,
+      name      : client.name,
+      phone     : client.phone,
+      emirate   : client.emirate  || '',
+      address   : client.address  || '',
+    });
+    if (result.error) throw new Error(result.error);
+    localStorage.removeItem(ORDER_KEY);
+    renderSuccess(result.orderId, result.clientId, client.name);
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  SUCCESS SCREEN
+  // ════════════════════════════════════════════════════════════════
+  function renderSuccess(orderId, clientId, clientName) {
+    // Mark all steps done
+    ['step1','step2','step3'].forEach(id => document.getElementById(id)?.classList.replace('active','done'));
+    ['conn2'].forEach(id => { const el=document.getElementById(id); if(el) el.classList.add('done'); });
+    document.getElementById('step3').querySelector('.step-circle').innerHTML = '<i class="fas fa-check"></i>';
+
+    document.getElementById('mainContent').innerHTML = `
+      <div class="success-screen">
+        <div class="success-icon"><i class="fas fa-check"></i></div>
+        <div class="success-title">تم تسجيل طلبك بنجاح! 🎉</div>
+        <div class="success-sub">شكراً ${clientName || ''} — سيتواصل معك فريق HomiCart قريباً.</div>
+        <div class="ids-row">
+          <div class="id-chip">
+            <div class="id-chip-label">رقم الطلب</div>
+            <div class="id-chip-value">${orderId}</div>
+          </div>
+          <div class="id-chip">
+            <div class="id-chip-label">رقم العميل</div>
+            <div class="id-chip-value">${clientId}</div>
+          </div>
+        </div>
+        <a href="app-v3-local.html" class="btn btn-teal" style="max-width:320px;margin:0 auto .8rem">
+          <i class="fas fa-store"></i> تصفح المتاجر
+        </a>
+        <a href="homepage.html" class="btn btn-ghost" style="max-width:320px;margin:0 auto">
+          <i class="fas fa-house"></i> الصفحة الرئيسية
+        </a>
+      </div>`;
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  HELPERS
+  // ════════════════════════════════════════════════════════════════
+  function _orderSummaryHTML() {
+    if (!pendingOrder) return '';
+    return `
+      <div class="order-summary">
+        <div class="order-summary-row">
+          <span class="order-summary-label"><i class="fas fa-store"></i> المتجر</span>
+          <span class="order-summary-store">${pendingOrder.storeName || ''}</span>
+        </div>
+        <div class="order-summary-items">${pendingOrder.items || ''}</div>
+      </div>`;
+  }
+
+  function _setStep(n) {
+    if (n >= 2) { document.getElementById('step1').classList.replace('active','done'); }
+    if (n === 2) { document.getElementById('step2').classList.add('active'); }
+    if (n >= 3) {
+      document.getElementById('step2').classList.replace('active','done');
+      document.getElementById('step2').querySelector('.step-circle').innerHTML = '<i class="fas fa-check"></i>';
+      document.getElementById('conn2').classList.add('done');
+      document.getElementById('step3').classList.add('active');
+    }
+  }
+
+  function _showErr(inputId, errId, msg) {
+    const el = document.getElementById(inputId);
+    const er = document.getElementById(errId);
+    if (el) el.classList.add('error');
+    if (er) { er.textContent = msg; er.classList.add('show'); }
+  }
+
+  function _setBtnLoading(btnId, txtId, msg) {
+    const b = document.getElementById(btnId); if (b) b.disabled = true;
+    const t = document.getElementById(txtId); if (t) t.innerHTML = `<i class="fas fa-spinner spin"></i> ${msg}`;
+  }
+
+  function _resetBtn(btnId, txtId, label) {
+    const b = document.getElementById(btnId); if (b) b.disabled = false;
+    const t = document.getElementById(txtId); if (t) t.textContent = label;
+  }
+</script>
+</body>
+</html>

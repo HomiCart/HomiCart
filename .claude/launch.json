@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "homepage",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "frontend", "-l", "3000", "--no-clipboard"],
+      "port": 3000
+    }
+  ]
+}
