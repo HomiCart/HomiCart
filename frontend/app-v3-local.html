@@ -2035,7 +2035,8 @@
   /* ── Select store → fetch menu + discount images → show two cards ── */
   async function selectStore(folder, name, tag) {
     currentStore = { folder, name };
-    window._currentStore = { folder, name, tag }; // saved so cancelOrderMode() can restore
+    window._currentStore = { folder, name, tag };
+    updateCountdownForStore(folder); // show this store's countdown timer
     document.getElementById('storeName').textContent    = name;
     document.getElementById('menuTitle').textContent    = name;
     document.getElementById('storeEyebrow').textContent = tag || 'المنيو';
@@ -2265,6 +2266,7 @@
     document.getElementById('custPhone').value = '';
     _resetForm();
     showPage('customerPage');
+    updateCountdownForStore(folder); // show timer from first step
     setTimeout(() => document.getElementById('custPhone').focus(), 100);
   }
 
@@ -2724,6 +2726,12 @@
      APPS SCRIPT CONFIG — Direct connection to Google Sheets
   ══════════════════════════════════════════════════════════ */
   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRW2K-GbHfawvZMpxk5ExfyYg5EIhFpUgTy-nHaMjtNR1ZiWn-9BuZpRSWACTEGLqNlA/exec';
+
+  // ── Per-store closing times — update these dates to control each store's window ──
+  const STORE_CLOSING_TIMES = {
+    'Al Rokn AL masry': '2025-07-01 23:00:00',   // الركن المصري closing time
+    'Al Fayoumy'      : '2025-07-01 22:00:00',   // الفيومي closing time
+  };
 
   // Sheet names MUST match your Google Apps Script tabs
   const SHEET_NAMES = {
@@ -3189,6 +3197,7 @@
     document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
     document.getElementById('opSaveBtn').disabled = false;
     _opSaved = false;
+    hideCountdown();
     showPage('storePage');
     requestAnimationFrame(() => {
       document.querySelectorAll('.store-card').forEach((c, i) =>
@@ -3197,23 +3206,29 @@
     });
   }
 
-  // ── Order Window — orders always accepted; timer shows if end time configured ──
+  // ── Order Window — always open; timer per store ──────────
   function isOrderWindowOpen()  { return true; }
   function getWindowClosedMsg() { return ''; }
 
   let _cdInterval = null;
   let _cdEndTime  = null;
 
-  async function loadOrderWindow() {
-    try {
-      const res = await _callScript('getOrderWindow', {}, 10000);
-      if (res && res.success && res.end && res.phase !== 'no_settings') {
-        _cdEndTime = new Date(res.end);
-        startCountdown();
-      }
-    } catch(e) {
-      // no timer if window not configured
-    }
+  // Called on page boot — no API needed
+  function loadOrderWindow() { return Promise.resolve(); }
+
+  // Call this whenever a store is selected/entered
+  function updateCountdownForStore(storeKey) {
+    const closingStr = STORE_CLOSING_TIMES[storeKey];
+    if (!closingStr) { hideCountdown(); return; }
+    _cdEndTime = new Date(closingStr);
+    startCountdown();
+  }
+
+  function hideCountdown() {
+    const el = document.getElementById('orderCountdown');
+    if (el) el.classList.add('hidden');
+    document.body.classList.remove('has-countdown');
+    if (_cdInterval) { clearInterval(_cdInterval); _cdInterval = null; }
   }
 
   function startCountdown() {
