@@ -2922,9 +2922,14 @@
   }
 
   function isOrderWindowOpen() {
-    if (!window._orderWindow) return true; // not loaded yet → open
-    if (window._orderWindow.phase === 'no_settings') return true; // not configured → open
-    return window._orderWindow.isOpen === true;
+    if (!window._orderWindow) return true;
+    // Only block if explicitly closed by admin (phase = before_open or closed)
+    // If not configured at all → always open
+    if (!window._orderWindow.isOpen) {
+      const phase = window._orderWindow.phase;
+      if (phase === 'before_open' || phase === 'closed') return false;
+    }
+    return true; // default open
   }
 
   function getWindowClosedMsg() {
