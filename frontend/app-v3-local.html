@@ -1975,15 +1975,24 @@
     }
   }
 
-  // ── Phone input: sync WhatsApp + lookup ────────────────
+  // ── Phone input: clear stale data + sync WhatsApp + lookup ──
   let _lookupTimer2 = null;
   function onPhoneInput() {
     const phone    = document.getElementById('custPhone').value.trim();
     const statusEl = document.getElementById('custLookupStatus');
-    // Sync WhatsApp if "same"
+
+    // FIX 1: Clear all auto-filled fields immediately when phone changes
+    document.getElementById('custName').value    = '';
+    document.getElementById('custArea').value    = '';
+    document.getElementById('custAddress').value = '';
+    window._existingCustomerId = null;
+
+    // Sync WhatsApp
     const opt = document.querySelector('input[name="waOpt"]:checked')?.value;
     if (opt === 'same') document.getElementById('custWhatsapp').value = phone;
-    // Lookup
+    else if (opt === 'different') document.getElementById('custWhatsapp').value = '';
+
+    // Reset status
     statusEl.className   = 'cust-lookup-status';
     statusEl.textContent = '';
     clearTimeout(_lookupTimer2);
@@ -2065,10 +2074,14 @@
         longitude     : loc?.lng || '',
       }));
 
-      // Proceed to store menu
-      btn.innerHTML = '<i class="fas fa-check"></i>&nbsp;تم الحفظ!';
+      // FIX 2 & 3: Load store then go DIRECTLY to order panel (skip menu browsing)
+      btn.innerHTML = '<i class="fas fa-check"></i>&nbsp;تم! جاري الانتقال...';
       const store = window._pendingStore;
+      // selectStore sets up store context + loads images in background
       await selectStore(store.folder, store.name, store.tag);
+      // Immediately open the order panel on top — no need to click "اطلب الآن"
+      // Store routing is automatic: SHEET_NAMES[store.folder] picks the right tab
+      setTimeout(() => orderNow(store.folder), 150);
 
     } catch(e) {
       btn.disabled = false;
