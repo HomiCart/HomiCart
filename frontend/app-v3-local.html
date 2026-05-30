@@ -3209,18 +3209,19 @@
 
   // ── Order Window — always open; timer per store ──────────
   function isOrderWindowOpen() {
-    // Explicitly closed by timer or admin → block
-    if (window._batchClosed === true) return false;
-    // Fallback: check countdown end time
-    if (_cdEndTime && new Date() > _cdEndTime) return false;
-    // Default: open
+    const phase = window._batchPhase;
+    // Phase-based check (from live admin data)
+    if (phase === 'before_open') return false;
+    if (phase === 'closed')      return false;
+    // Time-based fallback: countdown end time passed
+    if (phase !== 'open' && _cdEndTime && new Date() > _cdEndTime) return false;
+    // Default: open (no settings or within window)
     return true;
   }
   function getWindowClosedMsg() {
     const phase = window._batchPhase;
     if (phase === 'before_open') return '⏳ لم يبدأ وقت تلقي الطلبات بعد';
-    if (phase === 'closed')      return '🔒 انتهى وقت تلقي الطلبات لهذه الدورة';
-    return '🔒 الطلبات مغلقة حالياً';
+    return '🔒 انتهى وقت تلقي الطلبات لهذه الدورة';
   }
 
   let _cdInterval = null;
@@ -3231,38 +3232,28 @@
 
   // Call this whenever a store is selected/entered
   function updateCountdownForStore(storeKey) {
-    // Fetch live end time from admin settings
-    _callScript('getStoreOrderWindow', { store: storeKey }, 12000)
+    // FIX: use sheet name (matches what admin saves) not folder name
+    // e.g. 'Al Rokn AL masry' → 'AlRoknAlMasry'
+    const apiKey = SHEET_NAMES[storeKey] || storeKey;
+
+    // Show hardcoded fallback immediately while API loads
+    const fallback = STORE_CLOSING_TIMES[storeKey];
+    if (fallback) {
+      const d = new Date(fallback.trim());
+      if (!isNaN(d.getTime())) { _cdEndTime = d; startCountdown(); }
+    }
+
+    _callScript('getStoreOrderWindow', { store: apiKey }, 12000)
       .then(res => {
         if (!res || !res.success) return;
-
-        // Update countdown with live admin-configured end time
+        window._batchPhase = res.phase || 'no_settings';
+        // Update countdown with live end time from admin
         if (res.end) {
           const live = new Date(res.end);
           if (!isNaN(live.getTime())) { _cdEndTime = live; startCountdown(); }
         }
-
-        // Block orders based on TIME PHASE ONLY
-        // 'open'        = within start→end window  → allow
-        // 'before_open' = before start time         → block
-        // 'closed'      = past end time             → block
-        // 'no_settings' = admin hasn't set window   → allow (default open)
-        window._batchPhase = res.phase;
-        // Only set _batchClosed from timer/explicit close, not from batch_status setting
-        if (res.phase === 'before_open' || res.phase === 'closed') {
-          window._batchClosed = true;
-        } else if (res.phase === 'open' || res.phase === 'no_settings') {
-          window._batchClosed = false; // reset if admin extended or window is open
-        }
       })
-      .catch(() => {
-        // Fallback to hardcoded times if API fails
-        const fallback = STORE_CLOSING_TIMES[storeKey];
-        if (fallback) {
-          const d = new Date(fallback.trim());
-          if (!isNaN(d.getTime())) { _cdEndTime = d; startCountdown(); }
-        }
-      });
+      .catch(() => {}); // fallback already set above
   }
 
   function hideCountdown() {
@@ -3296,7 +3287,7 @@
         ['cdHours','cdMins','cdSecs'].forEach(id => document.getElementById(id).textContent = '00');
         clearInterval(_cdInterval);
         // Auto-close: New → Preparing + mark batch closed
-        window._batchClosed = true;
+        window._batchPhase = 'closed'; // update phase so orders are blocked
         const storeKey = SHEET_NAMES[window._currentStore?.folder] || '';
         if (storeKey) {
           console.log('[Batch] Timer ended — auto-closing batch for:', storeKey);
