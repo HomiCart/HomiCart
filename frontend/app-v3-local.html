@@ -733,6 +733,107 @@
     }
 
     /* ══════════════════════════════
+       CUSTOMER INFO PAGE
+    ══════════════════════════════ */
+    .cust-form-wrap {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 0 1rem 3rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.4rem;
+    }
+    .cust-field {
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+    }
+    .cust-label {
+      font-family: 'Alexandria', sans-serif;
+      font-size: .9rem;
+      font-weight: 600;
+      color: rgba(255,255,255,.75);
+    }
+    .req { color: #18bfef; }
+    .cust-input {
+      background: rgba(255,255,255,.06);
+      border: 1.5px solid rgba(255,255,255,.12);
+      border-radius: 10px;
+      padding: .75rem 1rem;
+      font-family: 'Cairo', sans-serif;
+      font-size: 1rem;
+      color: #fff;
+      outline: none;
+      transition: border-color .2s;
+      text-align: right;
+      direction: rtl;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .cust-input:focus { border-color: #18bfef; background: rgba(24,191,239,.06); }
+    .cust-textarea { resize: vertical; min-height: 70px; }
+    .cust-lookup-status {
+      font-family: 'Cairo', sans-serif;
+      font-size: .82rem;
+      min-height: 1.2rem;
+      color: rgba(255,255,255,.5);
+      transition: color .3s;
+    }
+    .cust-lookup-status.found { color: #18bfef; }
+    .cust-loc-status {
+      font-family: 'Cairo', sans-serif;
+      font-size: .88rem;
+      padding: .6rem 1rem;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .cust-loc-status.detecting { background: rgba(255,255,255,.05); color: rgba(255,255,255,.5); }
+    .cust-loc-status.success   { background: rgba(24,191,239,.08); color: #18bfef; }
+    .cust-loc-status.failed    { background: rgba(255,80,80,.07); color: #ff7070; }
+    .btn-retry-loc {
+      background: transparent;
+      border: 1px solid rgba(24,191,239,.3);
+      border-radius: 8px;
+      color: rgba(24,191,239,.7);
+      font-family: 'Cairo', sans-serif;
+      font-size: .85rem;
+      padding: .45rem 1rem;
+      cursor: pointer;
+      align-self: flex-start;
+      transition: all .2s;
+    }
+    .btn-retry-loc:hover { border-color: #18bfef; color: #18bfef; }
+    .cust-err {
+      font-family: 'Cairo', sans-serif;
+      font-size: .88rem;
+      color: #ff7070;
+      min-height: 1.2rem;
+      text-align: center;
+    }
+    .btn-cust-submit {
+      background: linear-gradient(135deg, #18bfef 0%, #0d9bcb 100%);
+      color: #fff;
+      font-family: 'Alexandria', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 50px;
+      padding: .9rem 2.5rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .6rem;
+      margin-top: .5rem;
+      transition: filter .2s, box-shadow .2s;
+      box-shadow: 0 4px 20px rgba(24,191,239,.35);
+    }
+    .btn-cust-submit:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 8px 28px rgba(24,191,239,.55); }
+    .btn-cust-submit:disabled { opacity: .6; cursor: not-allowed; }
+
+    /* ══════════════════════════════
        ORDERING INLINE LAYOUT
        Menu thumbnails + order form side by side
     ══════════════════════════════ */
@@ -1167,6 +1268,70 @@
     <div class="stores-grid" id="storesContainer"></div>
   </div>
 
+  <!-- ═══ CUSTOMER INFO PAGE ═══ -->
+  <div id="customerPage" class="page">
+    <div class="breadcrumb">
+      <span class="bc-link" onclick="showPage('storePage')">
+        <i class="fas fa-store"></i>&nbsp;المتاجر
+      </span>
+      <i class="fas fa-chevron-left bc-sep"></i>
+      <span id="custStoreName">-</span>
+    </div>
+
+    <div class="page-header">
+      <span class="eyebrow">بياناتك</span>
+      <h2>معلومات التواصل</h2>
+      <div class="teal-rule"></div>
+      <p>ادخل بياناتك عشان نقدر نوصلك طلبك</p>
+    </div>
+
+    <div class="cust-form-wrap">
+
+      <div class="cust-field">
+        <label class="cust-label">رقم الهاتف <span class="req">*</span></label>
+        <input type="tel" id="custPhone" class="cust-input" placeholder="05XXXXXXXX" oninput="onPhoneInput()" />
+        <div id="custLookupStatus" class="cust-lookup-status"></div>
+      </div>
+
+      <div class="cust-field">
+        <label class="cust-label">الاسم الكامل <span class="req">*</span></label>
+        <input type="text" id="custName" class="cust-input" placeholder="محمد أحمد" />
+      </div>
+
+      <div class="cust-field">
+        <label class="cust-label">المنطقة / الإمارة <span class="req">*</span></label>
+        <input type="text" id="custArea" class="cust-input" placeholder="مثال: عجمان - المنامة" />
+      </div>
+
+      <div class="cust-field">
+        <label class="cust-label">العنوان التفصيلي <span class="req">*</span></label>
+        <textarea id="custAddress" class="cust-input cust-textarea" rows="2" placeholder="اسم الشارع، رقم المبنى، أي تفاصيل تساعد في التوصيل..."></textarea>
+      </div>
+
+      <div class="cust-field">
+        <label class="cust-label">رقم واتساب / رقم احتياطي</label>
+        <input type="tel" id="custWhatsapp" class="cust-input" placeholder="05XXXXXXXX (اختياري)" />
+      </div>
+
+      <div class="cust-field">
+        <label class="cust-label">الموقع الجغرافي</label>
+        <div id="custLocStatus" class="cust-loc-status detecting">
+          <i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد الموقع تلقائياً...
+        </div>
+        <button class="btn-retry-loc" onclick="retryLocation()">
+          <i class="fas fa-map-marker-alt"></i> إعادة تحديد الموقع
+        </button>
+      </div>
+
+      <div id="custFormErr" class="cust-err"></div>
+
+      <button class="btn-cust-submit" id="custSubmitBtn" onclick="submitCustomerInfo()">
+        <i class="fas fa-arrow-left"></i>&nbsp;التالي — اكتب طلبك
+      </button>
+
+    </div>
+  </div>
+
   <!-- ═══ MENU PAGE ═══ -->
   <div id="menuPage" class="page">
     <div class="breadcrumb">
@@ -1429,7 +1594,7 @@
   function renderStores() {
     // Step 1 — Draw cards immediately (no waiting) so the UI is instant
     const realHtml = stores.map(s => `
-      <div class="store-card" id="card-${s.id}" onclick="selectStore('${s.folder}', '${s.name}', '${s.tag}')">
+      <div class="store-card" id="card-${s.id}" onclick="showCustomerPage('${s.folder}', '${s.name}', '${s.tag}')">
         <div class="store-card-bg" id="card-bg-${s.id}"></div>
         <div class="store-card-overlay"></div>
         <div class="store-badge"><i class="fas fa-tag"></i>${s.tag}</div>
@@ -1674,6 +1839,142 @@
     modal.addEventListener('click', e => { if (e.target === modal) closeSlideshow(); });
   })();
 
+  /* ══════════════════════════════════════════════════════════
+     CUSTOMER INFO PAGE
+  ══════════════════════════════════════════════════════════ */
+
+  let _lookupTimer = null;
+  window._custLocation = null;
+
+  // Called from store card instead of selectStore directly
+  function showCustomerPage(folder, name, tag) {
+    window._pendingStore = { folder, name, tag };
+    document.getElementById('custStoreName').textContent = name;
+    document.getElementById('custFormErr').textContent = '';
+    document.getElementById('custLookupStatus').textContent = '';
+    document.getElementById('custLookupStatus').className = 'cust-lookup-status';
+    showPage('customerPage');
+    captureLocation();
+  }
+
+  // Auto-capture GPS location when page opens
+  function captureLocation() {
+    const el = document.getElementById('custLocStatus');
+    el.className = 'cust-loc-status detecting';
+    el.innerHTML = '<i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد الموقع تلقائياً...';
+    if (!navigator.geolocation) {
+      el.className = 'cust-loc-status failed';
+      el.innerHTML = '<i class="fas fa-times-circle"></i>&nbsp;المتصفح لا يدعم تحديد الموقع';
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        window._custLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        el.className = 'cust-loc-status success';
+        el.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp;تم تحديد الموقع بنجاح ✓';
+      },
+      () => {
+        window._custLocation = null;
+        el.className = 'cust-loc-status failed';
+        el.innerHTML = '<i class="fas fa-exclamation-triangle"></i>&nbsp;لم يتم تحديد الموقع — اضغط "إعادة تحديد"';
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
+  }
+
+  function retryLocation() { captureLocation(); }
+
+  // Debounced phone lookup
+  function onPhoneInput() {
+    clearTimeout(_lookupTimer);
+    const phone = document.getElementById('custPhone').value.trim();
+    const statusEl = document.getElementById('custLookupStatus');
+    statusEl.className = 'cust-lookup-status';
+    statusEl.textContent = '';
+    if (phone.length < 9) return;
+    statusEl.textContent = 'جاري البحث...';
+    _lookupTimer = setTimeout(() => lookupCustomer(phone), 700);
+  }
+
+  async function lookupCustomer(phone) {
+    const statusEl = document.getElementById('custLookupStatus');
+    try {
+      const result = await _callScript('getCustomer', { phone });
+      if (result.success && result.customer) {
+        document.getElementById('custName').value     = result.customer.name    || '';
+        document.getElementById('custArea').value     = result.customer.area    || '';
+        document.getElementById('custAddress').value  = result.customer.address || '';
+        document.getElementById('custWhatsapp').value = result.customer.whatsapp || '';
+        statusEl.className = 'cust-lookup-status found';
+        statusEl.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp;مرحباً! تم العثور على بياناتك';
+        window._existingCustomerId = result.customer.id;
+      } else {
+        statusEl.textContent = 'رقم جديد — يرجى إكمال البيانات';
+        window._existingCustomerId = null;
+      }
+    } catch(e) {
+      statusEl.textContent = '';
+    }
+  }
+
+  async function submitCustomerInfo() {
+    const phone    = document.getElementById('custPhone').value.trim();
+    const name     = document.getElementById('custName').value.trim();
+    const area     = document.getElementById('custArea').value.trim();
+    const address  = document.getElementById('custAddress').value.trim();
+    const whatsapp = document.getElementById('custWhatsapp').value.trim();
+    const errEl    = document.getElementById('custFormErr');
+
+    // Validate
+    if (!phone)   { errEl.textContent = '⚠ رقم الهاتف مطلوب';       document.getElementById('custPhone').focus();   return; }
+    if (!name)    { errEl.textContent = '⚠ الاسم الكامل مطلوب';      document.getElementById('custName').focus();    return; }
+    if (!area)    { errEl.textContent = '⚠ المنطقة / الإمارة مطلوبة'; document.getElementById('custArea').focus();    return; }
+    if (!address) { errEl.textContent = '⚠ العنوان التفصيلي مطلوب';   document.getElementById('custAddress').focus(); return; }
+    errEl.textContent = '';
+
+    const btn = document.getElementById('custSubmitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>&nbsp;جاري الحفظ...';
+
+    const loc = window._custLocation;
+
+    try {
+      const result = await _callScript('createOrUpdateCustomer', {
+        phone,
+        name,
+        area,
+        address,
+        whatsapp      : whatsapp || phone,
+        location      : loc ? `https://www.google.com/maps?q=${loc.lat},${loc.lng}` : '',
+        latitude      : loc ? String(loc.lat) : '',
+        longitude     : loc ? String(loc.lng) : '',
+        userTimezone  : 'Asia/Dubai',
+      });
+
+      if (!result.success) throw new Error(result.message || 'خطأ في الحفظ');
+
+      // Save customer info locally for the confirm/order pages
+      localStorage.setItem('homiCart_customer', JSON.stringify({
+        phone, name, area, address,
+        whatsapp      : whatsapp || phone,
+        customerId    : result.customerId,
+        latitude      : loc?.lat || '',
+        longitude     : loc?.lng || '',
+      }));
+
+      // Proceed to store menu
+      btn.innerHTML = '<i class="fas fa-check"></i>&nbsp;تم الحفظ!';
+      const store = window._pendingStore;
+      await selectStore(store.folder, store.name, store.tag);
+
+    } catch(e) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-arrow-left"></i>&nbsp;التالي — اكتب طلبك';
+      errEl.textContent = 'حدث خطأ: ' + (e.message || 'تأكد من الاتصال بالإنترنت');
+      console.error('[submitCustomerInfo]', e);
+    }
+  }
+
   /* ── Go back ── */
   function goBack() {
     // Level 3 → Level 2 : ordering view → back to menu + discounts cards
@@ -1682,8 +1983,14 @@
       return;
     }
 
-    // Level 2 → Level 1 : menu page → back to stores list
+    // Level 2 → Level 1 : menu page → back to customer info page
     currentStore = null;
+    showPage('customerPage');
+    return;
+  }
+
+  // Customer page → back to stores list
+  if (document.getElementById('customerPage').classList.contains('active')) {
     showPage('storePage');
     requestAnimationFrame(() => {
       document.querySelectorAll('.store-card').forEach(c => {
