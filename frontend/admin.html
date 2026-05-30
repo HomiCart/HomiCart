@@ -3,717 +3,664 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>لوحة تحكم HomiCart - Admin Dashboard</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+  <title>HomiCart — لوحة التحكم</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;600;700;800&family=Cairo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; background:#060b12; color:#fff; direction:rtl; font-family:'Cairo',sans-serif; }
 
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f5f7fa;
-      direction: rtl;
-      text-align: right;
-      color: #333;
-    }
+/* ── Layout ── */
+.admin-wrap { display:flex; min-height:100vh; }
 
-    .container { max-width: 1400px; margin: 0 auto; padding: 0; }
+/* ── Sidebar ── */
+.sidebar {
+  width: 220px; min-height:100vh;
+  background: rgba(255,255,255,.03);
+  border-left: 1px solid rgba(255,255,255,.07);
+  display:flex; flex-direction:column;
+  position:sticky; top:0; height:100vh; overflow-y:auto;
+  flex-shrink:0;
+}
+.sidebar-logo {
+  padding:1.4rem 1.2rem; border-bottom:1px solid rgba(255,255,255,.07);
+  display:flex; align-items:center; gap:.6rem;
+}
+.sidebar-logo span {
+  font-family:'Alexandria',sans-serif; font-size:1.1rem; font-weight:800;
+  background:linear-gradient(135deg,#18bfef,#0d9bcb); -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+.sidebar-logo i { color:#18bfef; font-size:1.2rem; }
+.sidebar-nav { flex:1; padding:.8rem 0; }
+.nav-section-label {
+  font-size:.68rem; font-weight:700; letter-spacing:.1em;
+  color:rgba(255,255,255,.3); padding:.6rem 1.2rem .3rem; text-transform:uppercase;
+}
+.nav-item {
+  display:flex; align-items:center; gap:.65rem;
+  padding:.7rem 1.2rem; cursor:pointer; font-size:.88rem;
+  color:rgba(255,255,255,.55); transition:all .2s; border-right:3px solid transparent;
+  user-select:none;
+}
+.nav-item:hover { color:#fff; background:rgba(255,255,255,.04); }
+.nav-item.active { color:#18bfef; background:rgba(24,191,239,.08); border-right-color:#18bfef; }
+.nav-item i { width:16px; text-align:center; }
+.store-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 
-    header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 20px 30px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+/* ── Main ── */
+.main { flex:1; overflow-x:hidden; }
 
-    header h1 { font-size: 28px; }
+/* ── Top bar ── */
+.topbar {
+  padding:1rem 2rem; border-bottom:1px solid rgba(255,255,255,.07);
+  display:flex; align-items:center; justify-content:space-between;
+  background:rgba(255,255,255,.02);
+}
+.topbar-title { font-family:'Alexandria',sans-serif; font-size:1.1rem; font-weight:700; }
+.topbar-right { display:flex; gap:.8rem; align-items:center; }
+.btn-refresh {
+  background:rgba(24,191,239,.1); border:1px solid rgba(24,191,239,.25);
+  color:#18bfef; padding:.45rem 1rem; border-radius:8px; cursor:pointer;
+  font-family:'Cairo',sans-serif; font-size:.82rem; font-weight:600;
+  display:flex; align-items:center; gap:.4rem; transition:all .2s;
+}
+.btn-refresh:hover { background:rgba(24,191,239,.18); }
+.last-refresh { font-size:.75rem; color:rgba(255,255,255,.3); }
 
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
+/* ── Page sections ── */
+.page { display:none; padding:1.8rem 2rem; }
+.page.active { display:block; }
 
-    .user-badge {
-      background: rgba(255,255,255,0.2);
-      padding: 8px 15px;
-      border-radius: 20px;
-      font-size: 14px;
-    }
+/* ── Stats grid ── */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem; margin-bottom:2rem; }
+.stat-card {
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+  border-radius:14px; padding:1.2rem 1.4rem;
+  display:flex; flex-direction:column; gap:.4rem;
+}
+.stat-icon { font-size:1.4rem; width:38px; height:38px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center; }
+.stat-value { font-family:'Alexandria',sans-serif; font-size:1.9rem; font-weight:800; }
+.stat-label { font-size:.78rem; color:rgba(255,255,255,.4); }
+.stat-card.teal  .stat-icon { background:rgba(24,191,239,.12); color:#18bfef; }
+.stat-card.amber .stat-icon { background:rgba(255,165,0,.12);  color:#ffa500; }
+.stat-card.green .stat-icon { background:rgba(40,200,100,.12); color:#28c864; }
+.stat-card.purple.stat-icon { background:rgba(150,80,255,.12); color:#9650ff; }
 
-    .logout-btn {
-      background: rgba(255,255,255,0.3);
-      border: 1px solid white;
-      color: white;
-      padding: 8px 15px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
+/* ── Section headers ── */
+.section-head {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:1rem;
+}
+.section-title {
+  font-family:'Alexandria',sans-serif; font-size:1rem; font-weight:700;
+  display:flex; align-items:center; gap:.5rem;
+}
+.section-title i { color:#18bfef; }
 
-    .logout-btn:hover {
-      background: rgba(255,255,255,0.5);
-    }
+/* ── Order Window Panel ── */
+.window-panel {
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+  border-radius:14px; padding:1.4rem; margin-bottom:1.5rem;
+}
+.window-row { display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end; }
+.window-field { display:flex; flex-direction:column; gap:.4rem; flex:1; min-width:200px; }
+.window-field label { font-size:.8rem; color:rgba(255,255,255,.55); font-weight:600; }
+.window-field input[type="datetime-local"] {
+  background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.12);
+  border-radius:9px; padding:.6rem .9rem; color:#fff; font-size:.9rem;
+  outline:none; transition:border-color .2s; font-family:'Cairo',sans-serif;
+}
+.window-field input:focus { border-color:#18bfef; }
+.window-status {
+  display:flex; align-items:center; gap:.5rem; font-size:.82rem;
+  padding:.5rem .9rem; border-radius:8px; font-weight:600;
+}
+.window-status.open   { background:rgba(40,200,100,.1);  color:#28c864; }
+.window-status.closed { background:rgba(255,80,80,.1);   color:#ff6060; }
+.window-status.before { background:rgba(255,165,0,.1);   color:#ffa500; }
 
-    .sidebar {
-      width: 250px;
-      background: white;
-      border-left: 1px solid #eee;
-      padding: 20px 0;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
+/* ── Buttons ── */
+.btn { display:inline-flex; align-items:center; gap:.45rem; padding:.6rem 1.2rem;
+  border-radius:9px; cursor:pointer; font-family:'Cairo',sans-serif;
+  font-size:.85rem; font-weight:600; border:none; transition:all .2s; }
+.btn-primary { background:linear-gradient(135deg,#18bfef,#0d9bcb); color:#fff; box-shadow:0 3px 14px rgba(24,191,239,.25); }
+.btn-primary:hover { filter:brightness(1.1); }
+.btn-amber   { background:linear-gradient(135deg,#f5a623,#e08c00); color:#fff; box-shadow:0 3px 14px rgba(245,166,35,.25); }
+.btn-amber:hover { filter:brightness(1.1); }
+.btn-green   { background:linear-gradient(135deg,#28c864,#1a9d4a); color:#fff; box-shadow:0 3px 14px rgba(40,200,100,.25); }
+.btn-green:hover { filter:brightness(1.1); }
+.btn-outline { background:transparent; border:1.5px solid rgba(255,255,255,.2); color:rgba(255,255,255,.7); }
+.btn-outline:hover { border-color:#18bfef; color:#18bfef; }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
 
-    .main-content {
-      display: flex;
-    }
+/* ── Orders table ── */
+.table-wrap { overflow-x:auto; border-radius:14px; border:1px solid rgba(255,255,255,.08); }
+table { width:100%; border-collapse:collapse; font-size:.84rem; }
+thead th {
+  background:rgba(255,255,255,.05); padding:.75rem 1rem; text-align:right;
+  font-family:'Alexandria',sans-serif; font-size:.78rem; font-weight:700;
+  color:rgba(255,255,255,.55); white-space:nowrap; border-bottom:1px solid rgba(255,255,255,.08);
+}
+tbody tr { border-bottom:1px solid rgba(255,255,255,.05); transition:background .15s; }
+tbody tr:hover { background:rgba(255,255,255,.03); }
+tbody td { padding:.7rem 1rem; vertical-align:middle; }
+.td-id { font-family:monospace; font-size:.78rem; color:#18bfef; }
+.td-items { max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:rgba(255,255,255,.75); }
+.td-date { font-size:.76rem; color:rgba(255,255,255,.4); white-space:nowrap; }
 
-    .content-area {
-      flex: 1;
-      padding: 30px;
-    }
+/* Status badges */
+.badge {
+  display:inline-flex; align-items:center; gap:.3rem;
+  padding:.22rem .7rem; border-radius:50px; font-size:.73rem; font-weight:700;
+}
+.badge-New        { background:rgba(24,191,239,.15); color:#18bfef; }
+.badge-Preparing  { background:rgba(255,165,0,.15);  color:#ffa500; }
+.badge-Delivered  { background:rgba(40,200,100,.15); color:#28c864; }
+.badge-Cancelled  { background:rgba(255,80,80,.15);  color:#ff6060; }
 
-    .nav-item {
-      padding: 15px 20px;
-      color: #666;
-      cursor: pointer;
-      border-right: 4px solid transparent;
-      transition: all 0.3s;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+/* Status select in table */
+.status-select {
+  background:transparent; border:1px solid rgba(255,255,255,.15);
+  border-radius:6px; color:#fff; padding:.2rem .5rem; font-size:.78rem;
+  cursor:pointer; outline:none;
+}
+.status-select option { background:#0d1a28; }
 
-    .nav-item:hover {
-      background: #f5f5f5;
-      color: #667eea;
-    }
+/* ── Bulk actions bar ── */
+.bulk-bar {
+  display:flex; gap:.8rem; flex-wrap:wrap; align-items:center;
+  padding:1rem 1.4rem; background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.08); border-radius:12px; margin-bottom:1rem;
+}
+.bulk-bar span { font-size:.82rem; color:rgba(255,255,255,.5); }
 
-    .nav-item.active {
-      background: #f0f4ff;
-      color: #667eea;
-      border-right-color: #667eea;
-      font-weight: 600;
-    }
+/* ── Store bar chart ── */
+.store-bars { display:flex; flex-direction:column; gap:.8rem; margin-top:1rem; }
+.store-bar-row { display:flex; align-items:center; gap:.8rem; }
+.store-bar-label { width:130px; font-size:.82rem; color:rgba(255,255,255,.65); flex-shrink:0; text-align:left; }
+.store-bar-track { flex:1; height:8px; background:rgba(255,255,255,.07); border-radius:50px; overflow:hidden; }
+.store-bar-fill  { height:100%; border-radius:50px; transition:width .8s ease; }
+.store-bar-count { width:35px; text-align:right; font-size:.82rem; color:rgba(255,255,255,.5); }
 
-    .section { display: none; }
-    .section.active { display: block; }
+/* ── Toast ── */
+.toast-wrap { position:fixed; top:1.2rem; left:1.2rem; z-index:9999; display:flex; flex-direction:column; gap:.5rem; }
+.toast {
+  background:rgba(20,30,45,.97); border:1px solid rgba(255,255,255,.1);
+  border-radius:10px; padding:.7rem 1.1rem; font-size:.84rem;
+  display:flex; align-items:center; gap:.55rem;
+  animation:toastIn .3s ease; min-width:220px;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+.toast.success { border-color:rgba(40,200,100,.3); color:#28c864; }
+.toast.error   { border-color:rgba(255,80,80,.3);  color:#ff6060; }
+.toast.info    { border-color:rgba(24,191,239,.3);  color:#18bfef; }
+@keyframes toastIn { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:translateX(0)} }
 
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
-      margin-bottom: 30px;
-    }
+/* ── Loading overlay ── */
+.loading-overlay {
+  position:fixed; inset:0; background:rgba(6,11,18,.85);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:9998; gap:1rem; backdrop-filter:blur(4px);
+}
+.loading-overlay .spin { font-size:2.5rem; color:#18bfef; animation:spin 1s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.loading-overlay p { color:rgba(255,255,255,.6); font-size:.9rem; }
 
-    .stat-card {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      border-top: 4px solid #667eea;
-    }
+/* ── Empty state ── */
+.empty-state { text-align:center; padding:3rem 1rem; color:rgba(255,255,255,.3); }
+.empty-state i { font-size:2.5rem; margin-bottom:.8rem; display:block; }
 
-    .stat-label {
-      color: #666;
-      font-size: 14px;
-      margin-bottom: 10px;
-    }
-
-    .stat-value {
-      font-size: 32px;
-      font-weight: bold;
-      color: #333;
-    }
-
-    .stat-change {
-      font-size: 12px;
-      color: #27ae60;
-      margin-top: 5px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-
-    th {
-      background: #f5f7fa;
-      padding: 15px;
-      text-align: right;
-      font-weight: 600;
-      color: #333;
-      border-bottom: 2px solid #eee;
-    }
-
-    td {
-      padding: 15px;
-      border-bottom: 1px solid #f0f0f0;
-    }
-
-    tr:hover { background: #f9f9f9; }
-
-    .status-badge {
-      display: inline-block;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .status-new { background: #e3f2fd; color: #1976d2; }
-    .status-processing { background: #fff3e0; color: #f57c00; }
-    .status-delivery { background: #f3e5f5; color: #7b1fa2; }
-    .status-delivered { background: #e8f5e9; color: #388e3c; }
-    .status-cancelled { background: #ffebee; color: #c62828; }
-
-    .action-buttons {
-      display: flex;
-      gap: 8px;
-    }
-
-    .btn {
-      padding: 8px 12px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 600;
-      transition: all 0.3s;
-    }
-
-    .btn-primary {
-      background: #667eea;
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: #5568d3;
-    }
-
-    .btn-secondary {
-      background: #f0f0f0;
-      color: #333;
-    }
-
-    .btn-secondary:hover {
-      background: #e0e0e0;
-    }
-
-    .btn-danger {
-      background: #ff6b6b;
-      color: white;
-    }
-
-    .btn-danger:hover {
-      background: #ff5252;
-    }
-
-    .btn-success {
-      background: #27ae60;
-      color: white;
-    }
-
-    .btn-success:hover {
-      background: #229954;
-    }
-
-    .form-group {
-      margin-bottom: 20px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
-      color: #333;
-    }
-
-    input, textarea, select {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-family: inherit;
-      font-size: 14px;
-    }
-
-    input:focus, textarea:focus, select:focus {
-      outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .modal.active { display: flex; }
-
-    .modal-content {
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      max-width: 500px;
-      width: 90%;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-
-    .modal-title {
-      font-size: 24px;
-      margin-bottom: 20px;
-      color: #333;
-    }
-
-    .modal-close {
-      position: absolute;
-      top: 15px;
-      left: 15px;
-      background: none;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-      color: #999;
-    }
-
-    .search-box {
-      margin-bottom: 20px;
-    }
-
-    .search-box input {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-    }
-
-    .schedule-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 20px;
-      margin-bottom: 20px;
-    }
-
-    @media (max-width: 768px) {
-      .sidebar { width: 100%; }
-      .main-content { flex-direction: column; }
-      .dashboard-grid { grid-template-columns: 1fr; }
-      .form-row { grid-template-columns: 1fr; }
-      .schedule-grid { grid-template-columns: 1fr; }
-      header { flex-direction: column; gap: 10px; text-align: center; }
-    }
-
-    .loading {
-      text-align: center;
-      padding: 20px;
-      color: #999;
-    }
-
-    .spinner {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #667eea;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin: 20px auto;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  </style>
+/* ── Responsive ── */
+@media(max-width:700px) {
+  .sidebar { width:60px; }
+  .sidebar-logo span, .nav-item span, .nav-section-label { display:none; }
+  .page { padding:1rem; }
+  .topbar { padding:.8rem 1rem; }
+}
+</style>
 </head>
 <body>
 
-<header>
-  <h1>🛒 لوحة تحكم HomiCart</h1>
-  <div class="user-info">
-    <span class="user-badge">👤 المسؤول</span>
-    <button class="logout-btn" onclick="logout()">تسجيل الخروج</button>
-  </div>
-</header>
-
-<div class="main-content">
-
-  <!-- Sidebar Navigation -->
-  <div class="sidebar">
-    <div class="nav-item active" onclick="switchSection('dashboard')">
-      📊 لوحة التحكم
-    </div>
-    <div class="nav-item" onclick="switchSection('orders')">
-      📦 إدارة الطلبات
-    </div>
-    <div class="nav-item" onclick="switchSection('schedule')">
-      ⏰ جدول الساعات
-    </div>
-    <div class="nav-item" onclick="switchSection('menu')">
-      🍽️ قائمة الطعام
-    </div>
-    <div class="nav-item" onclick="switchSection('analytics')">
-      📈 التحليلات
-    </div>
-  </div>
-
-  <!-- Main Content Area -->
-  <div class="content-area">
-
-    <!-- Section 1: Dashboard -->
-    <div id="dashboard" class="section active">
-      <h2>📊 لوحة التحكم</h2>
-
-      <div class="dashboard-grid">
-        <div class="stat-card">
-          <div class="stat-label">إجمالي الطلبات اليوم</div>
-          <div class="stat-value" id="todayOrdersCount">0</div>
-          <div class="stat-change">↑ 12% من أمس</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-label">الإيرادات اليومية</div>
-          <div class="stat-value" id="todayRevenue">0</div>
-          <div class="stat-change">د.إ</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-label">الطلبات المعلقة</div>
-          <div class="stat-value" id="pendingOrdersCount">0</div>
-          <div class="stat-change">تحتاج للمتابعة</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-label">متوسط قيمة الطلب</div>
-          <div class="stat-value" id="avgOrderValue">0</div>
-          <div class="stat-change">د.إ</div>
-        </div>
-      </div>
-
-      <h3>آخر الطلبات</h3>
-      <div id="recentOrdersContainer"></div>
-    </div>
-
-    <!-- Section 2: Orders Management -->
-    <div id="orders" class="section">
-      <h2>📦 إدارة الطلبات</h2>
-
-      <div class="search-box">
-        <input type="text" id="orderSearch" placeholder="ابحث عن رقم الطلب أو رقم الهاتف..."
-               onkeyup="filterOrders()">
-      </div>
-
-      <div style="margin-bottom: 15px;">
-        <select onchange="filterOrdersByStatus(this.value)" style="width: 200px;">
-          <option value="">جميع الحالات</option>
-          <option value="New">طلبات جديدة</option>
-          <option value="Processing">قيد المعالجة</option>
-          <option value="Delivery">قيد التوصيل</option>
-          <option value="Delivered">مسلمة</option>
-          <option value="Cancelled">ملغاة</option>
-        </select>
-      </div>
-
-      <div id="ordersContainer"></div>
-    </div>
-
-    <!-- Section 3: Schedule -->
-    <div id="schedule" class="section">
-      <h2>⏰ جدول ساعات العمل</h2>
-
-      <div class="schedule-grid" id="scheduleContainer"></div>
-
-      <button class="btn btn-primary" onclick="saveSchedule()" style="margin-top: 20px;">
-        💾 حفظ التغييرات
-      </button>
-    </div>
-
-    <!-- Section 4: Menu Manager -->
-    <div id="menu" class="section">
-      <h2>🍽️ قائمة الطعام</h2>
-
-      <button class="btn btn-primary" onclick="openAddProductModal()" style="margin-bottom: 20px;">
-        ➕ إضافة منتج جديد
-      </button>
-
-      <div id="menuContainer"></div>
-    </div>
-
-    <!-- Section 5: Analytics -->
-    <div id="analytics" class="section">
-      <h2>📈 التحليلات</h2>
-
-      <div class="dashboard-grid">
-        <div class="stat-card">
-          <div class="stat-label">إجمالي الطلبات (هذا الشهر)</div>
-          <div class="stat-value" id="monthOrdersCount">0</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-label">إجمالي الإيرادات (هذا الشهر)</div>
-          <div class="stat-value" id="monthRevenue">0</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-label">أفضل منتج</div>
-          <div class="stat-value" id="topProduct">-</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-label">عدد العملاء الجدد</div>
-          <div class="stat-value" id="newCustomersCount">0</div>
-        </div>
-      </div>
-
-      <h3>توزيع الطلبات حسب الحالة</h3>
-      <div id="analyticsContainer"></div>
-    </div>
-
-  </div>
-
+<div id="loadingOverlay" class="loading-overlay">
+  <i class="fas fa-spinner spin"></i>
+  <p>جاري تحميل البيانات...</p>
 </div>
 
-<!-- Modals -->
-<div id="orderModal" class="modal">
-  <div class="modal-content">
-    <button class="modal-close" onclick="closeModal('orderModal')">✕</button>
-    <h2 class="modal-title">تفاصيل الطلب</h2>
-    <div id="orderModalContent"></div>
-  </div>
-</div>
+<div class="toast-wrap" id="toastWrap"></div>
 
-<div id="productModal" class="modal">
-  <div class="modal-content">
-    <button class="modal-close" onclick="closeModal('productModal')">✕</button>
-    <h2 class="modal-title">إضافة منتج</h2>
-    <form id="productForm" onsubmit="saveProduct(event)">
-      <div class="form-group">
-        <label>اسم المنتج</label>
-        <input type="text" id="productName" required>
+<div class="admin-wrap">
+
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <i class="fas fa-shopping-bag"></i>
+      <span>HomiCart</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">عام</div>
+      <div class="nav-item active" onclick="switchPage('overview')">
+        <i class="fas fa-chart-pie"></i><span>نظرة عامة</span>
       </div>
-      <div class="form-group">
-        <label>الفئة</label>
-        <input type="text" id="productCategory" placeholder="مثال: اللحوم">
+
+      <div class="nav-section-label" style="margin-top:.5rem">المتاجر</div>
+      <div class="nav-item" onclick="switchPage('store-AlRoknAlMasry')">
+        <span class="store-dot" style="background:#ef4444"></span>
+        <span>الركن المصري</span>
       </div>
-      <div class="form-group">
-        <label>السعر</label>
-        <input type="number" id="productPrice" step="0.01" required>
+      <div class="nav-item" onclick="switchPage('store-AlFayoumi')">
+        <span class="store-dot" style="background:#f59e0b"></span>
+        <span>الفيومي</span>
       </div>
-      <div class="form-group">
-        <label>رابط الصورة</label>
-        <input type="url" id="productImage" placeholder="https://...">
+    </nav>
+  </aside>
+
+  <!-- ══ MAIN ══ -->
+  <div class="main">
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="topbar-title" id="topbarTitle">📊 نظرة عامة</div>
+      <div class="topbar-right">
+        <span class="last-refresh" id="lastRefresh"></span>
+        <button class="btn-refresh" onclick="refreshAll()">
+          <i class="fas fa-sync-alt"></i> تحديث
+        </button>
       </div>
-      <div class="form-group">
-        <label>الوصف</label>
-        <textarea id="productDescription" rows="3"></textarea>
+    </div>
+
+    <!-- ══ OVERVIEW PAGE ══ -->
+    <div id="page-overview" class="page active">
+
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card teal">
+          <div class="stat-icon"><i class="fas fa-receipt"></i></div>
+          <div class="stat-value" id="st-total">—</div>
+          <div class="stat-label">إجمالي الطلبات</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(24,191,239,.2)">
+          <div class="stat-icon" style="background:rgba(24,191,239,.12);color:#18bfef"><i class="fas fa-star"></i></div>
+          <div class="stat-value" id="st-new">—</div>
+          <div class="stat-label">طلبات جديدة</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-icon"><i class="fas fa-fire"></i></div>
+          <div class="stat-value" id="st-preparing">—</div>
+          <div class="stat-label">جاري التحضير</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+          <div class="stat-value" id="st-delivered">—</div>
+          <div class="stat-label">تم التوصيل</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(255,80,80,.2)">
+          <div class="stat-icon" style="background:rgba(255,80,80,.1);color:#ff6060"><i class="fas fa-times-circle"></i></div>
+          <div class="stat-value" id="st-cancelled">—</div>
+          <div class="stat-label">ملغية</div>
+        </div>
       </div>
-      <button type="submit" class="btn btn-primary">حفظ المنتج</button>
-    </form>
-  </div>
-</div>
+
+      <div class="section-head">
+        <div class="section-title"><i class="fas fa-store"></i> الطلبات حسب المتجر</div>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:1.4rem">
+        <div class="store-bars" id="storeBars">
+          <div class="empty-state"><i class="fas fa-spinner fa-spin"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ STORE PAGES (generated dynamically) ══ -->
+    <div id="page-store-AlRoknAlMasry" class="page"></div>
+    <div id="page-store-AlFayoumi"     class="page"></div>
+
+  </div><!-- /main -->
+</div><!-- /admin-wrap -->
 
 <script>
-  const API_URL = 'https://script.google.com/macros/s/AKfycbz7AeGB7lZr3Dm7V2-oZSIw0v_cqlfhVEn9q6iJnnLlzXom4JlcndX2TDo94r-ptuMEFg/exec';
+// ════════════════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════════════════
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRW2K-GbHfawvZMpxk5ExfyYg5EIhFpUgTy-nHaMjtNR1ZiWn-9BuZpRSWACTEGLqNlA/exec';
 
-  // Admin authentication
-  const adminPassword = 'admin123'; // Change this in production
+const STORES = [
+  { key:'AlRoknAlMasry', name:'الركن المصري', color:'#ef4444', folder:'Al Rokn AL masry' },
+  { key:'AlFayoumi',     name:'الفيومي',      color:'#f59e0b', folder:'Al Fayoumy'       },
+];
 
-  function checkAdminAuth() {
-    const password = localStorage.getItem('adminPassword');
-    if (!password || password !== adminPassword) {
-      const entered = prompt('أدخل كلمة المرور:');
-      if (entered !== adminPassword) {
-        alert('كلمة المرور غير صحيحة');
-        window.location.href = 'index.html';
-      } else {
-        localStorage.setItem('adminPassword', entered);
+// ════════════════════════════════════════════════════════
+//  API HELPER
+// ════════════════════════════════════════════════════════
+async function api(action, data={}, timeout=25000) {
+  const clean = {};
+  Object.entries(data).forEach(([k,v]) => { if(v!=='' && v!=null) clean[k]=v; });
+  const params = new URLSearchParams({ action, ...clean });
+  const url = `${APPS_SCRIPT_URL}?${params}`;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    const res  = await fetch(url, { redirect:'follow', signal:ctrl.signal });
+    clearTimeout(t);
+    const text = await res.text();
+    return JSON.parse(text);
+  } catch(e) {
+    clearTimeout(t);
+    throw new Error(e.name==='AbortError' ? 'انتهت مهلة الاتصال' : e.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════════════════════
+function switchPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const page = document.getElementById('page-' + id);
+  if (page) page.classList.add('active');
+
+  const clickedNav = [...document.querySelectorAll('.nav-item')]
+    .find(n => n.getAttribute('onclick')?.includes(id));
+  if (clickedNav) clickedNav.classList.add('active');
+
+  const titles = { overview:'📊 نظرة عامة', 'store-AlRoknAlMasry':'🔴 الركن المصري', 'store-AlFayoumi':'🟡 الفيومي' };
+  document.getElementById('topbarTitle').textContent = titles[id] || id;
+
+  if (id.startsWith('store-')) {
+    const storeKey = id.replace('store-','');
+    renderStorePage(storeKey);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════
+function toast(msg, type='info') {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  const icons = { success:'fa-check-circle', error:'fa-times-circle', info:'fa-info-circle' };
+  el.innerHTML = `<i class="fas ${icons[type]||'fa-info-circle'}"></i> ${msg}`;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ════════════════════════════════════════════════════════
+//  OVERVIEW — load stats
+// ════════════════════════════════════════════════════════
+async function loadOverview() {
+  try {
+    const res = await api('getAdminStats');
+    if (!res.success) throw new Error(res.message);
+
+    const s = res.stats;
+    document.getElementById('st-total').textContent     = s.total     ?? 0;
+    document.getElementById('st-new').textContent       = s.new       ?? 0;
+    document.getElementById('st-preparing').textContent = s.preparing ?? 0;
+    document.getElementById('st-delivered').textContent = s.delivered ?? 0;
+    document.getElementById('st-cancelled').textContent = s.cancelled ?? 0;
+
+    // Store bar chart
+    const max = Math.max(1, ...Object.values(s.perStore||{}));
+    const colors = { AlRoknAlMasry:'#ef4444', AlFayoumi:'#f59e0b' };
+    const names  = { AlRoknAlMasry:'الركن المصري', AlFayoumi:'الفيومي' };
+    document.getElementById('storeBars').innerHTML = Object.entries(s.perStore||{}).map(([k,v]) => `
+      <div class="store-bar-row">
+        <div class="store-bar-label">${names[k]||k}</div>
+        <div class="store-bar-track">
+          <div class="store-bar-fill" style="width:${Math.round(v/max*100)}%;background:${colors[k]||'#18bfef'}"></div>
+        </div>
+        <div class="store-bar-count">${v}</div>
+      </div>`).join('') || '<div class="empty-state"><i class="fas fa-inbox"></i><br>لا توجد بيانات</div>';
+
+  } catch(e) {
+    toast('تعذر تحميل الإحصائيات: ' + e.message, 'error');
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  STORE PAGE
+// ════════════════════════════════════════════════════════
+let _storeOrdersCache = {};
+
+async function renderStorePage(storeKey) {
+  const store = STORES.find(s => s.key === storeKey);
+  if (!store) return;
+  const container = document.getElementById('page-store-' + storeKey);
+
+  container.innerHTML = `
+    <div style="max-width:1100px">
+
+      <!-- Window Control -->
+      <div class="section-head" style="margin-bottom:.8rem">
+        <div class="section-title" style="color:${store.color}">
+          <i class="fas fa-clock"></i> نافذة استقبال الطلبات — ${store.name}
+        </div>
+        <div id="winStatus-${storeKey}" class="window-status closed">
+          <i class="fas fa-circle" style="font-size:.5rem"></i> جاري التحقق...
+        </div>
+      </div>
+      <div class="window-panel">
+        <div class="window-row">
+          <div class="window-field">
+            <label><i class="fas fa-play-circle" style="color:#28c864"></i> وقت الفتح</label>
+            <input type="datetime-local" id="win-start-${storeKey}">
+          </div>
+          <div class="window-field">
+            <label><i class="fas fa-stop-circle" style="color:#ff6060"></i> وقت الإغلاق</label>
+            <input type="datetime-local" id="win-end-${storeKey}">
+          </div>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-end">
+            <button class="btn btn-primary" onclick="saveWindow('${storeKey}')">
+              <i class="fas fa-save"></i> حفظ النافذة
+            </button>
+            <button class="btn btn-outline" onclick="loadStoreWindow('${storeKey}')">
+              <i class="fas fa-sync"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bulk Actions -->
+      <div class="bulk-bar">
+        <span><i class="fas fa-magic"></i> إجراءات جماعية:</span>
+        <button class="btn btn-amber" onclick="bulkStatus('${storeKey}','New','Preparing')">
+          <i class="fas fa-fire"></i> تحويل الجديدة → جاري التحضير
+        </button>
+        <button class="btn btn-green" onclick="bulkStatus('${storeKey}','Preparing','Delivered')">
+          <i class="fas fa-check-double"></i> تحويل التحضير → تم التوصيل
+        </button>
+      </div>
+
+      <!-- Orders Table -->
+      <div class="section-head">
+        <div class="section-title"><i class="fas fa-list-alt"></i> الطلبات</div>
+        <button class="btn btn-outline" onclick="loadStoreOrders('${storeKey}')">
+          <i class="fas fa-sync-alt"></i> تحديث
+        </button>
+      </div>
+      <div class="table-wrap" id="table-${storeKey}">
+        <div class="empty-state"><i class="fas fa-spinner fa-spin"></i><br>جاري التحميل...</div>
+      </div>
+    </div>`;
+
+  // Load data
+  loadStoreWindow(storeKey);
+  loadStoreOrders(storeKey);
+}
+
+// ── Load order window for store ──
+async function loadStoreWindow(storeKey) {
+  try {
+    const res = await api('getStoreOrderWindow', { store: storeKey });
+    const statusEl = document.getElementById('winStatus-' + storeKey);
+    if (res.success && res.start) {
+      const startInput = document.getElementById('win-start-' + storeKey);
+      const endInput   = document.getElementById('win-end-'   + storeKey);
+      if (startInput) startInput.value = _toDatetimeLocal(res.start);
+      if (endInput)   endInput.value   = _toDatetimeLocal(res.end);
+      // Show status
+      const now = new Date(), start = new Date(res.start), end = new Date(res.end);
+      if (statusEl) {
+        if (now < start)      { statusEl.className='window-status before'; statusEl.innerHTML='<i class="fas fa-circle" style="font-size:.5rem"></i> لم تُفتح بعد'; }
+        else if (now <= end)  { statusEl.className='window-status open';   statusEl.innerHTML='<i class="fas fa-circle" style="font-size:.5rem"></i> مفتوحة الآن'; }
+        else                  { statusEl.className='window-status closed'; statusEl.innerHTML='<i class="fas fa-circle" style="font-size:.5rem"></i> مغلقة'; }
       }
+    } else {
+      if (statusEl) { statusEl.className='window-status closed'; statusEl.innerHTML='<i class="fas fa-circle" style="font-size:.5rem"></i> غير محددة'; }
     }
+  } catch(e) { console.warn('loadStoreWindow', e.message); }
+}
+
+// ── Save order window for store ──
+async function saveWindow(storeKey) {
+  const start = document.getElementById('win-start-' + storeKey)?.value;
+  const end   = document.getElementById('win-end-'   + storeKey)?.value;
+  if (!start || !end) { toast('يرجى تحديد وقت الفتح والإغلاق', 'error'); return; }
+  if (new Date(end) <= new Date(start)) { toast('وقت الإغلاق يجب أن يكون بعد وقت الفتح', 'error'); return; }
+  try {
+    const res = await api('setStoreOrderWindow', { store: storeKey, start: start.replace('T',' ') + ':00', end: end.replace('T',' ') + ':00' });
+    if (res.success) { toast('تم حفظ النافذة بنجاح ✓', 'success'); loadStoreWindow(storeKey); }
+    else toast('خطأ: ' + res.message, 'error');
+  } catch(e) { toast('تعذر الحفظ: ' + e.message, 'error'); }
+}
+
+// ── Load orders table for store ──
+async function loadStoreOrders(storeKey) {
+  const container = document.getElementById('table-' + storeKey);
+  if (!container) return;
+  container.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><br>جاري التحميل...</div>';
+  try {
+    const res = await api('getStoreOrders', { sheet: storeKey });
+    if (!res.success) throw new Error(res.message);
+    _storeOrdersCache[storeKey] = res.orders || [];
+    renderOrdersTable(storeKey, res.orders || []);
+  } catch(e) {
+    container.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><br>تعذر التحميل: ${e.message}</div>`;
   }
+}
 
-  function logout() {
-    localStorage.removeItem('adminPassword');
-    window.location.href = 'index.html';
+function renderOrdersTable(storeKey, orders) {
+  const container = document.getElementById('table-' + storeKey);
+  if (!container) return;
+  if (!orders.length) {
+    container.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><br>لا توجد طلبات</div>';
+    return;
   }
+  // Sort newest first
+  orders.sort((a,b) => (b.date||'') > (a.date||'') ? 1 : -1);
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>رقم الطلب</th>
+          <th>الاسم</th>
+          <th>الهاتف</th>
+          <th>الطلب</th>
+          <th>الحالة</th>
+          <th>التاريخ</th>
+          <th>آخر تحديث</th>
+          <th>إجراء</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${orders.map(o => `
+          <tr>
+            <td class="td-id">${o.id||'—'}</td>
+            <td>${o.name||'—'}</td>
+            <td style="font-family:monospace;font-size:.8rem">${o.phone||'—'}</td>
+            <td class="td-items" title="${o.items||''}">${o.items||'—'}</td>
+            <td><span class="badge badge-${o.status||'New'}">${_statusAr(o.status)}</span></td>
+            <td class="td-date">${_fmtDate(o.date)}</td>
+            <td class="td-date">${_fmtDate(o.updated)}</td>
+            <td>
+              <select class="status-select" onchange="updateSingleStatus('${o.id}','${storeKey}',this)">
+                <option value="New"       ${o.status==='New'       ?'selected':''}>جديد</option>
+                <option value="Preparing" ${o.status==='Preparing' ?'selected':''}>جاري التحضير</option>
+                <option value="Delivered" ${o.status==='Delivered' ?'selected':''}>تم التوصيل</option>
+                <option value="Cancelled" ${o.status==='Cancelled' ?'selected':''}>ملغي</option>
+              </select>
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
 
-  function switchSection(section) {
-    // Hide all sections
-    document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-
-    // Show selected section
-    document.getElementById(section).classList.add('active');
-    event.target.classList.add('active');
-
-    // Load data based on section
-    if (section === 'orders') loadOrders();
-    if (section === 'schedule') loadSchedule();
-    if (section === 'menu') loadMenu();
-    if (section === 'analytics') loadAnalytics();
-  }
-
-  async function loadOrders() {
-    try {
-      document.getElementById('ordersContainer').innerHTML = '<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
-
-      // Fetch from both sheets
-      const response = await fetch(API_URL + '?action=getOrders&phone=*');
-      const data = await response.json();
-
-      // For now, show a message
-      document.getElementById('ordersContainer').innerHTML = `
-        <div style="background: white; padding: 20px; border-radius: 10px;">
-          <p>سيتم عرض الطلبات من Google Sheets هنا</p>
-          <p style="color: #999; font-size: 12px; margin-top: 10px;">
-            في الإصدار الكامل، سيتم جلب جميع الطلبات من البيانات وعرضها مع خيارات التحديث والإلغاء
-          </p>
-        </div>
-      `;
-    } catch (e) {
-      document.getElementById('ordersContainer').innerHTML = '<div class="error">خطأ في تحميل الطلبات</div>';
+// ── Update single order status ──
+async function updateSingleStatus(orderId, storeKey, selectEl) {
+  const newStatus = selectEl.value;
+  const orig = selectEl.dataset.orig || selectEl.value;
+  selectEl.disabled = true;
+  try {
+    const res = await api('adminUpdateOrderStatus', { orderId, status: newStatus, sheet: storeKey });
+    if (res.success) {
+      toast(`تم تحديث الحالة إلى: ${_statusAr(newStatus)}`, 'success');
+      selectEl.dataset.orig = newStatus;
+    } else {
+      toast('خطأ: ' + res.message, 'error');
+      selectEl.value = orig;
     }
+  } catch(e) {
+    toast('تعذر التحديث: ' + e.message, 'error');
+    selectEl.value = orig;
+  } finally { selectEl.disabled = false; }
+}
+
+// ── Bulk status change ──
+async function bulkStatus(storeKey, fromStatus, toStatus) {
+  const fromAr = _statusAr(fromStatus), toAr = _statusAr(toStatus);
+  if (!confirm(`تحويل جميع الطلبات "${fromAr}" إلى "${toAr}"؟\n\nهذا الإجراء يؤثر على جميع الطلبات المؤهلة.`)) return;
+  try {
+    const res = await api('bulkUpdateStatus', { sheet: storeKey, fromStatus, toStatus });
+    if (res.success) {
+      toast(`تم تحويل ${res.updated} طلب من "${fromAr}" إلى "${toAr}" ✓`, 'success');
+      loadStoreOrders(storeKey);
+    } else toast('خطأ: ' + res.message, 'error');
+  } catch(e) { toast('تعذر التنفيذ: ' + e.message, 'error'); }
+}
+
+// ════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════
+function _statusAr(s) {
+  return { New:'جديد', Preparing:'جاري التحضير', Delivered:'تم التوصيل', Cancelled:'ملغي' }[s] || s;
+}
+function _fmtDate(d) {
+  if (!d) return '—';
+  return String(d).substring(0, 16);
+}
+function _toDatetimeLocal(str) {
+  if (!str) return '';
+  return String(str).replace(' ','T').substring(0,16);
+}
+
+// ════════════════════════════════════════════════════════
+//  REFRESH ALL
+// ════════════════════════════════════════════════════════
+async function refreshAll() {
+  const btn = document.querySelector('.btn-refresh');
+  btn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> جاري التحديث...';
+  await loadOverview();
+  // Refresh active store if on store page
+  const activePage = document.querySelector('.page.active');
+  if (activePage && activePage.id.startsWith('page-store-')) {
+    const storeKey = activePage.id.replace('page-store-','');
+    loadStoreOrders(storeKey);
+    loadStoreWindow(storeKey);
   }
+  document.getElementById('lastRefresh').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
+  btn.innerHTML = '<i class="fas fa-sync-alt"></i> تحديث';
+}
 
-  async function loadSchedule() {
-    try {
-      const response = await fetch(API_URL + '?action=getSchedule');
-      const data = await response.json();
-
-      const days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-      const dayNames = {
-        'Saturday': 'السبت',
-        'Sunday': 'الأحد',
-        'Monday': 'الاثنين',
-        'Tuesday': 'الثلاثاء',
-        'Wednesday': 'الأربعاء',
-        'Thursday': 'الخميس',
-        'Friday': 'الجمعة'
-      };
-
-      const html = days.map(day => `
-        <div class="form-group" style="background: white; padding: 15px; border-radius: 8px;">
-          <label>${dayNames[day]}</label>
-          <div class="form-row" style="margin-top: 10px;">
-            <div>
-              <label style="font-size: 12px;">وقت الفتح</label>
-              <input type="time" value="${data.schedule[day]?.openTime || '10:00'}"
-                     id="open_${day}">
-            </div>
-            <div>
-              <label style="font-size: 12px;">وقت الإغلاق</label>
-              <input type="time" value="${data.schedule[day]?.closeTime || '20:00'}"
-                     id="close_${day}">
-            </div>
-          </div>
-        </div>
-      `).join('');
-
-      document.getElementById('scheduleContainer').innerHTML = html;
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  function saveSchedule() {
-    alert('سيتم حفظ جدول الساعات في Google Sheets');
-  }
-
-  async function loadMenu() {
-    try {
-      const response = await fetch(API_URL + '?action=getMenuByVendor&vendorId=V1');
-      const data = await response.json();
-
-      const html = data.products?.map(product => `
-        <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: grid; grid-template-columns: 100px 1fr auto; gap: 15px; align-items: center;">
-          <img src="${product.imageUrl}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 6px;">
-          <div>
-            <h4>${product.name}</h4>
-            <p style="color: #666; font-size: 14px;">${product.category}</p>
-            <p style="font-weight: bold; color: #667eea; margin-top: 5px;">${product.price} درهم</p>
-          </div>
-          <div class="action-buttons">
-            <button class="btn btn-secondary" onclick="editProduct('${product.id}')">تعديل</button>
-            <button class="btn btn-danger" onclick="deleteProduct('${product.id}')">حذف</button>
-          </div>
-        </div>
-      `).join('') || '<p>لا توجد منتجات</p>';
-
-      document.getElementById('menuContainer').innerHTML = html;
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  function openAddProductModal() {
-    document.getElementById('productForm').reset();
-    document.getElementById('productModal').classList.add('active');
-  }
-
-  function saveProduct(event) {
-    event.preventDefault();
-    alert('سيتم حفظ المنتج في Google Sheets');
-    closeModal('productModal');
-  }
-
-  function editProduct(id) {
-    alert('سيتم تعديل المنتج: ' + id);
-  }
-
-  function deleteProduct(id) {
-    if (confirm('هل تريد حذف هذا المنتج؟')) {
-      alert('سيتم حذف المنتج');
-    }
-  }
-
-  async function loadAnalytics() {
-    document.getElementById('monthOrdersCount').textContent = '47';
-    document.getElementById('monthRevenue').textContent = '1,250 د.إ';
-    document.getElementById('topProduct').textContent = 'لحم غنم';
-    document.getElementById('newCustomersCount').textContent = '12';
-  }
-
-  function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('active');
-  }
-
-  function filterOrders() {
-    const search = document.getElementById('orderSearch').value.toLowerCase();
-    // Filter implementation
-  }
-
-  function filterOrdersByStatus(status) {
-    // Filter implementation
-  }
-
-  // Initialize on page load
-  window.addEventListener('load', () => {
-    checkAdminAuth();
-    // Load dashboard data
-    document.getElementById('todayOrdersCount').textContent = '8';
-    document.getElementById('todayRevenue').textContent = '420 د.إ';
-    document.getElementById('pendingOrdersCount').textContent = '2';
-    document.getElementById('avgOrderValue').textContent = '52.5 د.إ';
-  });
+// ════════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════════
+(async function init() {
+  await loadOverview();
+  document.getElementById('lastRefresh').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
+  document.getElementById('loadingOverlay').style.display = 'none';
+})();
 </script>
-
 </body>
 </html>
