@@ -477,8 +477,8 @@ async function renderStorePage(storeKey) {
             <button class="btn btn-primary" onclick="startNewBatch('${storeKey}')">
               <i class="fas fa-plus-circle"></i> بدء دورة جديدة
             </button>
-            <button class="btn btn-outline" onclick="reactivateBatch('${storeKey}')" title="إعادة تفعيل الدورة الحالية (نفس BatchID — للتمديد)">
-              <i class="fas fa-redo"></i> تمديد نفس الدورة
+            <button class="btn btn-outline" onclick="openExtendModal('${storeKey}')">
+              <i class="fas fa-clock"></i> تمديد الدورة
             </button>
             <button class="btn" style="background:rgba(255,80,80,.15);border:1px solid rgba(255,80,80,.3);color:#ff6060" onclick="closeBatchAdmin('${storeKey}')">
               <i class="fas fa-lock"></i> إغلاق الدورة
@@ -760,6 +760,78 @@ setTimeout(hideOverlay, 6000);
     hideOverlay();
   }
 })();
+// ── Extend Batch Modal ────────────────────────────────────
+let _extendStore = null;
+
+function openExtendModal(storeKey) {
+  _extendStore = storeKey;
+  // Default new end = now + 2 hours
+  const d = new Date(Date.now() + 2 * 3600000);
+  const pad = n => String(n).padStart(2,'0');
+  const def = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  document.getElementById('extendNewEnd').value = def;
+  document.getElementById('extendModal').style.display = 'flex';
+}
+
+function closeExtendModal() {
+  document.getElementById('extendModal').style.display = 'none';
+  _extendStore = null;
+}
+
+async function confirmExtend() {
+  const newEndRaw = document.getElementById('extendNewEnd').value;
+  if (!newEndRaw) { alert('يرجى تحديد وقت التمديد'); return; }
+  const newEnd = newEndRaw.replace('T',' ') + ':00';
+  const btn = document.getElementById('extendConfirmBtn');
+  btn.disabled = true;
+  btn.textContent = 'جاري التمديد...';
+  try {
+    const res = await api('extendBatch', { store: _extendStore, newEnd });
+    if (res.success) {
+      closeExtendModal();
+      const msg = res.revertedOrders > 0
+        ? ' — ' + res.revertedOrders + ' طلب رجع لـ "جديد"'
+        : '';
+      toast('✓ تم التمديد حتى ' + newEnd + msg, 'success');
+      loadStoreWindow(_extendStore);
+      loadBatchStatus(_extendStore);
+      loadStoreOrders(_extendStore);
+    } else {
+      toast('خطأ: ' + res.message, 'error');
+    }
+  } catch(e) { toast('تعذر: ' + e.message, 'error'); }
+  btn.disabled = false;
+  btn.textContent = 'تأكيد التمديد';
+}
 </script>
+
+<!-- Extend Batch Modal -->
+<div id="extendModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#0d1a28;border:1.5px solid rgba(24,191,239,.3);border-radius:16px;padding:2rem;min-width:340px;max-width:440px;width:90%">
+    <div style="font-family:'Alexandria',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:1.2rem">
+      <i class="fas fa-clock" style="color:#18bfef;margin-left:.5rem"></i> تمديد الدورة
+    </div>
+    <div style="font-size:.82rem;color:rgba(255,255,255,.45);margin-bottom:1rem;line-height:1.7">
+      سيتم تمديد وقت الإغلاق إلى الوقت الجديد.<br>
+      جميع الطلبات <span style="color:#ffa500">جاري التحضير</span> في هذه الدورة ستعود إلى <span style="color:#18bfef">جديد</span> تلقائياً.
+    </div>
+    <div style="margin-bottom:1.2rem">
+      <label style="font-size:.8rem;color:rgba(255,255,255,.55);display:block;margin-bottom:.4rem">وقت الإغلاق الجديد</label>
+      <input type="datetime-local" id="extendNewEnd"
+        style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.3);border-radius:9px;padding:.65rem 1rem;color:#fff;font-size:.95rem;outline:none">
+    </div>
+    <div style="display:flex;gap:.8rem">
+      <button id="extendConfirmBtn" onclick="confirmExtend()"
+        style="flex:1;background:linear-gradient(135deg,#18bfef,#0d9bcb);color:#fff;font-family:'Cairo',sans-serif;font-weight:700;border:none;border-radius:9px;padding:.75rem;cursor:pointer;font-size:.9rem">
+        تأكيد التمديد
+      </button>
+      <button onclick="closeExtendModal()"
+        style="flex:1;background:transparent;border:1.5px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);font-family:'Cairo',sans-serif;border-radius:9px;padding:.75rem;cursor:pointer;font-size:.9rem">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
