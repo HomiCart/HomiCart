@@ -3209,12 +3209,11 @@
 
   // ── Order Window — always open; timer per store ──────────
   function isOrderWindowOpen() {
-    // If we have live phase data from admin → use it
-    if (window._batchPhase) {
-      return window._batchPhase === 'open' && window._batchClosed !== true;
-    }
+    // Explicitly closed by timer or admin → block
+    if (window._batchClosed === true) return false;
     // Fallback: check countdown end time
     if (_cdEndTime && new Date() > _cdEndTime) return false;
+    // Default: open
     return true;
   }
   function getWindowClosedMsg() {
@@ -3243,11 +3242,18 @@
           if (!isNaN(live.getTime())) { _cdEndTime = live; startCountdown(); }
         }
 
-        // Block orders based on phase + batch status
-        // open phase + batch active = allow orders
-        // anything else = block
-        window._batchClosed = !(res.phase === 'open' && res.isActive === true);
-        window._batchPhase  = res.phase;
+        // Block orders based on TIME PHASE ONLY
+        // 'open'        = within start→end window  → allow
+        // 'before_open' = before start time         → block
+        // 'closed'      = past end time             → block
+        // 'no_settings' = admin hasn't set window   → allow (default open)
+        window._batchPhase = res.phase;
+        // Only set _batchClosed from timer/explicit close, not from batch_status setting
+        if (res.phase === 'before_open' || res.phase === 'closed') {
+          window._batchClosed = true;
+        } else if (res.phase === 'open' || res.phase === 'no_settings') {
+          window._batchClosed = false; // reset if admin extended or window is open
+        }
       })
       .catch(() => {
         // Fallback to hardcoded times if API fails
