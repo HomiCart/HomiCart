@@ -761,69 +761,136 @@ setTimeout(hideOverlay, 6000);
   }
 })();
 // ── Extend Batch Modal ────────────────────────────────────
-let _extendStore = null;
+let _extendStore   = null;
+let _extendBatches = [];
 
-function openExtendModal(storeKey) {
+async function openExtendModal(storeKey) {
   _extendStore = storeKey;
   // Default new end = now + 2 hours
   const d = new Date(Date.now() + 2 * 3600000);
   const pad = n => String(n).padStart(2,'0');
   const def = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   document.getElementById('extendNewEnd').value = def;
+  document.getElementById('extendBatchInfo').style.display = 'none';
   document.getElementById('extendModal').style.display = 'flex';
+
+  // Load previous batches into dropdown
+  const sel = document.getElementById('extendBatchSelect');
+  sel.innerHTML = '<option value="">⏳ جاري تحميل الدورات...</option>';
+  try {
+    const res = await api('getPreviousBatches', { store: storeKey });
+    _extendBatches = res.batches || [];
+    if (!_extendBatches.length) {
+      sel.innerHTML = '<option value="">لا توجد دورات سابقة</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">— اختر دورة —</option>' +
+      _extendBatches.map(b => {
+        const label = b.batchId.replace('BATCH-','').replace(storeKey+'-','').slice(-6);
+        const active = b.isActive ? ' ★ نشطة' : '';
+        const info = `[${b.total} طلب | ${(b.firstOrder||'').substring(0,10)}]`;
+        return `<option value="${b.batchId}">${label}${active} ${info}</option>`;
+      }).join('');
+    // Auto-select the active batch
+    const activeBatch = _extendBatches.find(b => b.isActive);
+    if (activeBatch) { sel.value = activeBatch.batchId; onExtendBatchChange(); }
+  } catch(e) {
+    sel.innerHTML = '<option value="">تعذر التحميل</option>';
+  }
+}
+
+function onExtendBatchChange() {
+  const batchId  = document.getElementById('extendBatchSelect').value;
+  const infoEl   = document.getElementById('extendBatchInfo');
+  if (!batchId) { infoEl.style.display = 'none'; return; }
+  const batch = _extendBatches.find(b => b.batchId === batchId);
+  if (!batch) return;
+  infoEl.style.display = '';
+  infoEl.innerHTML = `
+    <div style="color:rgba(255,255,255,.5);margin-bottom:.3rem">تفاصيل الدورة المختارة:</div>
+    <div>🆔 <span style="font-family:monospace;color:#18bfef;font-size:.75rem">${batch.batchId}</span></div>
+    <div>📅 أول طلب: <b style="color:#fff">${(batch.firstOrder||'—').substring(0,16)}</b></div>
+    <div>📅 آخر طلب: <b style="color:#fff">${(batch.lastOrder||'—').substring(0,16)}</b></div>
+    <div>📦 إجمالي الطلبات: <b style="color:#fff">${batch.total}</b>
+      &nbsp;|&nbsp; جديد: <span style="color:#18bfef">${batch.new}</span>
+      &nbsp;|&nbsp; تحضير: <span style="color:#ffa500">${batch.preparing}</span>
+      &nbsp;|&nbsp; تسليم: <span style="color:#28c864">${batch.delivered}</span>
+    </div>
+    ${batch.isActive ? '<div style="color:#28c864;margin-top:.2rem">✓ الدورة الحالية النشطة</div>' : '<div style="color:#ffa500;margin-top:.2rem">⚠ دورة سابقة — سيتم إعادة تفعيلها</div>'}`;
 }
 
 function closeExtendModal() {
   document.getElementById('extendModal').style.display = 'none';
-  _extendStore = null;
+  _extendStore   = null;
+  _extendBatches = [];
 }
 
 async function confirmExtend() {
   const newEndRaw = document.getElementById('extendNewEnd').value;
+  const batchId   = document.getElementById('extendBatchSelect').value;
   if (!newEndRaw) { alert('يرجى تحديد وقت التمديد'); return; }
+  if (!batchId)   { alert('يرجى اختيار الدورة أولاً'); return; }
   const newEnd = newEndRaw.replace('T',' ') + ':00';
   const btn = document.getElementById('extendConfirmBtn');
   btn.disabled = true;
-  btn.textContent = 'جاري التمديد...';
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التمديد...';
   try {
-    const res = await api('extendBatch', { store: _extendStore, newEnd });
+    const res = await api('extendBatch', { store: _extendStore, newEnd, batchId });
     if (res.success) {
       closeExtendModal();
-      const msg = res.revertedOrders > 0
-        ? ' — ' + res.revertedOrders + ' طلب رجع لـ "جديد"'
-        : '';
-      toast('✓ تم التمديد حتى ' + newEnd + msg, 'success');
+      const rev = res.revertedOrders > 0 ? ` — ${res.revertedOrders} طلب رجع لـ "جديد"` : '';
+      toast('✓ تم التمديد حتى ' + newEnd + rev, 'success');
       loadStoreWindow(_extendStore);
       loadBatchStatus(_extendStore);
       loadStoreOrders(_extendStore);
-    } else {
-      toast('خطأ: ' + res.message, 'error');
-    }
+    } else { toast('خطأ: ' + res.message, 'error'); }
   } catch(e) { toast('تعذر: ' + e.message, 'error'); }
   btn.disabled = false;
-  btn.textContent = 'تأكيد التمديد';
+  btn.innerHTML = '<i class="fas fa-check"></i> تأكيد التمديد';
 }
 </script>
 
 <!-- Extend Batch Modal -->
-<div id="extendModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center">
-  <div style="background:#0d1a28;border:1.5px solid rgba(24,191,239,.3);border-radius:16px;padding:2rem;min-width:340px;max-width:440px;width:90%">
+<div id="extendModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;overflow-y:auto;padding:1rem">
+  <div style="background:#0d1a28;border:1.5px solid rgba(24,191,239,.3);border-radius:16px;padding:2rem;min-width:340px;max-width:520px;width:100%">
+
     <div style="font-family:'Alexandria',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:1.2rem">
-      <i class="fas fa-clock" style="color:#18bfef;margin-left:.5rem"></i> تمديد الدورة
+      <i class="fas fa-clock" style="color:#18bfef;margin-left:.5rem"></i> تمديد دورة الطلبات
     </div>
-    <div style="font-size:.82rem;color:rgba(255,255,255,.45);margin-bottom:1rem;line-height:1.7">
-      سيتم تمديد وقت الإغلاق إلى الوقت الجديد.<br>
-      جميع الطلبات <span style="color:#ffa500">جاري التحضير</span> في هذه الدورة ستعود إلى <span style="color:#18bfef">جديد</span> تلقائياً.
-    </div>
+
+    <!-- Batch selector -->
     <div style="margin-bottom:1.2rem">
-      <label style="font-size:.8rem;color:rgba(255,255,255,.55);display:block;margin-bottom:.4rem">وقت الإغلاق الجديد</label>
+      <label style="font-size:.8rem;color:rgba(255,255,255,.55);display:block;margin-bottom:.4rem">
+        <i class="fas fa-layer-group" style="color:#18bfef;margin-left:.3rem"></i>
+        اختر الدورة المراد تمديدها
+      </label>
+      <select id="extendBatchSelect" onchange="onExtendBatchChange()"
+        style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem 1rem;color:#fff;font-size:.85rem;outline:none;cursor:pointer">
+        <option value="">⏳ جاري تحميل الدورات السابقة...</option>
+      </select>
+      <!-- Batch info card -->
+      <div id="extendBatchInfo" style="display:none;margin-top:.7rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:.8rem 1rem;font-size:.8rem;line-height:1.9">
+      </div>
+    </div>
+
+    <!-- New end time -->
+    <div style="margin-bottom:1.2rem">
+      <label style="font-size:.8rem;color:rgba(255,255,255,.55);display:block;margin-bottom:.4rem">
+        <i class="fas fa-stop-circle" style="color:#ff6060;margin-left:.3rem"></i>
+        وقت الإغلاق الجديد
+      </label>
       <input type="datetime-local" id="extendNewEnd"
         style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.3);border-radius:9px;padding:.65rem 1rem;color:#fff;font-size:.95rem;outline:none">
     </div>
+
+    <div style="font-size:.78rem;color:rgba(255,255,255,.35);margin-bottom:1.2rem;line-height:1.7">
+      ℹ️ جميع طلبات الدورة المختارة بحالة <span style="color:#ffa500">جاري التحضير</span> ستعود تلقائياً إلى <span style="color:#18bfef">جديد</span>، وستُفعَّل الدورة مجدداً.
+    </div>
+
     <div style="display:flex;gap:.8rem">
       <button id="extendConfirmBtn" onclick="confirmExtend()"
         style="flex:1;background:linear-gradient(135deg,#18bfef,#0d9bcb);color:#fff;font-family:'Cairo',sans-serif;font-weight:700;border:none;border-radius:9px;padding:.75rem;cursor:pointer;font-size:.9rem">
-        تأكيد التمديد
+        <i class="fas fa-check"></i> تأكيد التمديد
       </button>
       <button onclick="closeExtendModal()"
         style="flex:1;background:transparent;border:1.5px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);font-family:'Cairo',sans-serif;border-radius:9px;padding:.75rem;cursor:pointer;font-size:.9rem">
