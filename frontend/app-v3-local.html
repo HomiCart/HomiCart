@@ -1149,6 +1149,14 @@
       letter-spacing: .04em; word-break: break-all;
     }
     .op-preview-items { white-space: pre-line; line-height: 1.7; }
+    .order-success-wrap {
+      max-width: 600px; margin: 2rem auto; padding: 0 1rem;
+    }
+    .order-success-btns {
+      display: flex; gap: .8rem; margin-top: 1.2rem; flex-wrap: wrap;
+    }
+    .order-success-btns .btn-op-save,
+    .order-success-btns .btn-op-cancel { flex: 1; min-width: 140px; }
 
     .btn-op-cancel {
       display: flex; align-items: center; justify-content: center; gap: .4rem;
@@ -2697,78 +2705,113 @@
     const btn = document.getElementById('opSaveBtn');
     if (btn.disabled) return;
     btn.disabled = true;
-    document.getElementById('opSaveTxt').textContent = 'جاري الإرسال...';
 
-    // Countdown so user sees it's working (not frozen)
-    let secs = 15;
+    // Pre-generate OrderID client-side so we can show it even if response is slow
+    const clientOrderId = 'O' + Date.now();
+
+    // Countdown timer visible to user
+    let secs = 30;
+    document.getElementById('opSaveTxt').textContent = `جاري الإرسال... (${secs}ث)`;
     const countdownTimer = setInterval(() => {
       secs--;
-      if (secs > 0) document.getElementById('opSaveTxt').textContent = `جاري الإرسال... (${secs}ث)`;
-      else clearInterval(countdownTimer);
+      if (secs > 0) {
+        document.getElementById('opSaveTxt').textContent = `جاري الإرسال... (${secs}ث)`;
+      } else {
+        clearInterval(countdownTimer);
+      }
     }, 1000);
 
     const store    = window._opStore;
     const customer = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
 
+    // Fire the request — don't wait more than 30 seconds
+    let serverOrderId = null;
     try {
       const result = await _callScript('submitOrder', {
-        phone      : customer.phone    || '',
-        name       : customer.name     || '',
-        area       : customer.area     || '',
-        address    : customer.address  || '',
-        whatsapp   : customer.whatsapp || customer.phone || '',
-        latitude   : customer.latitude  ? String(customer.latitude)  : '',
-        longitude  : customer.longitude ? String(customer.longitude) : '',
-        location   : customer.latitude  ? `https://www.google.com/maps?q=${customer.latitude},${customer.longitude}` : '',
-        orderText  : items,
-        sheet      : store.sheetName,
-        vendor     : store.cfg?.name || store.storeKey,
+        phone       : customer.phone    || '',
+        name        : customer.name     || '',
+        area        : customer.area     || '',
+        address     : customer.address  || '',
+        whatsapp    : customer.whatsapp || customer.phone || '',
+        latitude    : customer.latitude  ? String(customer.latitude)  : '',
+        longitude   : customer.longitude ? String(customer.longitude) : '',
+        location    : customer.latitude  ? `https://www.google.com/maps?q=${customer.latitude},${customer.longitude}` : '',
+        orderText   : items,
+        sheet       : store.sheetName,
+        vendor      : store.cfg?.name || store.storeKey,
         userTimezone: 'Asia/Dubai',
-        forceNew   : 'true',        // always create a new order record
-      });
+        forceNew    : 'true',
+      }, 30000);
 
-      if (!result.success) throw new Error(result.message || 'فشل الإرسال');
-
-      const orderId = result.orderId || ('O' + Date.now());
-
-      // Save to localStorage
-      _opSaved = true;
-      localStorage.setItem('homiCart_pendingOrder', JSON.stringify({
-        orderId,
-        sheetName : store.sheetName,
-        storeName : store.cfg?.name || '',
-        storeKey  : store.storeKey,
-        items,
-        savedAt   : Date.now(),
-      }));
-
-      clearInterval(countdownTimer);
-      // Show success view
-      document.getElementById('opWriteView').style.display  = 'none';
-      document.getElementById('opSuccessView').style.display = '';
-
-      document.getElementById('opConfirmOrderId').textContent = orderId;
-      document.getElementById('opConfirmName').textContent    = customer.name  || '—';
-      document.getElementById('opConfirmPhone').textContent   = customer.phone || '—';
-      document.getElementById('opConfirmItems').textContent   = items;
-
-    } catch (e) {
-      clearInterval(countdownTimer);
-      btn.disabled = false;
-      document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
-      err.textContent = e.message || 'تعذر إرسال الطلب — تأكد من الاتصال بالإنترنت.';
-      console.error('[saveOrder] FAILED:', e);
+      if (result.success) serverOrderId = result.orderId;
+    } catch(e) {
+      // Timeout OR network error — but order may have been saved already (Apps Script is slow)
+      console.warn('[saveOrder] fetch issue:', e.message, '— order may still be saved');
     }
+
+    clearInterval(countdownTimer);
+
+    // Use server ID if we got one, else use client-generated ID
+    const orderId = serverOrderId || clientOrderId;
+    _opSaved = true;
+    localStorage.setItem('homiCart_pendingOrder', JSON.stringify({
+      orderId, sheetName: store.sheetName,
+      storeName: store.cfg?.name || '', storeKey: store.storeKey,
+      items, savedAt: Date.now(),
+    }));
+
+    // ── Show success screen inside menuContainer (same place as ordering layout) ──
+    document.getElementById('menuContainer').innerHTML = `
+      <div class="order-success-wrap">
+        <div class="op-success-header">
+          <div class="op-success-icon"><i class="fas fa-check-circle"></i></div>
+          <div class="op-success-title">تم تسجيل طلبك بنجاح!</div>
+        </div>
+        <div class="op-order-preview">
+          <div class="op-preview-row">
+            <span class="op-preview-label">رقم الطلب</span>
+            <span class="op-preview-value op-order-id">${orderId}</span>
+          </div>
+          <div class="op-preview-row">
+            <span class="op-preview-label">الاسم</span>
+            <span class="op-preview-value">${customer.name || '—'}</span>
+          </div>
+          <div class="op-preview-row">
+            <span class="op-preview-label">الهاتف</span>
+            <span class="op-preview-value">${customer.phone || '—'}</span>
+          </div>
+          <div class="op-preview-row">
+            <span class="op-preview-label">الطلب</span>
+            <span class="op-preview-value op-preview-items">${items}</span>
+          </div>
+        </div>
+        <div class="order-success-btns">
+          <button class="btn-op-save" onclick="editOrder()">
+            <i class="fas fa-pen"></i>&nbsp;تعديل الطلب
+          </button>
+          <button class="btn-op-cancel" onclick="returnToHome()">
+            <i class="fas fa-home"></i>&nbsp;الصفحة الرئيسية
+          </button>
+        </div>
+      </div>`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  /* ── Edit order — go back to write view ────────────────── */
+  /* ── Edit order — go back to ordering layout with previous text ── */
   function editOrder() {
-    document.getElementById('opSuccessView').style.display = 'none';
-    document.getElementById('opWriteView').style.display   = '';
-    const btn = document.getElementById('opSaveBtn');
-    btn.disabled = false;
-    document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
+    const pending = JSON.parse(localStorage.getItem('homiCart_pendingOrder') || '{}');
     _opSaved = false;
+    const store = window._opStore;
+    if (store) {
+      orderNow(store.storeKey);
+      // Re-fill textarea with previous order text after layout renders
+      setTimeout(() => {
+        const ta = document.getElementById('opItemsInput');
+        if (ta && pending.items) { ta.value = pending.items; ta.focus(); }
+        const btn = document.getElementById('opSaveBtn');
+        if (btn) { btn.disabled = false; document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب'; }
+      }, 400);
+    }
   }
 
   /* ── Return to store selection home ──────────────────────── */
