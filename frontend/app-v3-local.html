@@ -2047,26 +2047,29 @@
       const result = await _callScript('getCustomer', { phone });
 
       if (result.success && result.customer) {
-        // ── EXISTING CUSTOMER ──────────────────────────────
+        // ── EXISTING CUSTOMER → save data + redirect directly to order page ──
         const c = result.customer;
         window._existingCustomerId = c.id;
 
-        // Fill all details
-        document.getElementById('custName').value    = c.name    || '';
-        document.getElementById('custArea').value    = c.area    || '';
-        document.getElementById('custAddress').value = c.address || '';
-        document.getElementById('custWhatsappExisting').value = c.whatsapp || phone;
+        // Save to localStorage for confirm/order pages
+        localStorage.setItem('homiCart_customer', JSON.stringify({
+          phone,
+          name      : c.name     || '',
+          area      : c.area     || '',
+          address   : c.address  || '',
+          whatsapp  : c.whatsapp || phone,
+          customerId: c.id       || '',
+          latitude  : c.latitude  || '',
+          longitude : c.longitude || '',
+        }));
 
         statusEl.className = 'cust-lookup-status found';
-        statusEl.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp;مرحباً! تم العثور على بياناتك';
+        statusEl.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp;مرحباً! تم التعرف عليك، جاري الانتقال...';
 
-        // Show existing-WhatsApp + all detail fields
-        _showStep('stepWhatsappExisting', true);
-        _showStep('stepWhatsapp', false);
-        _showStep('stepDetails', true);
-
-        // Init map + GPS
-        setTimeout(() => { initLeafletMap(_UAE_CENTER[0], _UAE_CENTER[1], false); requestGPS(); }, 120);
+        // Redirect directly to order page — no form needed
+        const store = window._pendingStore;
+        await selectStore(store.folder, store.name, store.tag);
+        setTimeout(() => orderNow(store.folder), 150);
 
       } else {
         // ── NEW CUSTOMER ───────────────────────────────────
