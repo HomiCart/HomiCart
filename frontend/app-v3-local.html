@@ -1284,43 +1284,21 @@
   //  You can mix both: driveFolder for existing images, directUrls for fast ones.
   //  directUrls takes priority if provided.
   // ═══════════════════════════════════════════════════════════════
-  const DRIVE_CONFIG = {
-    backgrounds  : '123evaENwY1Tv6lGhaOR6SBTaexLNRFX_',  // hero + card backgrounds
-    AlRoknAlMasry: '128tbcnmTV58imd2eYQzFxEZELDe0tvt_',  // Al Rokn Al Masry menu
-    AlFayoumy    : '1EVV0EI-wfcqVexNxBmKw_jc7i1SMeMyo',  // Al Fayoumy menu
-  };
-
-  // ── OPTIONAL: Replace Drive with direct fast URLs ────────────────
-  // Paste image URLs here to skip Drive entirely (instant loading).
-  // Leave arrays empty ([]) to keep using Drive.
-  // Example: directUrls: ['https://kommodo.ai/i/abc', 'https://i.ibb.co/xyz.jpg']
-  const DIRECT_URLS = {
-    AlRoknAlMasry : [
-      'assets/Menu/Al Rokn AL masry/WhatsApp Image 2026-05-15 at 11.35.26 AM.jpeg',
-    ],
-    AlFayoumy : [
-      'assets/Menu/Al Fayoumy/WhatsApp Image 2026-04-17 at 3.25.36 PM.jpeg',
-      'assets/Menu/Al Fayoumy/WhatsApp Image 2026-04-17 at 3.25.36 PM (1).jpeg',
-      'assets/Menu/Al Fayoumy/WhatsApp Image 2026-04-17 at 3.25.36 PM (2).jpeg',
-      'assets/Menu/Al Fayoumy/WhatsApp Image 2026-04-17 at 3.25.37 PM.jpeg',
-      'assets/Menu/Al Fayoumy/WhatsApp Image 2026-04-17 at 3.25.37 PM (1).jpeg',
-    ],
-    backgrounds   : [],
-  };
+  // ── GitHub repo config — images are read live from GitHub ────────
+  const GITHUB_REPO   = 'HomiCart/HomiCart';
+  const GITHUB_BRANCH = 'main';
 
   const MENU_CONFIG = {
     'Al Rokn AL masry': {
       name            : 'الركن المصري',
-      folder          : 'Menu/Al Rokn AL masry',                    // local fallback
-      driveFolder     : DRIVE_CONFIG.AlRoknAlMasry,                 // ← Drive (primary)
-      discountsFolder : 'Menu/Al Rokn AL masry/discounts',
+      githubFolder    : 'frontend/assets/Menu/Al Rokn AL masry',
+      githubDiscounts : 'frontend/assets/Menu/Al Rokn AL masry/discounts',
       itemLabel       : 'لحم',
     },
     'Al Fayoumy': {
       name            : 'الفيومي',
-      folder          : 'Menu/Al Fayoumy',                          // local fallback
-      driveFolder     : DRIVE_CONFIG.AlFayoumy,                     // ← Drive (primary)
-      discountsFolder : 'Menu/Al Fayoumy/discounts',
+      githubFolder    : 'frontend/assets/Menu/Al Fayoumy',
+      githubDiscounts : 'frontend/assets/Menu/Al Fayoumy/discounts',
       itemLabel       : 'دجاج',
     },
   };
@@ -1334,70 +1312,38 @@
   //   • Images    → fresh per page load  (PAGE_TS appended to src)
   // ═══════════════════════════════════════════════════════════════
 
-  // ── Server base URL ────────────────────────────────────────────
-  // When the page is opened directly as file://, relative URLs like
-  // /api/list-images won't reach the server.  We detect this and
-  // point everything to http://localhost:3000 automatically.
-  // If you later host this online, change the fallback URL below.
-  const API_BASE = window.location.protocol === 'file:'
-    ? 'http://localhost:3000'
-    : '';   // empty = use same host (works when served via the server)
-
   const PAGE_TS = Date.now();
 
-  // Build a display-ready image URL:
-  // • Drive URLs (absolute https://) → use thumbnail format, no cache-bust needed
-  // • Local server paths (/Menu/...) → prepend API_BASE + add ?t= cache-buster
   function _imgUrl(rawUrl) {
     if (!rawUrl) return '';
-    if (rawUrl.startsWith('data:')) return rawUrl;          // base64 data URL — use as-is
-    if (rawUrl.startsWith('https://')) return rawUrl;       // absolute URL — use as-is
-    // Proxy path like /api/drive-proxy?id=... — prepend API_BASE
-    if (rawUrl.startsWith('/api/')) return API_BASE + rawUrl;
-    // Local server path — add API_BASE prefix + cache-bust
-    const base = rawUrl.startsWith('http') ? rawUrl : (API_BASE + rawUrl);
-    return base + (base.includes('?') ? '&' : '?') + 't=' + PAGE_TS;
+    return rawUrl; // GitHub raw URLs are absolute https:// — use as-is
   }
 
-  // Apps Script URL for direct calls when server is unavailable (GitHub Pages)
-  const APPS_SCRIPT_DIRECT = 'https://script.google.com/macros/s/AKfycbwRW2K-GbHfawvZMpxk5ExfyYg5EIhFpUgTy-nHaMjtNR1ZiWn-9BuZpRSWACTEGLqNlA/exec';
-  const HAS_SERVER = window.location.hostname === 'localhost' || window.location.protocol === 'file:';
+  // ── Fetch image list from GitHub Contents API ──────────────────
+  // Automatically picks up any image added/removed from the folder.
+  // No hardcoding needed — just push images to the repo.
+  const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp|avif)$/i;
+  const _ghCache = {};   // in-memory cache per session (avoids duplicate API calls)
 
-  function _isDriveId(s) {
-    return typeof s === 'string' && /^[A-Za-z0-9_-]{25,}$/.test(s) && !s.includes('/');
-  }
-
-  // Convert a direct URL array into the same { name, url } format as Drive images
-  function _directUrlsToFiles(urls) {
-    return urls.filter(Boolean).map((u, i) => ({ name: 'image-' + (i+1), id: null, url: u, fullUrl: u }));
-  }
-
-  // Fetch images: direct URLs (instant) > server proxy > Apps Script base64
-  async function fetchImages(source) {
-    if (!source) return [];
-    // Check if a directUrls key matches this source (Drive folder ID → config key lookup)
-    const directKey = Object.keys(DRIVE_CONFIG).find(k => DRIVE_CONFIG[k] === source);
-    if (directKey && DIRECT_URLS[directKey] && DIRECT_URLS[directKey].length) {
-      return _directUrlsToFiles(DIRECT_URLS[directKey]);
-    }
+  async function fetchImages(githubFolderPath) {
+    if (!githubFolderPath) return [];
+    if (_ghCache[githubFolderPath]) return _ghCache[githubFolderPath];
     try {
-      if (_isDriveId(source)) {
-        if (HAS_SERVER) {
-          // Localhost: server fetches + proxies Drive images
-          const res = await fetch(`${API_BASE}/api/drive-images?folderId=${encodeURIComponent(source)}&_t=${Date.now()}`, { cache: 'no-store' });
-          if (!res.ok) return [];
-          return (await res.json()).files || [];
-        } else {
-          // GitHub Pages: call Apps Script directly, get base64 data URLs
-          return await _fetchDriveViaScript(source);
-        }
-      } else {
-        const res = await fetch(`${API_BASE}/api/list-images?folder=${encodeURIComponent(source)}&_t=${Date.now()}`, { cache: 'no-store' });
-        if (!res.ok) return [];
-        return (await res.json()).files || [];
-      }
+      const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/${githubFolderPath.split('/').map(encodeURIComponent).join('/')}?ref=${GITHUB_BRANCH}`;
+      const res = await fetch(apiUrl, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' },
+        cache: 'no-store'
+      });
+      if (!res.ok) return [];
+      const items = await res.json();
+      if (!Array.isArray(items)) return [];
+      const files = items
+        .filter(f => f.type === 'file' && IMAGE_EXT.test(f.name))
+        .map(f => ({ name: f.name, id: null, url: f.download_url, fullUrl: f.download_url }));
+      _ghCache[githubFolderPath] = files;
+      return files;
     } catch (err) {
-      console.warn('[fetchImages] failed:', source, err.message);
+      console.warn('[fetchImages] GitHub API failed:', githubFolderPath, err.message);
       return [];
     }
   }
@@ -1477,18 +1423,17 @@
     });
   }
 
-  /* ── Render stores — loads card backgrounds from Drive ── */
+  /* ── Render stores — loads card backgrounds from GitHub ── */
   async function renderStores() {
-    // Pre-fetch first image from each store's Drive folder for the card background
+    // Pre-fetch first image from each store's GitHub folder for the card background
     const cardPhotos = await Promise.all(stores.map(async s => {
       const cfg = MENU_CONFIG[s.folder];
-      const driveId = cfg?.driveFolder || '';
-      if (driveId) {
-        const imgs = await fetchImages(driveId);
-        if (imgs.length > 0) return _imgUrl(imgs[0].url); // thumbnail — reliable in CSS
+      const ghFolder = cfg?.githubFolder || '';
+      if (ghFolder) {
+        const imgs = await fetchImages(ghFolder);
+        if (imgs.length > 0) return _imgUrl(imgs[0].url);
       }
-      // Fallback: keep local photo path (works on localhost)
-      return s.photo;
+      return s.photo; // fallback to static photo if GitHub fetch fails
     }));
 
     // Real store cards
@@ -1552,10 +1497,10 @@
       </div>`;
     showPage('menuPage');
 
-    // Fetch menu + discount images — Drive is primary, local is fallback
+    // Fetch menu + discount images automatically from GitHub repo
     const config = MENU_CONFIG[folder];
-    const menuSource     = config?.driveFolder     || config?.folder          || '';
-    const discountSource = config?.discountsDrive  || config?.discountsFolder || '';
+    const menuSource     = config?.githubFolder    || '';
+    const discountSource = config?.githubDiscounts || '';
     const [menuImages, discountImages] = await Promise.all([
       fetchImages(menuSource),
       fetchImages(discountSource),
