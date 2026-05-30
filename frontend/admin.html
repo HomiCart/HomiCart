@@ -387,8 +387,26 @@ function toast(msg, type='info') {
 //  OVERVIEW — load stats
 // ════════════════════════════════════════════════════════
 async function loadOverview() {
+  // Step 1: quick ping to verify connectivity
   try {
-    const res = await api('getAdminStats');
+    const ping = await api('ping', {}, 8000);
+    console.log('[Admin] ping:', ping.message);
+  } catch(e) {
+    document.getElementById('storeBars').innerHTML =
+      `<div class="empty-state" style="color:#ff6060">
+         <i class="fas fa-exclamation-triangle"></i><br>
+         تعذر الاتصال بالخادم<br>
+         <small style="font-size:.75rem;opacity:.6">${e.message}</small><br>
+         <small style="font-size:.72rem;opacity:.5">تأكد من نشر الـ Apps Script بشكل صحيح</small>
+       </div>`;
+    ['st-total','st-new','st-preparing','st-delivered','st-cancelled']
+      .forEach(id => document.getElementById(id).textContent = '!');
+    return;
+  }
+
+  // Step 2: load stats
+  try {
+    const res = await api('getAdminStats', {}, 30000);
     if (!res.success) throw new Error(res.message);
 
     const s = res.stats;
@@ -398,21 +416,28 @@ async function loadOverview() {
     document.getElementById('st-delivered').textContent = s.delivered ?? 0;
     document.getElementById('st-cancelled').textContent = s.cancelled ?? 0;
 
-    // Store bar chart
-    const max = Math.max(1, ...Object.values(s.perStore||{}));
+    const max    = Math.max(1, ...Object.values(s.perStore||{}));
     const colors = { AlRoknAlMasry:'#ef4444', AlFayoumi:'#f59e0b' };
     const names  = { AlRoknAlMasry:'الركن المصري', AlFayoumi:'الفيومي' };
-    document.getElementById('storeBars').innerHTML = Object.entries(s.perStore||{}).map(([k,v]) => `
-      <div class="store-bar-row">
-        <div class="store-bar-label">${names[k]||k}</div>
-        <div class="store-bar-track">
-          <div class="store-bar-fill" style="width:${Math.round(v/max*100)}%;background:${colors[k]||'#18bfef'}"></div>
-        </div>
-        <div class="store-bar-count">${v}</div>
-      </div>`).join('') || '<div class="empty-state"><i class="fas fa-inbox"></i><br>لا توجد بيانات</div>';
+    document.getElementById('storeBars').innerHTML =
+      Object.entries(s.perStore||{}).map(([k,v]) => `
+        <div class="store-bar-row">
+          <div class="store-bar-label">${names[k]||k}</div>
+          <div class="store-bar-track">
+            <div class="store-bar-fill" style="width:${Math.round(v/max*100)}%;background:${colors[k]||'#18bfef'}"></div>
+          </div>
+          <div class="store-bar-count">${v}</div>
+        </div>`).join('')
+      || '<div class="empty-state"><i class="fas fa-inbox"></i><br>لا توجد طلبات بعد</div>';
 
   } catch(e) {
-    toast('تعذر تحميل الإحصائيات: ' + e.message, 'error');
+    document.getElementById('storeBars').innerHTML =
+      `<div class="empty-state" style="color:#ffa500">
+         <i class="fas fa-exclamation-circle"></i><br>
+         الاتصال يعمل لكن getAdminStats غير موجودة<br>
+         <small style="font-size:.75rem;opacity:.6">يرجى نشر الـ .gs الجديد (v18.0)</small>
+       </div>`;
+    toast('يرجى نشر الـ .gs الجديد: ' + e.message, 'error');
   }
 }
 
