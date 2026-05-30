@@ -550,10 +550,21 @@ async function loadBatchDropdown(storeKey) {
         return `<option value="${b.batchId}">${active} ${short} — ${date} (${b.total} طلب)</option>`;
       }).join('');
 
-    // Auto-select active batch
-    const active = batches.find(b => b.isActive);
-    if (active) { sel.value = active.batchId; }
-    else         { sel.value = '__new__'; }
+    // Pre-select: main dropdown selection → batch with Preparing orders → active batch
+    const mainSel = document.getElementById('batchDropdown-' + storeKey);
+    const mainVal = mainSel?.value;
+    const withPreparing = batches.find(b => b.preparing > 0);
+    const active        = batches.find(b => b.isActive);
+
+    if (mainVal && mainVal !== '__new__' && mainVal !== '__loading__') {
+      sel.value = mainVal;
+    } else if (withPreparing) {
+      sel.value = withPreparing.batchId;
+    } else if (active) {
+      sel.value = active.batchId;
+    } else {
+      sel.value = '__new__';
+    }
 
     onBatchSelect(storeKey);
 
