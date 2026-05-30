@@ -8,11 +8,7 @@ backend/service-account.json
 # ── Local runtime data ───────────────────────────────────────────
 data/
 
-# ── Large local media — served from Google Drive instead ─────────
-# These stay on your machine but are NOT pushed to GitHub.
-# Images load live from the Drive folders defined in DRIVE_CONFIG.
-Photos/
-Menu/
+# ── Large local media ────────────────────────────────────────────
 
 # ── OS / editor ──────────────────────────────────────────────────
 .DS_Store
