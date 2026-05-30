@@ -483,8 +483,8 @@ async function renderStorePage(storeKey) {
             </select>
           </div>
           <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-            <button class="btn btn-primary" onclick="applyBatchSelection('${storeKey}')">
-              <i class="fas fa-check-circle"></i> تطبيق
+            <button class="btn btn-primary" id="applyBatchBtn-${storeKey}" onclick="applyBatchSelection('${storeKey}')">
+              <i class="fas fa-plus-circle"></i> بدء دورة جديدة
             </button>
             <button class="btn btn-outline" onclick="openExtendModal('${storeKey}')">
               <i class="fas fa-clock"></i> تمديد
@@ -575,14 +575,28 @@ async function loadBatchDropdown(storeKey) {
 function loadBatchStatus(storeKey) { loadBatchDropdown(storeKey); }
 
 function onBatchSelect(storeKey) {
-  const sel     = document.getElementById('batchDropdown-' + storeKey);
-  const infoEl  = document.getElementById('batchInfoInline-' + storeKey);
-  if (!sel || !infoEl) return;
+  const sel    = document.getElementById('batchDropdown-'  + storeKey);
+  const infoEl = document.getElementById('batchInfoInline-'+ storeKey);
+  const btn    = document.getElementById('applyBatchBtn-'  + storeKey);
+  if (!sel) return;
 
   const val = sel.value;
+
+  // Update button text + icon based on selection
+  if (btn) {
+    if (val === '__new__') {
+      btn.innerHTML = '<i class="fas fa-plus-circle"></i> بدء دورة جديدة';
+      btn.style.background = 'linear-gradient(135deg,#18bfef,#0d9bcb)';
+    } else {
+      btn.innerHTML = '<i class="fas fa-redo-alt"></i> تفعيل هذه الدورة';
+      btn.style.background = 'linear-gradient(135deg,#f5a623,#e08c00)';
+    }
+  }
+
+  if (!infoEl) return;
   if (val === '__new__' || val === '__loading__') {
     infoEl.innerHTML = val === '__new__'
-      ? '<i class="fas fa-plus-circle" style="color:#18bfef;margin-left:.3rem"></i> سيتم إنشاء BatchID جديد عند الضغط على "تطبيق"'
+      ? '<i class="fas fa-info-circle" style="color:#18bfef;margin-left:.3rem"></i> سيتم إنشاء BatchID جديد — الدورة القديمة تُغلق تلقائياً'
       : '';
     return;
   }
@@ -591,12 +605,12 @@ function onBatchSelect(storeKey) {
   const b = batches.find(x => x.batchId === val);
   if (!b) return;
   infoEl.innerHTML =
-    `<span style="font-family:monospace;color:#18bfef">${b.batchId}</span>` +
+    `<span style="font-family:monospace;color:#18bfef;font-size:.75rem">${b.batchId}</span>` +
     ` &nbsp;|&nbsp; ${(b.firstOrder||'').substring(0,16)} ← → ${(b.lastOrder||'').substring(0,16)}` +
     ` &nbsp;|&nbsp; <span style="color:#18bfef">${b.new} جديد</span>` +
     ` / <span style="color:#ffa500">${b.preparing} تحضير</span>` +
     ` / <span style="color:#28c864">${b.delivered} توصيل</span>` +
-    (b.isActive ? ' &nbsp;<span style="color:#28c864">★ نشطة</span>' : ' &nbsp;<span style="color:#ffa500">دورة سابقة</span>');
+    (b.isActive ? ' &nbsp;<span style="color:#28c864">★ نشطة حالياً</span>' : ' &nbsp;<span style="color:#ffa500">⟳ إعادة تفعيل</span>');
 }
 
 async function applyBatchSelection(storeKey) {
