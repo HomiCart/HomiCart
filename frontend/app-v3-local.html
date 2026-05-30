@@ -3251,13 +3251,19 @@
       const diff = _cdEndTime - now;
 
       if (diff <= 0) {
-        // Time's up
+        // Time's up — auto-close batch
         el.classList.remove('hidden', 'warning', 'urgent');
         el.classList.add('urgent');
-        document.getElementById('cdHours').textContent = '00';
-        document.getElementById('cdMins').textContent  = '00';
-        document.getElementById('cdSecs').textContent  = '00';
+        ['cdHours','cdMins','cdSecs'].forEach(id => document.getElementById(id).textContent = '00');
         clearInterval(_cdInterval);
+        // Auto-close: New → Preparing + mark batch closed
+        const storeKey = SHEET_NAMES[window._currentStore?.folder] || '';
+        if (storeKey) {
+          console.log('[Batch] Timer ended — auto-closing batch for:', storeKey);
+          _callScript('closeBatch', { store: storeKey }, 30000)
+            .then(r => console.log('[Batch] Auto-closed:', r.message))
+            .catch(e => console.warn('[Batch] Auto-close failed:', e.message));
+        }
         return;
       }
 
