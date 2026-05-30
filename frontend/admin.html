@@ -306,7 +306,7 @@ tbody td { padding:.7rem 1rem; vertical-align:middle; }
       </div>
       <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:1.4rem">
         <div class="store-bars" id="storeBars">
-          <div class="empty-state"><i class="fas fa-spinner fa-spin"></i></div>
+          <div class="empty-state" style="color:rgba(255,255,255,.35)">اضغط <b style="color:#18bfef">تحديث</b> لتحميل البيانات</div>
         </div>
       </div>
     </div>
@@ -390,9 +390,11 @@ function toast(msg, type='info') {
 //  OVERVIEW — load stats
 // ════════════════════════════════════════════════════════
 async function loadOverview() {
+  const sb = document.getElementById('storeBars');
+  sb.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
   try {
-    const res = await api('getAdminStats', {}, 35000);
-    if (!res || !res.success) return;
+    const res = await api('getAdminStats', {}, 20000);
+    if (!res || !res.success) throw new Error(res?.message || 'فشل الاستجابة');
     const s = res.stats;
     document.getElementById('st-total').textContent     = s.total     ?? 0;
     document.getElementById('st-new').textContent       = s.new       ?? 0;
@@ -402,16 +404,18 @@ async function loadOverview() {
     const max    = Math.max(1, ...Object.values(s.perStore || {}));
     const colors = { AlRoknAlMasry:'#ef4444', AlFayoumi:'#f59e0b' };
     const names  = { AlRoknAlMasry:'الركن المصري', AlFayoumi:'الفيومي' };
-    document.getElementById('storeBars').innerHTML =
-      Object.entries(s.perStore || {}).map(([k,v]) =>
+    sb.innerHTML = Object.entries(s.perStore || {}).map(([k,v]) =>
         `<div class="store-bar-row">
            <div class="store-bar-label">${names[k]||k}</div>
            <div class="store-bar-track"><div class="store-bar-fill" style="width:${Math.round(v/max*100)}%;background:${colors[k]||'#18bfef'}"></div></div>
            <div class="store-bar-count">${v}</div>
          </div>`).join('')
-      || '<div class="empty-state"><i class="fas fa-inbox"></i><br>لا توجد طلبات</div>';
+      || '<div class="empty-state">لا توجد طلبات</div>';
   } catch(e) {
-    console.warn('[loadOverview]', e.message);
+    sb.innerHTML = `<div class="empty-state" style="color:#ff8060">
+      ❌ ${e.message}<br>
+      <small style="opacity:.6">اضغط "تحديث" للمحاولة مجدداً</small>
+    </div>`;
   }
 }
 
