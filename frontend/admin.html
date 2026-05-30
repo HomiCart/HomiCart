@@ -468,26 +468,35 @@ async function renderStorePage(storeKey) {
         <div id="batchStatus-${storeKey}" style="font-size:.8rem;color:rgba(255,255,255,.4)">جاري التحقق...</div>
       </div>
       <div class="window-panel" style="margin-bottom:1.5rem">
-        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-          <div style="flex:1;min-width:200px">
-            <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.3rem">BatchID الحالي</div>
-            <div id="batchId-${storeKey}" style="font-family:monospace;font-size:.82rem;color:#18bfef;background:rgba(24,191,239,.08);padding:.4rem .8rem;border-radius:7px;word-break:break-all">—</div>
+
+        <!-- Batch dropdown row -->
+        <div style="display:flex;align-items:flex-end;gap:.8rem;flex-wrap:wrap;margin-bottom:1rem">
+          <div style="flex:1;min-width:240px">
+            <div style="font-size:.75rem;color:rgba(255,255,255,.45);margin-bottom:.4rem">
+              <i class="fas fa-layer-group" style="color:#18bfef;margin-left:.3rem"></i>
+              اختر دورة أو ابدأ جديدة
+            </div>
+            <select id="batchDropdown-${storeKey}" onchange="onBatchSelect('${storeKey}')"
+              style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.2);border-radius:9px;padding:.65rem 1rem;color:#fff;font-size:.85rem;outline:none;cursor:pointer">
+              <option value="__loading__">⏳ جاري التحميل...</option>
+            </select>
           </div>
           <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-            <button class="btn btn-primary" onclick="startNewBatch('${storeKey}')">
-              <i class="fas fa-plus-circle"></i> بدء دورة جديدة
+            <button class="btn btn-primary" onclick="applyBatchSelection('${storeKey}')">
+              <i class="fas fa-check-circle"></i> تطبيق
             </button>
             <button class="btn btn-outline" onclick="openExtendModal('${storeKey}')">
-              <i class="fas fa-clock"></i> تمديد الدورة
+              <i class="fas fa-clock"></i> تمديد
             </button>
             <button class="btn" style="background:rgba(255,80,80,.15);border:1px solid rgba(255,80,80,.3);color:#ff6060" onclick="closeBatchAdmin('${storeKey}')">
-              <i class="fas fa-lock"></i> إغلاق الدورة
+              <i class="fas fa-lock"></i> إغلاق
             </button>
           </div>
         </div>
-        <div style="margin-top:.8rem;font-size:.75rem;color:rgba(255,255,255,.3)">
-          ℹ️ "بدء دورة جديدة" ينشئ BatchID جديداً — للدورات الجديدة فقط. "تمديد" يبقي نفس البatch للطلبات الإضافية.
-        </div>
+
+        <!-- Selected batch info -->
+        <div id="batchInfoInline-${storeKey}" style="font-size:.78rem;color:rgba(255,255,255,.4);min-height:1.2rem"></div>
+
       </div>
 
       <!-- Bulk Actions -->
@@ -513,27 +522,101 @@ async function renderStorePage(storeKey) {
   // Load data
   loadStoreWindow(storeKey);
   loadStoreOrders(storeKey);
-  loadBatchStatus(storeKey);
+  loadBatchDropdown(storeKey);
 }
 
 // ── Batch functions ──
-async function loadBatchStatus(storeKey) {
+let _batchData = {}; // cache: storeKey → batches array
+
+async function loadBatchDropdown(storeKey) {
+  const sel      = document.getElementById('batchDropdown-' + storeKey);
+  const statusEl = document.getElementById('batchStatus-'   + storeKey);
+  if (!sel) return;
+
+  sel.innerHTML = '<option value="__loading__">⏳ جاري التحميل...</option>';
   try {
-    const res = await api('getActiveBatch', { store: storeKey });
-    const statusEl = document.getElementById('batchStatus-' + storeKey);
-    const idEl     = document.getElementById('batchId-' + storeKey);
-    if (res.success && res.batchId) {
-      if (idEl) idEl.textContent = res.batchId;
-      if (statusEl) {
-        statusEl.innerHTML = res.isActive
-          ? '<span style="color:#28c864"><i class="fas fa-circle" style="font-size:.5rem"></i> نشطة</span>'
-          : '<span style="color:#ff6060"><i class="fas fa-circle" style="font-size:.5rem"></i> مغلقة</span>';
+    const res = await api('getPreviousBatches', { store: storeKey });
+    const batches = res.batches || [];
+    _batchData[storeKey] = batches;
+
+    // Build options: "new batch" + all previous batches
+    sel.innerHTML =
+      '<option value="__new__">➕ بدء دورة جديدة</option>' +
+      batches.map(b => {
+        const short  = b.batchId.split('-').slice(-1)[0]; // timestamp suffix
+        const active = b.isActive ? ' ★' : '';
+        const date   = (b.firstOrder || '').substring(0, 10);
+        return `<option value="${b.batchId}">${active} ${short} — ${date} (${b.total} طلب)</option>`;
+      }).join('');
+
+    // Auto-select active batch
+    const active = batches.find(b => b.isActive);
+    if (active) { sel.value = active.batchId; }
+    else         { sel.value = '__new__'; }
+
+    onBatchSelect(storeKey);
+
+    // Update status indicator
+    if (statusEl) {
+      if (active) {
+        statusEl.innerHTML = '<span style="color:#28c864"><i class="fas fa-circle" style="font-size:.5rem"></i> نشطة</span>';
+      } else {
+        statusEl.innerHTML = '<span style="color:#ff6060"><i class="fas fa-circle" style="font-size:.5rem"></i> مغلقة</span>';
       }
-    } else {
-      if (idEl) idEl.textContent = 'لا توجد دورة — اضغط "بدء دورة جديدة"';
-      if (statusEl) statusEl.textContent = 'غير موجودة';
     }
-  } catch(e) { console.warn('loadBatchStatus', e.message); }
+  } catch(e) {
+    sel.innerHTML = '<option value="__new__">➕ بدء دورة جديدة</option>';
+    console.warn('loadBatchDropdown', e.message);
+  }
+}
+
+// Also keep old function name as alias for compatibility
+function loadBatchStatus(storeKey) { loadBatchDropdown(storeKey); }
+
+function onBatchSelect(storeKey) {
+  const sel     = document.getElementById('batchDropdown-' + storeKey);
+  const infoEl  = document.getElementById('batchInfoInline-' + storeKey);
+  if (!sel || !infoEl) return;
+
+  const val = sel.value;
+  if (val === '__new__' || val === '__loading__') {
+    infoEl.innerHTML = val === '__new__'
+      ? '<i class="fas fa-plus-circle" style="color:#18bfef;margin-left:.3rem"></i> سيتم إنشاء BatchID جديد عند الضغط على "تطبيق"'
+      : '';
+    return;
+  }
+
+  const batches = _batchData[storeKey] || [];
+  const b = batches.find(x => x.batchId === val);
+  if (!b) return;
+  infoEl.innerHTML =
+    `<span style="font-family:monospace;color:#18bfef">${b.batchId}</span>` +
+    ` &nbsp;|&nbsp; ${(b.firstOrder||'').substring(0,16)} ← → ${(b.lastOrder||'').substring(0,16)}` +
+    ` &nbsp;|&nbsp; <span style="color:#18bfef">${b.new} جديد</span>` +
+    ` / <span style="color:#ffa500">${b.preparing} تحضير</span>` +
+    ` / <span style="color:#28c864">${b.delivered} توصيل</span>` +
+    (b.isActive ? ' &nbsp;<span style="color:#28c864">★ نشطة</span>' : ' &nbsp;<span style="color:#ffa500">دورة سابقة</span>');
+}
+
+async function applyBatchSelection(storeKey) {
+  const sel = document.getElementById('batchDropdown-' + storeKey);
+  const val = sel?.value;
+  if (!val || val === '__loading__') return;
+
+  if (val === '__new__') {
+    // Start new batch
+    await startNewBatch(storeKey);
+  } else {
+    // Reactivate selected existing batch
+    if (!confirm('تفعيل الدورة:\n' + val + '\n\nسيتم تعيينها كالدورة النشطة بدون تغيير الطلبات.')) return;
+    try {
+      const res = await api('reactivateBatch', { store: storeKey, batchId: val });
+      if (res.success) {
+        toast('✓ تم تفعيل الدورة: ' + val.split('-').slice(-1)[0], 'success');
+        loadBatchDropdown(storeKey);
+      } else { toast('خطأ: ' + res.message, 'error'); }
+    } catch(e) { toast('تعذر: ' + e.message, 'error'); }
+  }
 }
 
 async function startNewBatch(storeKey) {
