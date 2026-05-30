@@ -744,10 +744,21 @@ async function refreshAll() {
 // ════════════════════════════════════════════════════════
 //  BOOT
 // ════════════════════════════════════════════════════════
-(async function init() {
-  await loadOverview();
-  document.getElementById('lastRefresh').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
+function hideOverlay() {
   document.getElementById('loadingOverlay').style.display = 'none';
+}
+// Safety: always hide overlay after 6s max — never stay stuck
+setTimeout(hideOverlay, 6000);
+
+(async function init() {
+  try {
+    await loadOverview();
+    document.getElementById('lastRefresh').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
+  } catch(e) {
+    console.warn('[Admin] init error:', e.message);
+  } finally {
+    hideOverlay();
+  }
 })();
 </script>
 </body>
