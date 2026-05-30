@@ -1287,73 +1287,85 @@
 
     <div class="cust-form-wrap">
 
-      <!-- 1. Phone -->
+      <!-- STEP 1: Phone only — always visible -->
       <div class="cust-field">
         <label class="cust-label">رقم الهاتف <span class="req">*</span></label>
         <input type="tel" id="custPhone" class="cust-input" placeholder="05XXXXXXXX" oninput="onPhoneInput()" />
         <div id="custLookupStatus" class="cust-lookup-status"></div>
+      </div>
 
-        <!-- WhatsApp options -->
-        <div class="wa-options" id="waOptions">
-          <label class="wa-option-label">
-            <input type="radio" name="waOpt" value="same" checked onchange="onWaOptionChange()" />
-            رقم الواتساب هو نفس رقم الهاتف
-          </label>
-          <label class="wa-option-label">
-            <input type="radio" name="waOpt" value="different" onchange="onWaOptionChange()" />
-            رقم الواتساب مختلف عن رقم الهاتف
-          </label>
+      <!-- STEP 2a: WhatsApp options — shown for NEW users after phone lookup -->
+      <div id="stepWhatsapp" class="cust-step" style="display:none">
+        <div class="cust-field">
+          <label class="cust-label">رقم الواتساب</label>
+          <div class="wa-options">
+            <label class="wa-option-label">
+              <input type="radio" name="waOpt" value="same" onchange="onWaOptionChange()" />
+              رقم الواتساب هو نفس رقم الهاتف
+            </label>
+            <label class="wa-option-label">
+              <input type="radio" name="waOpt" value="different" onchange="onWaOptionChange()" />
+              رقم الواتساب مختلف عن رقم الهاتف
+            </label>
+          </div>
+        </div>
+        <div class="cust-field" id="custWhatsappField" style="display:none">
+          <input type="tel" id="custWhatsapp" class="cust-input" placeholder="05XXXXXXXX"
+            oninput="onWhatsappInput()" />
         </div>
       </div>
 
-      <!-- 2. WhatsApp (shown after radio choice) -->
-      <div class="cust-field" id="custWhatsappField">
-        <label class="cust-label">رقم واتساب</label>
-        <input type="tel" id="custWhatsapp" class="cust-input" placeholder="05XXXXXXXX" />
-      </div>
-
-      <!-- 3. Name -->
-      <div class="cust-field">
-        <label class="cust-label">الاسم الكامل <span class="req">*</span></label>
-        <input type="text" id="custName" class="cust-input" placeholder="محمد أحمد" />
-      </div>
-
-      <!-- 4. Area -->
-      <div class="cust-field">
-        <label class="cust-label">المنطقة / الإمارة <span class="req">*</span></label>
-        <input type="text" id="custArea" class="cust-input" placeholder="مثال: عجمان - المنامة" />
-      </div>
-
-      <!-- 5. Address -->
-      <div class="cust-field">
-        <label class="cust-label">العنوان التفصيلي <span class="req">*</span></label>
-        <textarea id="custAddress" class="cust-input cust-textarea" rows="2"
-          placeholder="اسم الشارع، رقم المبنى، أي تفاصيل تساعد في التوصيل..."></textarea>
-      </div>
-
-      <!-- 6. Location map -->
-      <div class="cust-field">
-        <label class="cust-label">
-          <i class="fas fa-map-marker-alt" style="color:#18bfef;margin-left:.35rem"></i>
-          الموقع الجغرافي
-          <span style="font-size:.78rem;font-weight:400;color:rgba(255,255,255,.45);margin-right:.4rem">
-            (اسحب الدبوس لتحديد موقعك بدقة)
-          </span>
-        </label>
-        <div id="custMap"></div>
-        <div id="custLocStatus" class="cust-loc-status detecting">
-          <i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد الموقع تلقائياً...
+      <!-- STEP 2b: WhatsApp display for EXISTING users (read-only) -->
+      <div id="stepWhatsappExisting" class="cust-step" style="display:none">
+        <div class="cust-field">
+          <label class="cust-label">رقم الواتساب</label>
+          <input type="tel" id="custWhatsappExisting" class="cust-input" readonly />
         </div>
-        <button class="btn-retry-loc" onclick="retryLocation()">
-          <i class="fas fa-crosshairs"></i>&nbsp;إعادة تحديد GPS
+      </div>
+
+      <!-- STEP 3: Rest of fields — Name, Area, Address, Map -->
+      <div id="stepDetails" class="cust-step" style="display:none">
+
+        <div class="cust-field">
+          <label class="cust-label">الاسم الكامل <span class="req">*</span></label>
+          <input type="text" id="custName" class="cust-input" placeholder="محمد أحمد" />
+        </div>
+
+        <div class="cust-field">
+          <label class="cust-label">المنطقة / الإمارة <span class="req">*</span></label>
+          <input type="text" id="custArea" class="cust-input" placeholder="مثال: عجمان - المنامة" />
+        </div>
+
+        <div class="cust-field">
+          <label class="cust-label">العنوان التفصيلي <span class="req">*</span></label>
+          <textarea id="custAddress" class="cust-input cust-textarea" rows="2"
+            placeholder="اسم الشارع، رقم المبنى، أي تفاصيل تساعد في التوصيل..."></textarea>
+        </div>
+
+        <div class="cust-field">
+          <label class="cust-label">
+            <i class="fas fa-map-marker-alt" style="color:#18bfef;margin-left:.35rem"></i>
+            الموقع الجغرافي
+            <span style="font-size:.78rem;font-weight:400;color:rgba(255,255,255,.45);margin-right:.4rem">
+              (اسحب الدبوس لتحديد موقعك بدقة)
+            </span>
+          </label>
+          <div id="custMap"></div>
+          <div id="custLocStatus" class="cust-loc-status detecting">
+            <i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد الموقع تلقائياً...
+          </div>
+          <button class="btn-retry-loc" onclick="retryLocation()">
+            <i class="fas fa-crosshairs"></i>&nbsp;إعادة تحديد GPS
+          </button>
+        </div>
+
+        <div id="custFormErr" class="cust-err"></div>
+
+        <button class="btn-cust-submit" id="custSubmitBtn" onclick="submitCustomerInfo()">
+          <i class="fas fa-arrow-left"></i>&nbsp;تأكيد والمتابعة لصفحة الطلب
         </button>
-      </div>
 
-      <div id="custFormErr" class="cust-err"></div>
-
-      <button class="btn-cust-submit" id="custSubmitBtn" onclick="submitCustomerInfo()">
-        <i class="fas fa-arrow-left"></i>&nbsp;تأكيد والمتابعة لصفحة الطلب
-      </button>
+      </div><!-- /stepDetails -->
 
     </div>
   </div>
@@ -1876,22 +1888,42 @@
 
   const _UAE_CENTER = [24.4539, 54.3773]; // UAE default center
 
+  // ── Helper: show/hide a step section ───────────────────
+  function _showStep(id, visible) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = visible ? '' : 'none';
+  }
+
+  // ── Reset form to initial state (phone only) ────────────
+  function _resetForm() {
+    _showStep('stepWhatsapp', false);
+    _showStep('stepWhatsappExisting', false);
+    _showStep('stepDetails', false);
+    document.getElementById('custName').value    = '';
+    document.getElementById('custArea').value    = '';
+    document.getElementById('custAddress').value = '';
+    document.getElementById('custWhatsapp').value = '';
+    document.getElementById('custWhatsappExisting').value = '';
+    document.getElementById('custLookupStatus').textContent = '';
+    document.getElementById('custLookupStatus').className   = 'cust-lookup-status';
+    if (document.getElementById('custFormErr'))
+      document.getElementById('custFormErr').textContent = '';
+    // Uncheck all radios
+    document.querySelectorAll('input[name="waOpt"]').forEach(r => r.checked = false);
+    window._existingCustomerId = null;
+    window._custLocation = null;
+    // Destroy old map so it re-initializes fresh
+    if (_custMap) { _custMap.remove(); _custMap = null; _custMarker = null; }
+  }
+
   // ── Show customer page ──────────────────────────────────
   function showCustomerPage(folder, name, tag) {
     window._pendingStore = { folder, name, tag };
     document.getElementById('custStoreName').textContent = name;
-    document.getElementById('custFormErr').textContent   = '';
-    document.getElementById('custLookupStatus').textContent = '';
-    document.getElementById('custLookupStatus').className   = 'cust-lookup-status';
-    // Reset WhatsApp radio to "same" and pre-fill
-    const sameRadio = document.querySelector('input[name="waOpt"][value="same"]');
-    if (sameRadio) { sameRadio.checked = true; onWaOptionChange(); }
+    document.getElementById('custPhone').value = '';
+    _resetForm();
     showPage('customerPage');
-    // Init map then request GPS (small delay so div is visible)
-    setTimeout(() => {
-      initLeafletMap(_UAE_CENTER[0], _UAE_CENTER[1], false);
-      requestGPS();
-    }, 120);
+    document.getElementById('custPhone').focus();
   }
 
   // ── Leaflet map init ────────────────────────────────────
@@ -1961,43 +1993,51 @@
     el.innerHTML = html;
   }
 
-  // ── WhatsApp radio toggle ───────────────────────────────
+  // ── WhatsApp radio selected ─────────────────────────────
   function onWaOptionChange() {
-    const opt   = document.querySelector('input[name="waOpt"]:checked')?.value || 'same';
-    const input = document.getElementById('custWhatsapp');
+    const opt   = document.querySelector('input[name="waOpt"]:checked')?.value;
+    const phone = document.getElementById('custPhone').value.trim();
+    const waField = document.getElementById('custWhatsappField');
+    const waInput = document.getElementById('custWhatsapp');
+
     if (opt === 'same') {
-      input.value    = document.getElementById('custPhone').value.trim();
-      input.readOnly = true;
+      // Pre-fill WhatsApp = phone and show details immediately
+      waInput.value = phone;
+      waField.style.display = 'none';
+      _showStep('stepDetails', true);
+      setTimeout(() => { initLeafletMap(_UAE_CENTER[0], _UAE_CENTER[1], false); requestGPS(); }, 120);
     } else {
-      input.value    = '';
-      input.readOnly = false;
-      input.focus();
+      // Show empty WhatsApp input — wait for user to fill it
+      waInput.value = '';
+      waInput.readOnly = false;
+      waField.style.display = '';
+      _showStep('stepDetails', false);
+      setTimeout(() => waInput.focus(), 50);
     }
   }
 
-  // ── Phone input: clear stale data + sync WhatsApp + lookup ──
+  // ── WhatsApp input filled → reveal rest of form ─────────
+  function onWhatsappInput() {
+    const val = document.getElementById('custWhatsapp').value.trim();
+    if (val.length >= 9 && document.getElementById('stepDetails').style.display === 'none') {
+      _showStep('stepDetails', true);
+      setTimeout(() => { initLeafletMap(_UAE_CENTER[0], _UAE_CENTER[1], false); requestGPS(); }, 120);
+    }
+  }
+
+  // ── Phone input: reset everything then lookup ──────────
   let _lookupTimer2 = null;
   function onPhoneInput() {
     const phone    = document.getElementById('custPhone').value.trim();
     const statusEl = document.getElementById('custLookupStatus');
 
-    // FIX 1: Clear all auto-filled fields immediately when phone changes
-    document.getElementById('custName').value    = '';
-    document.getElementById('custArea').value    = '';
-    document.getElementById('custAddress').value = '';
-    window._existingCustomerId = null;
-
-    // Sync WhatsApp
-    const opt = document.querySelector('input[name="waOpt"]:checked')?.value;
-    if (opt === 'same') document.getElementById('custWhatsapp').value = phone;
-    else if (opt === 'different') document.getElementById('custWhatsapp').value = '';
-
-    // Reset status
+    // Always reset form on any phone edit
+    _resetForm();
     statusEl.className   = 'cust-lookup-status';
     statusEl.textContent = '';
     clearTimeout(_lookupTimer2);
     if (phone.length < 9) return;
-    statusEl.textContent = 'جاري البحث في قاعدة البيانات...';
+    statusEl.textContent = 'جاري البحث...';
     _lookupTimer2 = setTimeout(() => lookupCustomer(phone), 700);
   }
 
@@ -2005,26 +2045,42 @@
     const statusEl = document.getElementById('custLookupStatus');
     try {
       const result = await _callScript('getCustomer', { phone });
+
       if (result.success && result.customer) {
+        // ── EXISTING CUSTOMER ──────────────────────────────
         const c = result.customer;
+        window._existingCustomerId = c.id;
+
+        // Fill all details
         document.getElementById('custName').value    = c.name    || '';
         document.getElementById('custArea').value    = c.area    || '';
         document.getElementById('custAddress').value = c.address || '';
-        // Fill WhatsApp based on radio
-        const opt = document.querySelector('input[name="waOpt"]:checked')?.value;
-        if (opt === 'same') {
-          document.getElementById('custWhatsapp').value = phone;
-        } else {
-          document.getElementById('custWhatsapp').value = c.whatsapp || '';
-        }
+        document.getElementById('custWhatsappExisting').value = c.whatsapp || phone;
+
         statusEl.className = 'cust-lookup-status found';
-        statusEl.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp;مرحباً! تم العثور على بياناتك وتعبئتها تلقائياً';
-        window._existingCustomerId = c.id;
+        statusEl.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp;مرحباً! تم العثور على بياناتك';
+
+        // Show existing-WhatsApp + all detail fields
+        _showStep('stepWhatsappExisting', true);
+        _showStep('stepWhatsapp', false);
+        _showStep('stepDetails', true);
+
+        // Init map + GPS
+        setTimeout(() => { initLeafletMap(_UAE_CENTER[0], _UAE_CENTER[1], false); requestGPS(); }, 120);
+
       } else {
-        statusEl.textContent = '✦ رقم جديد — يرجى إكمال بياناتك';
+        // ── NEW CUSTOMER ───────────────────────────────────
         window._existingCustomerId = null;
+        statusEl.textContent = 'رقم جديد — أكمل بياناتك';
+
+        // Show only WhatsApp options (step 2a) — hide the rest
+        _showStep('stepWhatsapp', true);
+        _showStep('stepWhatsappExisting', false);
+        _showStep('stepDetails', false);
       }
-    } catch(e) { statusEl.textContent = ''; }
+    } catch(e) {
+      statusEl.textContent = '';
+    }
   }
 
   // ── Submit ──────────────────────────────────────────────
@@ -2033,7 +2089,10 @@
     const name     = document.getElementById('custName').value.trim();
     const area     = document.getElementById('custArea').value.trim();
     const address  = document.getElementById('custAddress').value.trim();
-    const whatsapp = document.getElementById('custWhatsapp').value.trim();
+    // Read WhatsApp from correct field based on whether existing/new customer
+    const whatsapp = window._existingCustomerId
+      ? document.getElementById('custWhatsappExisting').value.trim()
+      : document.getElementById('custWhatsapp').value.trim();
     const errEl    = document.getElementById('custFormErr');
 
     if (!phone)   { errEl.textContent = '⚠ رقم الهاتف مطلوب';        document.getElementById('custPhone').focus();   return; }
