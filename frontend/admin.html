@@ -390,44 +390,55 @@ function toast(msg, type='info') {
 //  OVERVIEW — load stats
 // ════════════════════════════════════════════════════════
 async function loadOverview() {
-  // Show loading state
-  document.getElementById('storeBars').innerHTML =
-    '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i>&nbsp; جاري التحميل...</div>';
+  const barsEl = document.getElementById('storeBars');
+  barsEl.innerHTML = '<div class="empty-state" style="color:#18bfef;font-size:.8rem" id="debugMsg">⏳ جاري الاتصال بالـ Apps Script...</div>';
 
+  // Direct XHR as fallback — avoids some fetch/CORS edge cases
+  const url = APPS_SCRIPT_URL + '?action=getAdminStats';
+  let res;
   try {
-    const res = await api('getAdminStats', {}, 40000);
-    if (!res.success) throw new Error(res.message);
-
-    const s = res.stats;
-    document.getElementById('st-total').textContent     = s.total     ?? 0;
-    document.getElementById('st-new').textContent       = s.new       ?? 0;
-    document.getElementById('st-preparing').textContent = s.preparing ?? 0;
-    document.getElementById('st-delivered').textContent = s.delivered ?? 0;
-    document.getElementById('st-cancelled').textContent = s.cancelled ?? 0;
-
-    const max    = Math.max(1, ...Object.values(s.perStore||{}));
-    const colors = { AlRoknAlMasry:'#ef4444', AlFayoumi:'#f59e0b' };
-    const names  = { AlRoknAlMasry:'الركن المصري', AlFayoumi:'الفيومي' };
-    document.getElementById('storeBars').innerHTML =
-      Object.entries(s.perStore||{}).map(([k,v]) => `
-        <div class="store-bar-row">
-          <div class="store-bar-label">${names[k]||k}</div>
-          <div class="store-bar-track">
-            <div class="store-bar-fill" style="width:${Math.round(v/max*100)}%;background:${colors[k]||'#18bfef'}"></div>
-          </div>
-          <div class="store-bar-count">${v}</div>
-        </div>`).join('')
-      || '<div class="empty-state"><i class="fas fa-inbox"></i><br>لا توجد طلبات بعد</div>';
-
+    res = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.timeout = 40000;
+      xhr.onload  = () => {
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch(e) { reject(new Error('JSON parse error: ' + xhr.responseText.substring(0,100))); }
+      };
+      xhr.onerror   = () => reject(new Error('Network error'));
+      xhr.ontimeout = () => reject(new Error('Timeout after 40s'));
+      xhr.send();
+    });
   } catch(e) {
-    document.getElementById('storeBars').innerHTML =
-      `<div class="empty-state" style="color:#ffa500">
-         <i class="fas fa-exclamation-circle"></i><br>
-         الاتصال يعمل لكن getAdminStats غير موجودة<br>
-         <small style="font-size:.75rem;opacity:.6">يرجى نشر الـ .gs الجديد (v18.0)</small>
-       </div>`;
-    toast('يرجى نشر الـ .gs الجديد: ' + e.message, 'error');
+    barsEl.innerHTML = `<div class="empty-state" style="color:#ff6060">❌ ${e.message}<br><small>URL: ${url.substring(0,80)}</small></div>`;
+    return;
   }
+
+  if (!res.success) {
+    barsEl.innerHTML = `<div class="empty-state" style="color:#ffa500">⚠ ${res.message}</div>`;
+    return;
+  }
+
+  const s = res.stats;
+  document.getElementById('st-total').textContent     = s.total     ?? 0;
+  document.getElementById('st-new').textContent       = s.new       ?? 0;
+  document.getElementById('st-preparing').textContent = s.preparing ?? 0;
+  document.getElementById('st-delivered').textContent = s.delivered ?? 0;
+  document.getElementById('st-cancelled').textContent = s.cancelled ?? 0;
+
+  const max    = Math.max(1, ...Object.values(s.perStore||{}));
+  const colors = { AlRoknAlMasry:'#ef4444', AlFayoumi:'#f59e0b' };
+  const names  = { AlRoknAlMasry:'الركن المصري', AlFayoumi:'الفيومي' };
+  barsEl.innerHTML =
+    Object.entries(s.perStore||{}).map(([k,v]) => `
+      <div class="store-bar-row">
+        <div class="store-bar-label">${names[k]||k}</div>
+        <div class="store-bar-track">
+          <div class="store-bar-fill" style="width:${Math.round(v/max*100)}%;background:${colors[k]||'#18bfef'}"></div>
+        </div>
+        <div class="store-bar-count">${v}</div>
+      </div>`).join('')
+    || '<div class="empty-state"><i class="fas fa-inbox"></i><br>لا توجد طلبات بعد</div>';
 }
 
 // ════════════════════════════════════════════════════════
