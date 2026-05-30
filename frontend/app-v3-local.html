@@ -1233,17 +1233,18 @@
     .order-card-actions { display: flex; gap: .6rem; justify-content: flex-end; margin-top: .3rem; flex-wrap: wrap; }
     /* ══ ORDER COUNTDOWN TIMER ══ */
     .order-countdown {
-      position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
-      background: linear-gradient(135deg, rgba(10,14,20,.97) 0%, rgba(6,20,30,.97) 100%);
-      border-top: 2px solid rgba(24,191,239,.25);
-      backdrop-filter: blur(12px);
-      padding: .7rem 1.5rem;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+      background: linear-gradient(135deg, rgba(6,16,28,.97) 0%, rgba(10,22,36,.97) 100%);
+      border-bottom: 2px solid rgba(24,191,239,.35);
+      backdrop-filter: blur(14px);
+      padding: .55rem 1.5rem;
       transform: translateY(0);
       transition: transform .4s ease, opacity .4s ease, border-color .5s;
+      box-shadow: 0 4px 24px rgba(24,191,239,.12);
     }
-    .order-countdown.hidden { transform: translateY(110%); opacity: 0; pointer-events: none; }
-    .order-countdown.urgent { border-top-color: rgba(255,80,80,.6); }
-    .order-countdown.warning { border-top-color: rgba(255,165,0,.5); }
+    .order-countdown.hidden { transform: translateY(-110%); opacity: 0; pointer-events: none; }
+    .order-countdown.urgent  { border-bottom-color: rgba(255,80,80,.7); box-shadow: 0 4px 24px rgba(255,80,80,.15); }
+    .order-countdown.warning { border-bottom-color: rgba(255,165,0,.6); box-shadow: 0 4px 24px rgba(255,165,0,.12); }
     .cd-inner {
       max-width: 700px; margin: 0 auto;
       display: flex; align-items: center; justify-content: space-between; gap: 1rem;
@@ -1288,10 +1289,10 @@
       font-size: 1.3rem; font-weight: 700; color: rgba(24,191,239,.5);
       margin-bottom: 1rem; align-self: center;
     }
-    /* Push page content up so countdown doesn't overlap */
+    /* Push page content down so countdown doesn't overlap header */
     body.has-countdown .container,
     body.has-countdown #main,
-    body.has-countdown .cust-form-wrap { padding-bottom: 80px; }
+    body.has-countdown .cust-form-wrap { padding-top: 56px; }
     @media (max-width: 480px) {
       .cd-inner { justify-content: center; }
       .cd-flip  { font-size: 1.15rem; padding: .25rem .55rem; }
