@@ -1694,22 +1694,23 @@
   }
 
   /* ══════════════════════════════════════════════════════════
-     APPS SCRIPT CONFIG
-     Paste your deployed Web App URL below (after deploying Code.gs)
+     APPS SCRIPT CONFIG — Direct connection to Google Sheets
   ══════════════════════════════════════════════════════════ */
-  const APPS_SCRIPT_URL_LOCAL = `${API_BASE}/api/sheets`;  // proxied through server.js
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRW2K-GbHfawvZMpxk5ExfyYg5EIhFpUgTy-nHaMjtNR1ZiWn-9BuZpRSWACTEGLqNlA/exec';
 
-  // Sheet names MUST match what your Apps Script uses
+  // Sheet names MUST match your Google Apps Script tabs
   const SHEET_NAMES = {
     'Al Rokn AL masry' : 'Orders',     // → "Orders" tab  (الركن المصري)
     'Al Fayoumy'       : 'AlFayoumi',  // → "AlFayoumi" tab
   };
 
+  // Calls Google Apps Script directly using form-encoded POST (works on GitHub Pages)
   async function _callScript(action, data) {
-    const res = await fetch(APPS_SCRIPT_URL_LOCAL, {
-      method : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body   : JSON.stringify({ action, ...data }),
+    const params = new URLSearchParams({ action, ...data });
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method  : 'POST',
+      body    : params,
+      redirect: 'follow',
     });
     return res.json();
   }
