@@ -2126,6 +2126,14 @@
   async function goToOrderPage() {
     const store = window._pendingStore;
     if (!store) return;
+
+    // Check order window before proceeding
+    if (!isOrderWindowOpen()) {
+      alert(getWindowClosedMsg() + '\n\nلا يمكن تقديم طلبات في الوقت الحالي.');
+      return;
+    }
+
+    window._editingOrderId = null; // reset edit state — this is a new order
     await selectStore(store.folder, store.name, store.tag);
     setTimeout(() => orderNow(store.folder), 150);
   }
@@ -2724,34 +2732,71 @@
     const store    = window._opStore;
     const customer = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
 
-    // Fire the request — don't wait more than 30 seconds
+    // Check order window
+    if (!isOrderWindowOpen()) {
+      clearInterval(countdownTimer);
+      btn.disabled = false;
+      document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
+      err.textContent = getWindowClosedMsg();
+      return;
+    }
+
+    const isEditing = !!window._editingOrderId;
+
+    // Fire the request — 30 second timeout
     let serverOrderId = null;
     try {
-      const result = await _callScript('submitOrder', {
-        phone       : customer.phone    || '',
-        name        : customer.name     || '',
-        area        : customer.area     || '',
-        address     : customer.address  || '',
-        whatsapp    : customer.whatsapp || customer.phone || '',
-        latitude    : customer.latitude  ? String(customer.latitude)  : '',
-        longitude   : customer.longitude ? String(customer.longitude) : '',
-        location    : customer.latitude  ? `https://www.google.com/maps?q=${customer.latitude},${customer.longitude}` : '',
-        orderText   : items,
-        sheet       : store.sheetName,
-        vendor      : store.cfg?.name || store.storeKey,
-        userTimezone: 'Asia/Dubai',
-        forceNew    : 'true',
-      }, 30000);
-
-      if (result.success) serverOrderId = result.orderId;
+      let result;
+      if (isEditing) {
+        // ── EDIT: update same row, same OrderID ──────────────
+        result = await _callScript('updateOrderItems', {
+          orderId : window._editingOrderId,
+          items,
+          sheet   : store.sheetName,
+        }, 30000);
+        if (result.success) serverOrderId = window._editingOrderId;
+        else if (result.message) {
+          // Status no longer "New" or window closed
+          clearInterval(countdownTimer);
+          btn.disabled = false;
+          document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
+          err.textContent = '⚠ ' + result.message;
+          return;
+        }
+      } else {
+        // ── NEW ORDER ─────────────────────────────────────────
+        result = await _callScript('submitOrder', {
+          phone       : customer.phone    || '',
+          name        : customer.name     || '',
+          area        : customer.area     || '',
+          address     : customer.address  || '',
+          whatsapp    : customer.whatsapp || customer.phone || '',
+          latitude    : customer.latitude  ? String(customer.latitude)  : '',
+          longitude   : customer.longitude ? String(customer.longitude) : '',
+          location    : customer.latitude  ? `https://www.google.com/maps?q=${customer.latitude},${customer.longitude}` : '',
+          orderText   : items,
+          sheet       : store.sheetName,
+          vendor      : store.cfg?.name || store.storeKey,
+          userTimezone: 'Asia/Dubai',
+        }, 30000);
+        if (result.success) serverOrderId = result.orderId;
+        else if (result.phase) {
+          // Window closed server-side
+          clearInterval(countdownTimer);
+          btn.disabled = false;
+          document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
+          err.textContent = '⚠ ' + result.message;
+          return;
+        }
+      }
     } catch(e) {
-      // Timeout OR network error — but order may have been saved already (Apps Script is slow)
-      console.warn('[saveOrder] fetch issue:', e.message, '— order may still be saved');
+      console.warn('[saveOrder] fetch issue:', e.message, '— may still have saved');
     }
 
     clearInterval(countdownTimer);
+    window._editingOrderId = null; // reset edit state
 
-    // Use server ID if we got one, else use client-generated ID
+    // Use server ID if we got one, else use pre-generated client ID
     const orderId = serverOrderId || clientOrderId;
     _opSaved = true;
     localStorage.setItem('homiCart_pendingOrder', JSON.stringify({
@@ -2797,19 +2842,30 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  /* ── Edit order — go back to ordering layout with previous text ── */
+  /* ── Edit order — reopen same order for editing (updates same row) ── */
   function editOrder() {
     const pending = JSON.parse(localStorage.getItem('homiCart_pendingOrder') || '{}');
+
+    // Check window + status
+    if (!isOrderWindowOpen()) {
+      alert(getWindowClosedMsg() + '\n\nلا يمكن تعديل الطلب بعد انتهاء وقت الطلبات.');
+      return;
+    }
+
+    // Set editing state — saveOrder will call updateOrderItems instead of submitOrder
+    window._editingOrderId = pending.orderId || null;
     _opSaved = false;
+
     const store = window._opStore;
     if (store) {
       orderNow(store.storeKey);
-      // Re-fill textarea with previous order text after layout renders
       setTimeout(() => {
-        const ta = document.getElementById('opItemsInput');
-        if (ta && pending.items) { ta.value = pending.items; ta.focus(); }
+        const ta  = document.getElementById('opItemsInput');
         const btn = document.getElementById('opSaveBtn');
-        if (btn) { btn.disabled = false; document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب'; }
+        const lbl = document.getElementById('opSaveTxt');
+        if (ta && pending.items) { ta.value = pending.items; ta.focus(); }
+        if (btn) btn.disabled = false;
+        if (lbl) lbl.textContent = 'حفظ التعديلات'; // different label for edit mode
       }, 400);
     }
   }
@@ -2835,8 +2891,50 @@
     });
   }
 
-  // Boot — show stores immediately
-  renderStores();
+  // ── Order Window State ─────────────────────────────────
+  window._orderWindow = null; // cached window info
+
+  async function loadOrderWindow() {
+    try {
+      const res = await _callScript('getOrderWindow', {}, 10000);
+      window._orderWindow = res;
+      console.log('[OrderWindow]', res.phase, res.isOpen);
+      // Auto-close timer: schedule closeOrderWindow when end time arrives
+      if (res.isOpen && res.end) {
+        const msLeft = new Date(res.end) - new Date();
+        if (msLeft > 0 && msLeft < 24 * 60 * 60 * 1000) {
+          setTimeout(() => {
+            window._orderWindow = { isOpen: false, phase: 'closed' };
+            console.log('[OrderWindow] auto-closed by timer');
+            _callScript('closeOrderWindow', {}, 30000).catch(() => {});
+          }, msLeft);
+        }
+      }
+    } catch(e) {
+      console.warn('[OrderWindow] could not load:', e.message);
+      window._orderWindow = { isOpen: true, phase: 'unknown' }; // fail-open
+    }
+  }
+
+  function isOrderWindowOpen() {
+    if (!window._orderWindow) return true; // fail-open if not loaded yet
+    return window._orderWindow.isOpen === true;
+  }
+
+  function getWindowClosedMsg() {
+    const w = window._orderWindow;
+    if (!w) return 'النافذة غير محددة';
+    if (w.phase === 'before_open') return '⏳ الطلبات لم تُفتح بعد';
+    if (w.phase === 'closed')      return '🔒 انتهى وقت الطلبات';
+    return '🔒 الطلبات مغلقة حالياً';
+  }
+
+  // ── Edit Order tracking ─────────────────────────────────
+  // null = new order, string = editing existing orderId
+  window._editingOrderId = null;
+
+  // Boot — load window then show stores
+  loadOrderWindow().finally(() => renderStores());
 </script>
 
 </body>
