@@ -46,13 +46,16 @@
 			overflow: hidden;
 		}
 
-		/* Inner layer — 8% bleed on all sides gives Ken Burns room to travel */
+		/* Inner layer — bleed on sides/bottom only so top is never cropped */
 		.hero-bg-inner {
 			position: absolute;
-			inset: -8%;
+			top: 0;
+			left: -8%;
+			right: -8%;
+			bottom: -8%;
 			background-image: url('assets/images/hero-bg.jpg');
 			background-size: cover;
-			background-position: center center;
+			background-position: top center;
 			/* Colour grading: darken to brand depth, boost richness, shift warm tones toward teal */
 			filter:
 				brightness(0.52)
@@ -65,7 +68,7 @@
 
 		@keyframes kb-hero {
 			0%   { transform: scale(1.0)  translate( 0%,  0%); }
-			100% { transform: scale(1.12) translate(-2%,  1.5%); }
+			100% { transform: scale(1.12) translate(-2%,  2%); }
 		}
 
 		/* ── Master overlay — multi-layer depth effect ── */
