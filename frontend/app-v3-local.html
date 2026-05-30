@@ -859,6 +859,20 @@
       transition: border-color .2s, color .2s;
     }
     .btn-cust-secondary:hover { border-color: #18bfef; color: #18bfef; }
+    .btn-cust-amber {
+      flex: 1; min-width: 120px;
+      background: linear-gradient(135deg, #f5a623 0%, #e08c00 100%);
+      color: #fff; font-family: 'Alexandria', sans-serif;
+      font-size: .95rem; font-weight: 700; border: none;
+      border-radius: 50px; padding: .82rem 1.4rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+      transition: filter .2s, box-shadow .2s;
+      box-shadow: 0 4px 18px rgba(245,166,35,.3);
+    }
+    .btn-cust-amber:hover { filter: brightness(1.1); box-shadow: 0 8px 26px rgba(245,166,35,.5); }
+    /* 2-row action layout */
+    .cust-action-btns { display: flex; flex-direction: column; gap: .7rem; margin-top: .5rem; }
+    .cust-action-row  { display: flex; gap: .7rem; flex-wrap: wrap; }
     /* Info card for existing customer */
     .cust-info-card {
       background: rgba(255,255,255,.04);
@@ -1458,12 +1472,19 @@
           <div class="cust-info-row"><span class="cust-info-label">العنوان</span><span id="eciAddress"></span></div>
         </div>
         <div class="cust-action-btns">
-          <button class="btn-cust-secondary" onclick="startEditMode()">
-            <i class="fas fa-pen"></i>&nbsp;تعديل البيانات
-          </button>
-          <button class="btn-cust-primary" onclick="goToOrderPage()">
+          <!-- Row 1: Start Order — full width, most important -->
+          <button class="btn-cust-primary" style="width:100%" onclick="goToOrderPage()">
             <i class="fas fa-shopping-cart"></i>&nbsp;ابدأ الطلب
           </button>
+          <!-- Row 2: My Orders + Edit Info — side by side -->
+          <div class="cust-action-row">
+            <button class="btn-cust-amber" onclick="goToMyOrdersFromCustomerPage()">
+              <i class="fas fa-list-alt"></i>&nbsp;طلباتي وتعديلها
+            </button>
+            <button class="btn-cust-secondary" onclick="startEditMode()">
+              <i class="fas fa-pen"></i>&nbsp;تعديل البيانات
+            </button>
+          </div>
         </div>
 
         <!-- Edit form (hidden until edit button clicked) -->
@@ -2168,6 +2189,22 @@
     _resetForm();
     showPage('customerPage');
     setTimeout(() => document.getElementById('custPhone').focus(), 100);
+  }
+
+  // ── "طلباتي وتعديلها" from customer info page ─────────
+  async function goToMyOrdersFromCustomerPage() {
+    const store = window._pendingStore;
+    if (!store) return;
+    window._editingOrderId = null;
+    // Load store context first (needed for showMyOrders)
+    await selectStore(store.folder, store.name, store.tag);
+    // Set _opStore so showMyOrders knows which sheet to query
+    window._opStore = {
+      storeKey  : store.folder,
+      cfg       : { name: store.name },
+      sheetName : (window.SHEET_NAMES || {})[store.folder] || store.folder
+    };
+    setTimeout(() => showMyOrders(), 200);
   }
 
   // ── Go directly to order page (used by both existing + new customers) ──
