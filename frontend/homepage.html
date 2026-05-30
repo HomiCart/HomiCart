@@ -38,36 +38,6 @@
 			overflow: hidden;
 		}
 
-		/* Photo container */
-		.hero-bg {
-			position: absolute;
-			inset: 0;
-			z-index: 0;
-			overflow: hidden;
-		}
-
-		/* Inner layer — img tag shows full image, no cropping */
-		.hero-bg-inner {
-			position: absolute;
-			top: 0;
-			left: 0;
-			width: 100%;
-		}
-		.hero-bg-inner img {
-			display: block;
-			width: 100%;
-			height: auto;
-			filter:
-				brightness(0.52)
-				saturate(1.35)
-				contrast(1.12)
-				hue-rotate(4deg);
-		}
-
-		@keyframes kb-hero {
-			0%   { transform: scale(1.0)  translate( 0%,  0%); }
-			100% { transform: scale(1.12) translate(-2%,  2%); }
-		}
 
 		/* ── Master overlay — multi-layer depth effect ── */
 		.hero-overlay {
@@ -480,13 +450,6 @@
 	═══════════════════════════════════════════════ -->
 	<div id="intro">
 
-		<!-- Full-width photo background -->
-		<div class="hero-bg" aria-hidden="true">
-			<div class="hero-bg-inner"><img src="assets/images/hero-bg.jpg" alt=""></div>
-		</div>
-
-		<!-- Multi-layer cinematic overlay -->
-		<div class="hero-overlay" aria-hidden="true"></div>
 
 		<!-- ── Text content ── -->
 		<h1>اطلب كل اللي بتحبه من أي محل في أي إمارة ، وهيوصلك لحد باب بيتك بسهولة وبتكلفة أقل</h1>
