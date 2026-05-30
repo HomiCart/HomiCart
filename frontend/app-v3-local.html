@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HomiCart - اطلب الآن</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600;700;800;900&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -736,23 +738,18 @@
        CUSTOMER INFO PAGE
     ══════════════════════════════ */
     .cust-form-wrap {
-      max-width: 520px;
+      max-width: 560px;
       margin: 0 auto;
       padding: 0 1rem 3rem;
       display: flex;
       flex-direction: column;
-      gap: 1.4rem;
+      gap: 1.5rem;
     }
-    .cust-field {
-      display: flex;
-      flex-direction: column;
-      gap: .5rem;
-    }
+    .cust-field { display: flex; flex-direction: column; gap: .5rem; }
     .cust-label {
       font-family: 'Alexandria', sans-serif;
-      font-size: .9rem;
-      font-weight: 600;
-      color: rgba(255,255,255,.75);
+      font-size: .9rem; font-weight: 600;
+      color: rgba(255,255,255,.78);
     }
     .req { color: #18bfef; }
     .cust-input {
@@ -761,73 +758,76 @@
       border-radius: 10px;
       padding: .75rem 1rem;
       font-family: 'Cairo', sans-serif;
-      font-size: 1rem;
-      color: #fff;
-      outline: none;
-      transition: border-color .2s;
-      text-align: right;
-      direction: rtl;
-      width: 100%;
-      box-sizing: border-box;
+      font-size: 1rem; color: #fff; outline: none;
+      transition: border-color .2s, background .2s;
+      text-align: right; direction: rtl;
+      width: 100%; box-sizing: border-box;
     }
     .cust-input:focus { border-color: #18bfef; background: rgba(24,191,239,.06); }
-    .cust-textarea { resize: vertical; min-height: 70px; }
+    .cust-input[readonly] { opacity: .6; cursor: not-allowed; }
+    .cust-textarea { resize: vertical; min-height: 72px; }
     .cust-lookup-status {
       font-family: 'Cairo', sans-serif;
-      font-size: .82rem;
-      min-height: 1.2rem;
-      color: rgba(255,255,255,.5);
-      transition: color .3s;
+      font-size: .82rem; min-height: 1.1rem;
+      color: rgba(255,255,255,.45); transition: color .3s;
     }
     .cust-lookup-status.found { color: #18bfef; }
-    .cust-loc-status {
-      font-family: 'Cairo', sans-serif;
-      font-size: .88rem;
-      padding: .6rem 1rem;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      gap: .5rem;
+    /* WhatsApp radio options */
+    .wa-options {
+      display: flex; flex-direction: column; gap: .55rem;
+      margin-top: .2rem;
     }
-    .cust-loc-status.detecting { background: rgba(255,255,255,.05); color: rgba(255,255,255,.5); }
+    .wa-option-label {
+      display: flex; align-items: center; gap: .55rem;
+      font-family: 'Cairo', sans-serif;
+      font-size: .9rem; color: rgba(255,255,255,.7);
+      cursor: pointer; padding: .5rem .75rem;
+      border-radius: 8px; border: 1.5px solid rgba(255,255,255,.1);
+      transition: border-color .2s, background .2s;
+    }
+    .wa-option-label:has(input:checked) {
+      border-color: #18bfef;
+      background: rgba(24,191,239,.06);
+      color: #fff;
+    }
+    .wa-option-label input[type="radio"] {
+      accent-color: #18bfef; width: 16px; height: 16px; cursor: pointer;
+    }
+    /* Map */
+    #custMap {
+      height: 240px; border-radius: 12px;
+      border: 1.5px solid rgba(255,255,255,.1);
+      overflow: hidden; position: relative; z-index: 0;
+    }
+    .cust-loc-status {
+      font-family: 'Cairo', sans-serif; font-size: .85rem;
+      padding: .55rem .9rem; border-radius: 8px;
+      display: flex; align-items: center; gap: .45rem;
+      min-height: 2.2rem;
+    }
+    .cust-loc-status.detecting { background: rgba(255,255,255,.05); color: rgba(255,255,255,.45); }
     .cust-loc-status.success   { background: rgba(24,191,239,.08); color: #18bfef; }
-    .cust-loc-status.failed    { background: rgba(255,80,80,.07); color: #ff7070; }
+    .cust-loc-status.failed    { background: rgba(255,100,100,.07); color: #ff8080; }
+    .cust-loc-status.manual    { background: rgba(255,200,50,.06); color: #f5c842; }
     .btn-retry-loc {
       background: transparent;
-      border: 1px solid rgba(24,191,239,.3);
-      border-radius: 8px;
-      color: rgba(24,191,239,.7);
-      font-family: 'Cairo', sans-serif;
-      font-size: .85rem;
-      padding: .45rem 1rem;
-      cursor: pointer;
-      align-self: flex-start;
-      transition: all .2s;
+      border: 1px solid rgba(24,191,239,.3); border-radius: 8px;
+      color: rgba(24,191,239,.75); font-family: 'Cairo', sans-serif;
+      font-size: .83rem; padding: .42rem .9rem; cursor: pointer;
+      align-self: flex-start; transition: all .2s;
     }
     .btn-retry-loc:hover { border-color: #18bfef; color: #18bfef; }
     .cust-err {
-      font-family: 'Cairo', sans-serif;
-      font-size: .88rem;
-      color: #ff7070;
-      min-height: 1.2rem;
-      text-align: center;
+      font-family: 'Cairo', sans-serif; font-size: .88rem;
+      color: #ff8080; min-height: 1.2rem; text-align: center;
     }
     .btn-cust-submit {
       background: linear-gradient(135deg, #18bfef 0%, #0d9bcb 100%);
-      color: #fff;
-      font-family: 'Alexandria', sans-serif;
-      font-size: 1.05rem;
-      font-weight: 700;
-      border: none;
-      border-radius: 50px;
-      padding: .9rem 2.5rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: .6rem;
-      margin-top: .5rem;
-      transition: filter .2s, box-shadow .2s;
+      color: #fff; font-family: 'Alexandria', sans-serif;
+      font-size: 1.05rem; font-weight: 700; border: none;
+      border-radius: 50px; padding: .9rem 2.5rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: .6rem;
+      margin-top: .4rem; transition: filter .2s, box-shadow .2s;
       box-shadow: 0 4px 20px rgba(24,191,239,.35);
     }
     .btn-cust-submit:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 8px 28px rgba(24,191,239,.55); }
@@ -1287,46 +1287,72 @@
 
     <div class="cust-form-wrap">
 
+      <!-- 1. Phone -->
       <div class="cust-field">
         <label class="cust-label">رقم الهاتف <span class="req">*</span></label>
         <input type="tel" id="custPhone" class="cust-input" placeholder="05XXXXXXXX" oninput="onPhoneInput()" />
         <div id="custLookupStatus" class="cust-lookup-status"></div>
+
+        <!-- WhatsApp options -->
+        <div class="wa-options" id="waOptions">
+          <label class="wa-option-label">
+            <input type="radio" name="waOpt" value="same" checked onchange="onWaOptionChange()" />
+            رقم الواتساب هو نفس رقم الهاتف
+          </label>
+          <label class="wa-option-label">
+            <input type="radio" name="waOpt" value="different" onchange="onWaOptionChange()" />
+            رقم الواتساب مختلف عن رقم الهاتف
+          </label>
+        </div>
       </div>
 
+      <!-- 2. WhatsApp (shown after radio choice) -->
+      <div class="cust-field" id="custWhatsappField">
+        <label class="cust-label">رقم واتساب</label>
+        <input type="tel" id="custWhatsapp" class="cust-input" placeholder="05XXXXXXXX" />
+      </div>
+
+      <!-- 3. Name -->
       <div class="cust-field">
         <label class="cust-label">الاسم الكامل <span class="req">*</span></label>
         <input type="text" id="custName" class="cust-input" placeholder="محمد أحمد" />
       </div>
 
+      <!-- 4. Area -->
       <div class="cust-field">
         <label class="cust-label">المنطقة / الإمارة <span class="req">*</span></label>
         <input type="text" id="custArea" class="cust-input" placeholder="مثال: عجمان - المنامة" />
       </div>
 
+      <!-- 5. Address -->
       <div class="cust-field">
         <label class="cust-label">العنوان التفصيلي <span class="req">*</span></label>
-        <textarea id="custAddress" class="cust-input cust-textarea" rows="2" placeholder="اسم الشارع، رقم المبنى، أي تفاصيل تساعد في التوصيل..."></textarea>
+        <textarea id="custAddress" class="cust-input cust-textarea" rows="2"
+          placeholder="اسم الشارع، رقم المبنى، أي تفاصيل تساعد في التوصيل..."></textarea>
       </div>
 
+      <!-- 6. Location map -->
       <div class="cust-field">
-        <label class="cust-label">رقم واتساب / رقم احتياطي</label>
-        <input type="tel" id="custWhatsapp" class="cust-input" placeholder="05XXXXXXXX (اختياري)" />
-      </div>
-
-      <div class="cust-field">
-        <label class="cust-label">الموقع الجغرافي</label>
+        <label class="cust-label">
+          <i class="fas fa-map-marker-alt" style="color:#18bfef;margin-left:.35rem"></i>
+          الموقع الجغرافي
+          <span style="font-size:.78rem;font-weight:400;color:rgba(255,255,255,.45);margin-right:.4rem">
+            (اسحب الدبوس لتحديد موقعك بدقة)
+          </span>
+        </label>
+        <div id="custMap"></div>
         <div id="custLocStatus" class="cust-loc-status detecting">
           <i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد الموقع تلقائياً...
         </div>
         <button class="btn-retry-loc" onclick="retryLocation()">
-          <i class="fas fa-map-marker-alt"></i> إعادة تحديد الموقع
+          <i class="fas fa-crosshairs"></i>&nbsp;إعادة تحديد GPS
         </button>
       </div>
 
       <div id="custFormErr" class="cust-err"></div>
 
       <button class="btn-cust-submit" id="custSubmitBtn" onclick="submitCustomerInfo()">
-        <i class="fas fa-arrow-left"></i>&nbsp;التالي — اكتب طلبك
+        <i class="fas fa-arrow-left"></i>&nbsp;تأكيد والمتابعة لصفحة الطلب
       </button>
 
     </div>
@@ -1844,56 +1870,126 @@
   ══════════════════════════════════════════════════════════ */
 
   let _lookupTimer = null;
+  let _custMap     = null;
+  let _custMarker  = null;
   window._custLocation = null;
 
-  // Called from store card instead of selectStore directly
+  const _UAE_CENTER = [24.4539, 54.3773]; // UAE default center
+
+  // ── Show customer page ──────────────────────────────────
   function showCustomerPage(folder, name, tag) {
     window._pendingStore = { folder, name, tag };
     document.getElementById('custStoreName').textContent = name;
-    document.getElementById('custFormErr').textContent = '';
+    document.getElementById('custFormErr').textContent   = '';
     document.getElementById('custLookupStatus').textContent = '';
-    document.getElementById('custLookupStatus').className = 'cust-lookup-status';
+    document.getElementById('custLookupStatus').className   = 'cust-lookup-status';
+    // Reset WhatsApp radio to "same" and pre-fill
+    const sameRadio = document.querySelector('input[name="waOpt"][value="same"]');
+    if (sameRadio) { sameRadio.checked = true; onWaOptionChange(); }
     showPage('customerPage');
-    captureLocation();
+    // Init map then request GPS (small delay so div is visible)
+    setTimeout(() => {
+      initLeafletMap(_UAE_CENTER[0], _UAE_CENTER[1], false);
+      requestGPS();
+    }, 120);
   }
 
-  // Auto-capture GPS location when page opens
-  function captureLocation() {
-    const el = document.getElementById('custLocStatus');
-    el.className = 'cust-loc-status detecting';
-    el.innerHTML = '<i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد الموقع تلقائياً...';
+  // ── Leaflet map init ────────────────────────────────────
+  function initLeafletMap(lat, lng, moveOnly) {
+    if (!window.L) return; // Leaflet not loaded yet
+    if (_custMap && moveOnly) {
+      _custMap.setView([lat, lng], 16);
+      _custMarker.setLatLng([lat, lng]);
+      window._custLocation = { lat, lng };
+      return;
+    }
+    if (_custMap) { _custMap.remove(); _custMap = null; _custMarker = null; }
+
+    _custMap = L.map('custMap', { zoomControl: true }).setView([lat, lng], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+      maxZoom: 19
+    }).addTo(_custMap);
+
+    _custMarker = L.marker([lat, lng], { draggable: true }).addTo(_custMap);
+    window._custLocation = { lat, lng };
+
+    // Drag pin → update location
+    _custMarker.on('dragend', function(e) {
+      const p = e.target.getLatLng();
+      window._custLocation = { lat: p.lat, lng: p.lng };
+      setLocStatus('manual', '<i class="fas fa-map-marker-alt"></i>&nbsp;موقع مخصص — يمكنك ضبط الدبوس بدقة أكبر');
+    });
+
+    // Click map → move pin
+    _custMap.on('click', function(e) {
+      _custMarker.setLatLng(e.latlng);
+      window._custLocation = { lat: e.latlng.lat, lng: e.latlng.lng };
+      setLocStatus('manual', '<i class="fas fa-map-marker-alt"></i>&nbsp;موقع مخصص — يمكنك ضبط الدبوس بدقة أكبر');
+    });
+
+    _custMap.invalidateSize();
+  }
+
+  // ── GPS request ─────────────────────────────────────────
+  function requestGPS() {
+    setLocStatus('detecting', '<i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد موقعك تلقائياً...');
     if (!navigator.geolocation) {
-      el.className = 'cust-loc-status failed';
-      el.innerHTML = '<i class="fas fa-times-circle"></i>&nbsp;المتصفح لا يدعم تحديد الموقع';
+      setLocStatus('failed', '<i class="fas fa-exclamation-triangle"></i>&nbsp;المتصفح لا يدعم GPS — حرك الدبوس لتحديد موقعك');
       return;
     }
     navigator.geolocation.getCurrentPosition(
       pos => {
-        window._custLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        el.className = 'cust-loc-status success';
-        el.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp;تم تحديد الموقع بنجاح ✓';
+        const { latitude: lat, longitude: lng } = pos.coords;
+        window._custLocation = { lat, lng };
+        initLeafletMap(lat, lng, !!_custMap);
+        setLocStatus('success', '<i class="fas fa-check-circle"></i>&nbsp;تم تحديد الموقع ✓ — يمكنك سحب الدبوس لضبطه');
       },
       () => {
-        window._custLocation = null;
-        el.className = 'cust-loc-status failed';
-        el.innerHTML = '<i class="fas fa-exclamation-triangle"></i>&nbsp;لم يتم تحديد الموقع — اضغط "إعادة تحديد"';
+        setLocStatus('failed', '<i class="fas fa-exclamation-triangle"></i>&nbsp;لم يتم تحديد GPS — حرك الدبوس أو انقر على الخريطة لتحديد موقعك');
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   }
 
-  function retryLocation() { captureLocation(); }
+  function retryLocation() { requestGPS(); }
 
-  // Debounced phone lookup
+  function setLocStatus(type, html) {
+    const el = document.getElementById('custLocStatus');
+    if (!el) return;
+    el.className = 'cust-loc-status ' + type;
+    el.innerHTML = html;
+  }
+
+  // ── WhatsApp radio toggle ───────────────────────────────
+  function onWaOptionChange() {
+    const opt   = document.querySelector('input[name="waOpt"]:checked')?.value || 'same';
+    const input = document.getElementById('custWhatsapp');
+    if (opt === 'same') {
+      input.value    = document.getElementById('custPhone').value.trim();
+      input.readOnly = true;
+    } else {
+      input.value    = '';
+      input.readOnly = false;
+      input.focus();
+    }
+  }
+
+  // ── Phone input: sync WhatsApp + lookup ────────────────
+  let _lookupTimer2 = null;
   function onPhoneInput() {
-    clearTimeout(_lookupTimer);
-    const phone = document.getElementById('custPhone').value.trim();
+    const phone    = document.getElementById('custPhone').value.trim();
     const statusEl = document.getElementById('custLookupStatus');
-    statusEl.className = 'cust-lookup-status';
+    // Sync WhatsApp if "same"
+    const opt = document.querySelector('input[name="waOpt"]:checked')?.value;
+    if (opt === 'same') document.getElementById('custWhatsapp').value = phone;
+    // Lookup
+    statusEl.className   = 'cust-lookup-status';
     statusEl.textContent = '';
+    clearTimeout(_lookupTimer2);
     if (phone.length < 9) return;
-    statusEl.textContent = 'جاري البحث...';
-    _lookupTimer = setTimeout(() => lookupCustomer(phone), 700);
+    statusEl.textContent = 'جاري البحث في قاعدة البيانات...';
+    _lookupTimer2 = setTimeout(() => lookupCustomer(phone), 700);
   }
 
   async function lookupCustomer(phone) {
@@ -1901,22 +1997,28 @@
     try {
       const result = await _callScript('getCustomer', { phone });
       if (result.success && result.customer) {
-        document.getElementById('custName').value     = result.customer.name    || '';
-        document.getElementById('custArea').value     = result.customer.area    || '';
-        document.getElementById('custAddress').value  = result.customer.address || '';
-        document.getElementById('custWhatsapp').value = result.customer.whatsapp || '';
+        const c = result.customer;
+        document.getElementById('custName').value    = c.name    || '';
+        document.getElementById('custArea').value    = c.area    || '';
+        document.getElementById('custAddress').value = c.address || '';
+        // Fill WhatsApp based on radio
+        const opt = document.querySelector('input[name="waOpt"]:checked')?.value;
+        if (opt === 'same') {
+          document.getElementById('custWhatsapp').value = phone;
+        } else {
+          document.getElementById('custWhatsapp').value = c.whatsapp || '';
+        }
         statusEl.className = 'cust-lookup-status found';
-        statusEl.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp;مرحباً! تم العثور على بياناتك';
-        window._existingCustomerId = result.customer.id;
+        statusEl.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp;مرحباً! تم العثور على بياناتك وتعبئتها تلقائياً';
+        window._existingCustomerId = c.id;
       } else {
-        statusEl.textContent = 'رقم جديد — يرجى إكمال البيانات';
+        statusEl.textContent = '✦ رقم جديد — يرجى إكمال بياناتك';
         window._existingCustomerId = null;
       }
-    } catch(e) {
-      statusEl.textContent = '';
-    }
+    } catch(e) { statusEl.textContent = ''; }
   }
 
+  // ── Submit ──────────────────────────────────────────────
   async function submitCustomerInfo() {
     const phone    = document.getElementById('custPhone').value.trim();
     const name     = document.getElementById('custName').value.trim();
@@ -1925,9 +2027,8 @@
     const whatsapp = document.getElementById('custWhatsapp').value.trim();
     const errEl    = document.getElementById('custFormErr');
 
-    // Validate
-    if (!phone)   { errEl.textContent = '⚠ رقم الهاتف مطلوب';       document.getElementById('custPhone').focus();   return; }
-    if (!name)    { errEl.textContent = '⚠ الاسم الكامل مطلوب';      document.getElementById('custName').focus();    return; }
+    if (!phone)   { errEl.textContent = '⚠ رقم الهاتف مطلوب';        document.getElementById('custPhone').focus();   return; }
+    if (!name)    { errEl.textContent = '⚠ الاسم الكامل مطلوب';       document.getElementById('custName').focus();    return; }
     if (!area)    { errEl.textContent = '⚠ المنطقة / الإمارة مطلوبة'; document.getElementById('custArea').focus();    return; }
     if (!address) { errEl.textContent = '⚠ العنوان التفصيلي مطلوب';   document.getElementById('custAddress').focus(); return; }
     errEl.textContent = '';
@@ -1936,7 +2037,10 @@
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>&nbsp;جاري الحفظ...';
 
-    const loc = window._custLocation;
+    // Always read final pin position (user may have dragged it)
+    const pinPos = _custMarker ? _custMarker.getLatLng() : null;
+    const loc    = pinPos ? { lat: pinPos.lat, lng: pinPos.lng } : window._custLocation;
+    const locationUrl = loc ? `https://www.google.com/maps?q=${loc.lat},${loc.lng}` : '';
 
     try {
       const result = await _callScript('createOrUpdateCustomer', {
@@ -1944,21 +2048,20 @@
         name,
         area,
         address,
-        whatsapp      : whatsapp || phone,
-        location      : loc ? `https://www.google.com/maps?q=${loc.lat},${loc.lng}` : '',
-        latitude      : loc ? String(loc.lat) : '',
-        longitude     : loc ? String(loc.lng) : '',
-        userTimezone  : 'Asia/Dubai',
+        whatsapp     : whatsapp || phone,
+        location     : locationUrl,
+        latitude     : loc ? String(loc.lat) : '',
+        longitude    : loc ? String(loc.lng) : '',
+        userTimezone : 'Asia/Dubai',
       });
 
       if (!result.success) throw new Error(result.message || 'خطأ في الحفظ');
 
-      // Save customer info locally for the confirm/order pages
       localStorage.setItem('homiCart_customer', JSON.stringify({
         phone, name, area, address,
-        whatsapp      : whatsapp || phone,
-        customerId    : result.customerId,
-        latitude      : loc?.lat || '',
+        whatsapp   : whatsapp || phone,
+        customerId : result.customerId,
+        latitude   : loc?.lat || '',
         longitude     : loc?.lng || '',
       }));
 
@@ -1969,7 +2072,7 @@
 
     } catch(e) {
       btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-arrow-left"></i>&nbsp;التالي — اكتب طلبك';
+      btn.innerHTML = '<i class="fas fa-arrow-left"></i>&nbsp;تأكيد والمتابعة لصفحة الطلب';
       errEl.textContent = 'حدث خطأ: ' + (e.message || 'تأكد من الاتصال بالإنترنت');
       console.error('[submitCustomerInfo]', e);
     }
