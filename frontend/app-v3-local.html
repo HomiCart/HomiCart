@@ -2932,10 +2932,8 @@
       // Sort newest first
       orders.sort((a, b) => (b.date || '') > (a.date || '') ? 1 : -1);
 
-      const windowOpen = isOrderWindowOpen();
-
       list.innerHTML = orders.map(o => {
-        const canEdit = windowOpen && o.status === 'New';
+        const canEdit = o.status === 'New';
         const statusClass = 'status-' + (o.status || 'New');
         const dateStr = o.date ? String(o.date).substring(0, 16) : '—';
         return `
@@ -3038,54 +3036,10 @@
     });
   }
 
-  // ── Order Window State ─────────────────────────────────
-  window._orderWindow = null; // cached window info
-
-  async function loadOrderWindow() {
-    try {
-      const res = await _callScript('getOrderWindow', {}, 10000);
-      // Only close if explicitly configured AND closed
-      if (res && res.success && res.phase && res.phase !== 'unknown') {
-        window._orderWindow = res;
-        console.log('[OrderWindow]', res.phase, res.isOpen);
-        // Auto-close timer
-        if (res.isOpen && res.end) {
-          const msLeft = new Date(res.end) - new Date();
-          if (msLeft > 0 && msLeft < 24 * 60 * 60 * 1000) {
-            setTimeout(() => {
-              window._orderWindow = { isOpen: false, phase: 'closed' };
-              _callScript('closeOrderWindow', {}, 30000).catch(() => {});
-            }, msLeft);
-          }
-        }
-      } else {
-        // Unknown action (old .gs) or no settings → default open
-        window._orderWindow = { isOpen: true, phase: 'no_settings' };
-      }
-    } catch(e) {
-      console.warn('[OrderWindow] could not load — defaulting to open:', e.message);
-      window._orderWindow = { isOpen: true, phase: 'no_settings' };
-    }
-  }
-
-  function isOrderWindowOpen() {
-    if (!window._orderWindow) return true;
-    // Only block if explicitly closed by admin (phase = before_open or closed)
-    // If not configured at all → always open
-    if (!window._orderWindow.isOpen) {
-      const phase = window._orderWindow.phase;
-      if (phase === 'before_open' || phase === 'closed') return false;
-    }
-    return true; // default open
-  }
-
-  function getWindowClosedMsg() {
-    const w = window._orderWindow;
-    if (!w) return 'النافذة غير محددة';
-    if (w.phase === 'before_open') return '⏳ الطلبات لم تُفتح بعد';
-    if (w.phase === 'closed')      return '🔒 انتهى وقت الطلبات';
-    return '🔒 الطلبات مغلقة حالياً';
-  }
+  // ── Order Window — always open (admin window feature disabled for now) ──
+  function isOrderWindowOpen()  { return true; }
+  function getWindowClosedMsg() { return ''; }
+  function loadOrderWindow()    { return Promise.resolve(); }
 
   // ── Edit Order tracking ─────────────────────────────────
   // null = new order, string = editing existing orderId
