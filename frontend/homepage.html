@@ -46,16 +46,14 @@
 			overflow: hidden;
 		}
 
-		/* Inner layer — bleed on sides/bottom only so top is never cropped */
+		/* Inner layer — full image visible, no cropping */
 		.hero-bg-inner {
 			position: absolute;
-			top: 0;
-			left: -8%;
-			right: -8%;
-			bottom: -8%;
+			inset: 0;
 			background-image: url('assets/images/hero-bg.jpg');
-			background-size: cover;
+			background-size: contain;
 			background-position: top center;
+			background-repeat: no-repeat;
 			/* Colour grading: darken to brand depth, boost richness, shift warm tones toward teal */
 			filter:
 				brightness(0.52)
