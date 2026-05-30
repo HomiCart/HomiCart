@@ -1456,6 +1456,8 @@
     document.getElementById(pageId).classList.add('active');
     const backBtn = document.getElementById('backBtn');
     backBtn.style.display = pageId === 'storePage' ? 'none' : 'inline-flex';
+    // Reset back button label to "رجوع" when entering menu page normally
+    backBtn.innerHTML = '<i class="fas fa-arrow-right"></i> رجوع';
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // Trigger entrance animations
@@ -1718,9 +1720,15 @@
 
   /* ── Go back ── */
   function goBack() {
+    // Level 3 → Level 2 : ordering view → back to menu + discounts cards
+    if (document.querySelector('.ordering-layout')) {
+      cancelOrderMode();
+      return;
+    }
+
+    // Level 2 → Level 1 : menu page → back to stores list
     currentStore = null;
     showPage('storePage');
-    // Re-trigger store card animations
     requestAnimationFrame(() => {
       document.querySelectorAll('.store-card').forEach(c => {
         c.classList.remove('visible');
@@ -1828,6 +1836,9 @@
       </div>`;
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Update back button to show it'll return to menu, not stores
+    const backBtn = document.getElementById('backBtn');
+    if (backBtn) backBtn.innerHTML = '<i class="fas fa-arrow-right"></i> رجوع للمنيو';
     setTimeout(() => document.getElementById('opItemsInput')?.focus(), 350);
   }
 
