@@ -2188,16 +2188,20 @@
     document.getElementById('editFormErr').textContent = '';
     _showStep('editFormWrap', true);
 
-    // Init edit map: use saved lat/lng if available, else UAE center
-    setTimeout(() => {
-      const lat = parseFloat(c.latitude)  || _UAE_CENTER[0];
-      const lng = parseFloat(c.longitude) || _UAE_CENTER[1];
-      _initEditMap(lat, lng, false);
-      if (_editMap) _editMap.invalidateSize();
-      // If no saved location, try GPS
-      if (!c.latitude || !c.longitude) _requestEditGPS();
-      else _setEditLocStatus('success', '<i class="fas fa-check-circle"></i>&nbsp;الموقع المحفوظ — يمكنك تعديله بسحب الدبوس');
-    }, 150);
+    // Init edit map after browser renders the div (needs 2 frames to get real dimensions)
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      setTimeout(() => {
+        const lat = parseFloat(c.latitude)  || _UAE_CENTER[0];
+        const lng = parseFloat(c.longitude) || _UAE_CENTER[1];
+        _initEditMap(lat, lng, false);
+        // Force Leaflet to recalculate tile sizes after layout
+        setTimeout(() => { if (_editMap) _editMap.invalidateSize(true); }, 100);
+        setTimeout(() => { if (_editMap) _editMap.invalidateSize(true); }, 400);
+        // If no saved location, request GPS
+        if (!c.latitude || !c.longitude) _requestEditGPS();
+        else _setEditLocStatus('success', '<i class="fas fa-check-circle"></i>&nbsp;الموقع المحفوظ — يمكنك تعديله بسحب الدبوس');
+      }, 50);
+    }));
 
     setTimeout(() => document.getElementById('editName').focus(), 80);
   }
