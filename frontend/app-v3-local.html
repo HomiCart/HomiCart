@@ -3208,15 +3208,20 @@
   }
 
   // ── Order Window — always open; timer per store ──────────
-  function isOrderWindowOpen()  {
-    // Block if batch auto-closed (timer hit 0) OR admin closed it
-    if (window._batchClosed === true) return false;
-    // Also block if countdown is past end time
+  function isOrderWindowOpen() {
+    // If we have live phase data from admin → use it
+    if (window._batchPhase) {
+      return window._batchPhase === 'open' && window._batchClosed !== true;
+    }
+    // Fallback: check countdown end time
     if (_cdEndTime && new Date() > _cdEndTime) return false;
     return true;
   }
   function getWindowClosedMsg() {
-    return '🔒 انتهى وقت تلقي الطلبات لهذه الدورة';
+    const phase = window._batchPhase;
+    if (phase === 'before_open') return '⏳ لم يبدأ وقت تلقي الطلبات بعد';
+    if (phase === 'closed')      return '🔒 انتهى وقت تلقي الطلبات لهذه الدورة';
+    return '🔒 الطلبات مغلقة حالياً';
   }
 
   let _cdInterval = null;
@@ -3227,23 +3232,31 @@
 
   // Call this whenever a store is selected/entered
   function updateCountdownForStore(storeKey) {
-    // Show hardcoded fallback immediately
-    const fallback = STORE_CLOSING_TIMES[storeKey];
-    if (fallback) {
-      const d = new Date(fallback.trim());
-      if (!isNaN(d.getTime())) { _cdEndTime = d; startCountdown(); }
-    }
-    // Fetch live end time from admin settings (overrides fallback)
-    _callScript('getStoreOrderWindow', { store: storeKey }, 10000)
+    // Fetch live end time from admin settings
+    _callScript('getStoreOrderWindow', { store: storeKey }, 12000)
       .then(res => {
-        if (res && res.end) {
+        if (!res || !res.success) return;
+
+        // Update countdown with live admin-configured end time
+        if (res.end) {
           const live = new Date(res.end);
           if (!isNaN(live.getTime())) { _cdEndTime = live; startCountdown(); }
         }
-        // Track batch status for blocking orders
-        window._batchClosed = res && res.isActive === false;
+
+        // Block orders based on phase + batch status
+        // open phase + batch active = allow orders
+        // anything else = block
+        window._batchClosed = !(res.phase === 'open' && res.isActive === true);
+        window._batchPhase  = res.phase;
       })
-      .catch(() => {});
+      .catch(() => {
+        // Fallback to hardcoded times if API fails
+        const fallback = STORE_CLOSING_TIMES[storeKey];
+        if (fallback) {
+          const d = new Date(fallback.trim());
+          if (!isNaN(d.getTime())) { _cdEndTime = d; startCountdown(); }
+        }
+      });
   }
 
   function hideCountdown() {
