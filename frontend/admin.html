@@ -541,7 +541,7 @@ async function startNewBatch(storeKey) {
   try {
     const res = await api('startNewBatch', { store: storeKey });
     if (res.success) {
-      const msg = res.autoClosedOrders > 0 ?  —  طلب تحول لـ جاري التحضير : '';
+      const msg = res.autoClosedOrders > 0 ? ' — ' + res.autoClosedOrders + ' طلب تحول لـ جاري التحضير' : '';
       toast('✓ دورة جديدة بدأت' + msg, 'success');
       loadBatchStatus(storeKey); loadStoreOrders(storeKey);
     }
