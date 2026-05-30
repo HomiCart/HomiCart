@@ -2548,15 +2548,30 @@
     'Al Fayoumy'       : 'AlFayoumi',  // → "AlFayoumi" tab
   };
 
-  // Calls Google Apps Script directly using form-encoded POST (works on GitHub Pages)
-  async function _callScript(action, data) {
-    const params = new URLSearchParams({ action, ...data });
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method  : 'POST',
-      body    : params,
-      redirect: 'follow',
+  // Calls Google Apps Script via GET — the only reliable method from GitHub Pages.
+  // POST to Apps Script triggers a redirect that CORS blocks; GET works cleanly.
+  async function _callScript(action, data, timeoutMs = 20000) {
+    // Remove empty values to keep URL short
+    const clean = {};
+    Object.entries(data || {}).forEach(([k, v]) => {
+      if (v !== '' && v != null) clean[k] = v;
     });
-    return res.json();
+    const params = new URLSearchParams({ action, ...clean });
+    const url = `${APPS_SCRIPT_URL}?${params.toString()}`;
+
+    // Abort if it takes longer than timeoutMs (default 20s)
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { redirect: 'follow', signal: controller.signal });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    } catch(e) {
+      clearTimeout(timer);
+      if (e.name === 'AbortError') throw new Error('انتهت مهلة الاتصال — حاول مجدداً');
+      throw e;
+    }
   }
 
   /* ── Open ORDER view: thumbnails on left, form on right ────── */
