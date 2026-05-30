@@ -2196,14 +2196,19 @@
     const store = window._pendingStore;
     if (!store) return;
     window._editingOrderId = null;
-    // Load store context first (needed for showMyOrders)
-    await selectStore(store.folder, store.name, store.tag);
-    // Set _opStore so showMyOrders knows which sheet to query
+
+    // Map store folder → correct Google Sheet tab name
+    const sheetName = SHEET_NAMES[store.folder] || store.folder;
+
+    // Set _opStore BEFORE navigating so showMyOrders has correct sheet
     window._opStore = {
       storeKey  : store.folder,
       cfg       : { name: store.name },
-      sheetName : (window.SHEET_NAMES || {})[store.folder] || store.folder
+      sheetName : sheetName,
     };
+
+    // Navigate to menu page to host the orders list UI
+    await selectStore(store.folder, store.name, store.tag);
     setTimeout(() => showMyOrders(), 200);
   }
 
@@ -2939,7 +2944,9 @@
     document.getElementById('menuContainer').innerHTML = `
       <div class="my-orders-wrap">
         <div class="my-orders-title">
-          <i class="fas fa-list-alt" style="color:#18bfef"></i> طلباتي من ${store?.cfg?.name || ''}
+          <i class="fas fa-list-alt" style="color:#18bfef"></i>
+          طلباتي من <span style="color:#18bfef">${store?.cfg?.name || ''}</span>
+          <span style="font-size:.75rem;font-weight:400;color:rgba(255,255,255,.4);margin-right:.4rem">(${store?.sheetName || ''})</span>
         </div>
         <div class="my-orders-list" id="myOrdersList">
           <div class="no-orders-msg"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
