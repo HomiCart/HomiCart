@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
@@ -493,9 +493,6 @@ async function renderStorePage(storeKey) {
       <!-- Bulk Actions -->
       <div class="bulk-bar">
         <span><i class="fas fa-magic"></i> إجراءات جماعية:</span>
-        <button class="btn btn-amber" onclick="bulkStatus('${storeKey}','New','Preparing')">
-          <i class="fas fa-fire"></i> الجديدة → جاري التحضير
-        </button>
         <button class="btn btn-green" onclick="bulkStatus('${storeKey}','Preparing','Delivered')">
           <i class="fas fa-check-double"></i> التحضير → تم التوصيل
         </button>
@@ -713,7 +710,13 @@ function _fmtDate(d) {
 }
 function _toDatetimeLocal(str) {
   if (!str) return '';
-  return String(str).replace(' ','T').substring(0,16);
+  try {
+    const d = new Date(String(str).trim());
+    if (isNaN(d.getTime())) return String(str).replace(' ','T').substring(0,16);
+    // Use LOCAL time (not UTC) so 7pm shows as 7pm in the browser
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch(_) { return String(str).replace(' ','T').substring(0,16); }
 }
 
 // ════════════════════════════════════════════════════════
