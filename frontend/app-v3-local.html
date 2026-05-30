@@ -1313,6 +1313,8 @@
   // ═══════════════════════════════════════════════════════════════
 
   const PAGE_TS = Date.now();
+  const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
+  const APPS_SCRIPT_DIRECT = 'https://script.google.com/macros/s/AKfycbwRW2K-GbHfawvZMpxk5ExfyYg5EIhFpUgTy-nHaMjtNR1ZiWn-9BuZpRSWACTEGLqNlA/exec';
 
   function _imgUrl(rawUrl) {
     if (!rawUrl) return '';
