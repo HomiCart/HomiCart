@@ -46,22 +46,22 @@
 			overflow: hidden;
 		}
 
-		/* Inner layer — full image visible, no cropping */
+		/* Inner layer — img tag shows full image, no cropping */
 		.hero-bg-inner {
 			position: absolute;
-			inset: 0;
-			background-image: url('assets/images/hero-bg.jpg');
-			background-size: contain;
-			background-position: top center;
-			background-repeat: no-repeat;
-			/* Colour grading: darken to brand depth, boost richness, shift warm tones toward teal */
+			top: 0;
+			left: 0;
+			width: 100%;
+		}
+		.hero-bg-inner img {
+			display: block;
+			width: 100%;
+			height: auto;
 			filter:
 				brightness(0.52)
 				saturate(1.35)
 				contrast(1.12)
 				hue-rotate(4deg);
-			will-change: transform;
-			animation: kb-hero 28s ease-in-out infinite alternate;
 		}
 
 		@keyframes kb-hero {
@@ -482,7 +482,7 @@
 
 		<!-- Full-width photo background -->
 		<div class="hero-bg" aria-hidden="true">
-			<div class="hero-bg-inner"></div>
+			<div class="hero-bg-inner"><img src="assets/images/hero-bg.jpg" alt=""></div>
 		</div>
 
 		<!-- Multi-layer cinematic overlay -->
