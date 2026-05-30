@@ -1114,6 +1114,41 @@
     }
     .btn-op-save:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
     .btn-op-save:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+    /* ── Order Success View ── */
+    .op-success-header {
+      display: flex; flex-direction: column; align-items: center;
+      gap: .6rem; padding: 1.4rem 0 1rem; text-align: center;
+    }
+    .op-success-icon {
+      font-size: 2.8rem; color: #18bfef;
+      animation: successPop .4s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes successPop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .op-success-title {
+      font-family: 'Alexandria', sans-serif; font-size: 1.2rem;
+      font-weight: 700; color: #fff;
+    }
+    .op-order-preview {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(24,191,239,.15);
+      border-radius: 12px; padding: 1rem 1.2rem;
+      display: flex; flex-direction: column; gap: .65rem;
+      margin-bottom: 1.2rem;
+    }
+    .op-preview-row { display: flex; gap: .8rem; align-items: flex-start; }
+    .op-preview-label {
+      font-family: 'Cairo', sans-serif; font-size: .78rem;
+      color: rgba(255,255,255,.4); min-width: 60px; padding-top: .15rem;
+    }
+    .op-preview-value {
+      font-family: 'Cairo', sans-serif; font-size: .92rem;
+      color: #fff; font-weight: 500; flex: 1;
+    }
+    .op-order-id {
+      font-family: monospace; font-size: .85rem; color: #18bfef;
+      letter-spacing: .04em; word-break: break-all;
+    }
+    .op-preview-items { white-space: pre-line; line-height: 1.7; }
 
     .btn-op-cancel {
       display: flex; align-items: center; justify-content: center; gap: .4rem;
@@ -1514,7 +1549,9 @@
 <!-- Order bottom panel -->
 <div id="orderPanel" class="order-panel">
   <div class="order-panel-handle"></div>
-  <div class="order-panel-inner">
+
+  <!-- ── WRITE VIEW ── -->
+  <div id="opWriteView" class="order-panel-inner">
     <div class="order-panel-head">
       <div class="order-panel-title">
         <i class="fas fa-cart-plus"></i>
@@ -1528,13 +1565,48 @@
     <div class="order-panel-btns">
       <button class="btn-op-save" id="opSaveBtn" onclick="saveOrder()">
         <i class="fas fa-check"></i>
-        <span id="opSaveTxt">سجل الطلب</span>
+        <span id="opSaveTxt">تأكيد الطلب</span>
       </button>
       <button class="btn-op-cancel" onclick="cancelOrderPanel()">
-        <i class="fas fa-xmark"></i> إلغاء الطلب
+        <i class="fas fa-xmark"></i> إلغاء
       </button>
     </div>
   </div>
+
+  <!-- ── SUCCESS VIEW ── -->
+  <div id="opSuccessView" class="order-panel-inner" style="display:none">
+    <div class="op-success-header">
+      <div class="op-success-icon"><i class="fas fa-check-circle"></i></div>
+      <div class="op-success-title">تم تسجيل طلبك بنجاح!</div>
+    </div>
+    <div class="op-order-preview">
+      <div class="op-preview-row">
+        <span class="op-preview-label">رقم الطلب</span>
+        <span class="op-preview-value op-order-id" id="opConfirmOrderId">—</span>
+      </div>
+      <div class="op-preview-row">
+        <span class="op-preview-label">الاسم</span>
+        <span class="op-preview-value" id="opConfirmName">—</span>
+      </div>
+      <div class="op-preview-row">
+        <span class="op-preview-label">الهاتف</span>
+        <span class="op-preview-value" id="opConfirmPhone">—</span>
+      </div>
+      <div class="op-preview-row op-preview-items-row">
+        <span class="op-preview-label">الطلب</span>
+        <span class="op-preview-value op-preview-items" id="opConfirmItems">—</span>
+      </div>
+    </div>
+    <div class="order-panel-btns">
+      <button class="btn-op-save" onclick="editOrder()">
+        <i class="fas fa-pen"></i> تعديل الطلب
+      </button>
+      <button class="btn-op-cancel" onclick="returnToHome()">
+        <i class="fas fa-home"></i> الصفحة الرئيسية
+      </button>
+    </div>
+  </div>
+
 </div>
 
 <!-- Slideshow Modal -->
@@ -2586,7 +2658,7 @@
   // Keep old name as alias (referenced from HTML panel)
   function cancelOrderPanel() { cancelOrderMode(); }
 
-  /* ── Save order → sheets → redirect to confirm page ────────── */
+  /* ── Submit order directly to Google Sheets ─────────── */
   async function saveOrder() {
     const items = document.getElementById('opItemsInput').value.trim();
     const err   = document.getElementById('opError');
@@ -2596,47 +2668,94 @@
       return;
     }
     err.textContent = '';
-    const btn = document.getElementById('opSaveBtn');
-    btn.disabled = true;
-    document.getElementById('opSaveTxt').textContent = 'جاري الحفظ ...';
 
-    const store  = window._opStore;
-    const tempId = 'TEMP-' + Date.now() + '-' + Math.random().toString(36).substr(2,6).toUpperCase();
+    // Prevent duplicate submission
+    const btn = document.getElementById('opSaveBtn');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    document.getElementById('opSaveTxt').textContent = 'جاري الإرسال...';
+
+    const store    = window._opStore;
+    const customer = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
 
     try {
-      const result = await _callScript('saveTempOrder', {
-        tempId,
-        sheetName: store.sheetName,
-        items,
+      const result = await _callScript('submitOrder', {
+        phone      : customer.phone    || '',
+        name       : customer.name     || '',
+        area       : customer.area     || '',
+        address    : customer.address  || '',
+        whatsapp   : customer.whatsapp || customer.phone || '',
+        latitude   : customer.latitude  ? String(customer.latitude)  : '',
+        longitude  : customer.longitude ? String(customer.longitude) : '',
+        location   : customer.latitude  ? `https://www.google.com/maps?q=${customer.latitude},${customer.longitude}` : '',
+        orderText  : items,
+        sheet      : store.sheetName,
+        vendor     : store.cfg?.name || store.storeKey,
+        userTimezone: 'Asia/Dubai',
+        forceNew   : 'true',        // always create a new order record
       });
-      if (result.error) throw new Error(result.error);
 
-      _opSaved  = true;
-      _opTempId = tempId;
+      if (!result.success) throw new Error(result.message || 'فشل الإرسال');
 
-      // Persist order details so confirm.html can read them
+      const orderId = result.orderId || ('O' + Date.now());
+
+      // Save to localStorage
+      _opSaved = true;
       localStorage.setItem('homiCart_pendingOrder', JSON.stringify({
-        tempId,
+        orderId,
         sheetName : store.sheetName,
-        storeName : store.cfg.name,
+        storeName : store.cfg?.name || '',
         storeKey  : store.storeKey,
         items,
         savedAt   : Date.now(),
       }));
 
-      // Navigate (panel will NOT cancel the order now — _opSaved flag is kept)
-      _opSaved = false; // prevent cancel on navigate
-      document.getElementById('orderPanel').classList.remove('open');
-      document.getElementById('orderOverlay').classList.remove('show');
-      document.body.style.overflow = '';
-      window.location.href = 'confirm.html';
+      // Show success view
+      document.getElementById('opWriteView').style.display  = 'none';
+      document.getElementById('opSuccessView').style.display = '';
+
+      document.getElementById('opConfirmOrderId').textContent = orderId;
+      document.getElementById('opConfirmName').textContent    = customer.name  || '—';
+      document.getElementById('opConfirmPhone').textContent   = customer.phone || '—';
+      document.getElementById('opConfirmItems').textContent   = items;
 
     } catch (e) {
       btn.disabled = false;
-      document.getElementById('opSaveTxt').textContent = 'سجل الطلب';
-      err.textContent = 'تعذر حفظ الطلب — تأكد من اتصال الإنترنت وأن السيرفر يعمل.';
+      document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
+      err.textContent = 'تعذر إرسال الطلب — تأكد من الاتصال بالإنترنت.';
       console.error('[saveOrder]', e);
     }
+  }
+
+  /* ── Edit order — go back to write view ────────────────── */
+  function editOrder() {
+    document.getElementById('opSuccessView').style.display = 'none';
+    document.getElementById('opWriteView').style.display   = '';
+    const btn = document.getElementById('opSaveBtn');
+    btn.disabled = false;
+    document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
+    _opSaved = false;
+  }
+
+  /* ── Return to store selection home ──────────────────────── */
+  function returnToHome() {
+    _opSaved = true; // prevent cancel warning
+    document.getElementById('orderPanel').classList.remove('open');
+    document.getElementById('orderOverlay').classList.remove('show');
+    document.body.style.overflow = '';
+    // Reset panel views for next use
+    document.getElementById('opSuccessView').style.display = 'none';
+    document.getElementById('opWriteView').style.display   = '';
+    document.getElementById('opItemsInput').value = '';
+    document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
+    document.getElementById('opSaveBtn').disabled = false;
+    _opSaved = false;
+    showPage('storePage');
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.store-card').forEach((c, i) =>
+        setTimeout(() => c.classList.add('visible'), 60 + i * 80)
+      );
+    });
   }
 
   // Boot — show stores immediately
