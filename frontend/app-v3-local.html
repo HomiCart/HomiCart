@@ -832,6 +832,69 @@
     }
     .btn-cust-submit:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 8px 28px rgba(24,191,239,.55); }
     .btn-cust-submit:disabled { opacity: .6; cursor: not-allowed; }
+    /* Action buttons row */
+    .cust-action-btns {
+      display: flex; gap: .8rem; flex-wrap: wrap; margin-top: .5rem;
+    }
+    .btn-cust-primary {
+      flex: 1; min-width: 140px;
+      background: linear-gradient(135deg, #18bfef 0%, #0d9bcb 100%);
+      color: #fff; font-family: 'Alexandria', sans-serif;
+      font-size: 1rem; font-weight: 700; border: none;
+      border-radius: 50px; padding: .82rem 1.6rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+      transition: filter .2s, box-shadow .2s;
+      box-shadow: 0 4px 18px rgba(24,191,239,.3);
+    }
+    .btn-cust-primary:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 8px 26px rgba(24,191,239,.5); }
+    .btn-cust-primary:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-cust-secondary {
+      flex: 1; min-width: 120px;
+      background: transparent;
+      color: rgba(255,255,255,.75); font-family: 'Alexandria', sans-serif;
+      font-size: .95rem; font-weight: 600;
+      border: 1.5px solid rgba(255,255,255,.2); border-radius: 50px;
+      padding: .82rem 1.4rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+      transition: border-color .2s, color .2s;
+    }
+    .btn-cust-secondary:hover { border-color: #18bfef; color: #18bfef; }
+    /* Info card for existing customer */
+    .cust-info-card {
+      background: rgba(255,255,255,.04);
+      border: 1.5px solid rgba(24,191,239,.18);
+      border-radius: 14px; padding: 1.2rem 1.4rem;
+      display: flex; flex-direction: column; gap: .7rem;
+      margin-bottom: 1rem;
+    }
+    .cust-info-row {
+      display: flex; align-items: flex-start; gap: .8rem;
+      font-family: 'Cairo', sans-serif; font-size: .92rem;
+    }
+    .cust-info-label {
+      color: rgba(255,255,255,.45); min-width: 65px;
+      font-size: .82rem; padding-top: .05rem;
+    }
+    .cust-info-row span:last-child { color: #fff; font-weight: 500; flex: 1; }
+    /* Edit divider */
+    .cust-edit-divider {
+      font-family: 'Alexandria', sans-serif; font-size: .82rem;
+      font-weight: 600; color: rgba(24,191,239,.7);
+      text-align: center; padding: .8rem 0 .4rem;
+      border-top: 1px solid rgba(255,255,255,.08); margin-top: .6rem;
+      letter-spacing: .05em;
+    }
+    /* Success message */
+    .cust-success-msg {
+      background: rgba(24,191,239,.08);
+      border: 1.5px solid rgba(24,191,239,.3);
+      border-radius: 12px; padding: 1.1rem 1.4rem;
+      display: flex; align-items: center; gap: .8rem;
+      font-family: 'Cairo', sans-serif; font-size: 1rem;
+      color: #18bfef; margin-bottom: 1rem;
+    }
+    .cust-success-msg i { font-size: 1.4rem; }
+    .btn-start-order { width: 100%; max-width: 100%; }
 
     /* ══════════════════════════════
        ORDERING INLINE LAYOUT
@@ -1287,17 +1350,66 @@
 
     <div class="cust-form-wrap">
 
-      <!-- STEP 1: Phone only — always visible -->
+      <!-- ══ STEP 1: Phone (always visible) ══ -->
       <div class="cust-field">
         <label class="cust-label">رقم الهاتف <span class="req">*</span></label>
         <input type="tel" id="custPhone" class="cust-input" placeholder="05XXXXXXXX" oninput="onPhoneInput()" />
         <div id="custLookupStatus" class="cust-lookup-status"></div>
       </div>
 
-      <!-- STEP 2a: WhatsApp options — shown for NEW users after phone lookup -->
-      <div id="stepWhatsapp" class="cust-step" style="display:none">
+      <!-- ══ EXISTING CUSTOMER: info card + action buttons ══ -->
+      <div id="stepExisting" style="display:none">
+        <div class="cust-info-card" id="custInfoCard">
+          <div class="cust-info-row"><span class="cust-info-label">الاسم</span><span id="eciName"></span></div>
+          <div class="cust-info-row"><span class="cust-info-label">الهاتف</span><span id="eciPhone"></span></div>
+          <div class="cust-info-row"><span class="cust-info-label">واتساب</span><span id="eciWhatsapp"></span></div>
+          <div class="cust-info-row"><span class="cust-info-label">المنطقة</span><span id="eciArea"></span></div>
+          <div class="cust-info-row"><span class="cust-info-label">العنوان</span><span id="eciAddress"></span></div>
+        </div>
+        <div class="cust-action-btns">
+          <button class="btn-cust-secondary" onclick="startEditMode()">
+            <i class="fas fa-pen"></i>&nbsp;تعديل البيانات
+          </button>
+          <button class="btn-cust-primary" onclick="goToOrderPage()">
+            <i class="fas fa-shopping-cart"></i>&nbsp;ابدأ الطلب
+          </button>
+        </div>
+
+        <!-- Edit form (hidden until edit button clicked) -->
+        <div id="editFormWrap" style="display:none">
+          <div class="cust-edit-divider">تعديل البيانات</div>
+          <div class="cust-field">
+            <label class="cust-label">الاسم الكامل</label>
+            <input type="text" id="editName" class="cust-input" />
+          </div>
+          <div class="cust-field">
+            <label class="cust-label">رقم الواتساب</label>
+            <input type="tel" id="editWhatsapp" class="cust-input" />
+          </div>
+          <div class="cust-field">
+            <label class="cust-label">المنطقة / الإمارة</label>
+            <input type="text" id="editArea" class="cust-input" />
+          </div>
+          <div class="cust-field">
+            <label class="cust-label">العنوان التفصيلي</label>
+            <textarea id="editAddress" class="cust-input cust-textarea" rows="2"></textarea>
+          </div>
+          <div id="editFormErr" class="cust-err"></div>
+          <div class="cust-action-btns">
+            <button class="btn-cust-secondary" onclick="cancelEditMode()">
+              <i class="fas fa-times"></i>&nbsp;إلغاء
+            </button>
+            <button class="btn-cust-primary" id="editSaveBtn" onclick="saveEditedInfo()">
+              <i class="fas fa-save"></i>&nbsp;حفظ التعديلات
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ NEW CUSTOMER: WhatsApp options ══ -->
+      <div id="stepWhatsapp" style="display:none">
         <div class="cust-field">
-          <label class="cust-label">رقم الواتساب</label>
+          <label class="cust-label">رقم الواتساب <span class="req">*</span></label>
           <div class="wa-options">
             <label class="wa-option-label">
               <input type="radio" name="waOpt" value="same" onchange="onWaOptionChange()" />
@@ -1308,64 +1420,57 @@
               رقم الواتساب مختلف عن رقم الهاتف
             </label>
           </div>
-        </div>
-        <div class="cust-field" id="custWhatsappField" style="display:none">
-          <input type="tel" id="custWhatsapp" class="cust-input" placeholder="05XXXXXXXX"
-            oninput="onWhatsappInput()" />
-        </div>
-      </div>
-
-      <!-- STEP 2b: WhatsApp display for EXISTING users (read-only) -->
-      <div id="stepWhatsappExisting" class="cust-step" style="display:none">
-        <div class="cust-field">
-          <label class="cust-label">رقم الواتساب</label>
-          <input type="tel" id="custWhatsappExisting" class="cust-input" readonly />
+          <div id="custWhatsappField" style="display:none">
+            <input type="tel" id="custWhatsapp" class="cust-input" placeholder="05XXXXXXXX"
+              style="margin-top:.5rem" oninput="onWhatsappInput()" />
+          </div>
         </div>
       </div>
 
-      <!-- STEP 3: Rest of fields — Name, Area, Address, Map -->
-      <div id="stepDetails" class="cust-step" style="display:none">
-
+      <!-- ══ NEW CUSTOMER: Full registration form ══ -->
+      <div id="stepDetails" style="display:none">
         <div class="cust-field">
           <label class="cust-label">الاسم الكامل <span class="req">*</span></label>
           <input type="text" id="custName" class="cust-input" placeholder="محمد أحمد" />
         </div>
-
         <div class="cust-field">
           <label class="cust-label">المنطقة / الإمارة <span class="req">*</span></label>
           <input type="text" id="custArea" class="cust-input" placeholder="مثال: عجمان - المنامة" />
         </div>
-
         <div class="cust-field">
           <label class="cust-label">العنوان التفصيلي <span class="req">*</span></label>
           <textarea id="custAddress" class="cust-input cust-textarea" rows="2"
             placeholder="اسم الشارع، رقم المبنى، أي تفاصيل تساعد في التوصيل..."></textarea>
         </div>
-
         <div class="cust-field">
           <label class="cust-label">
-            <i class="fas fa-map-marker-alt" style="color:#18bfef;margin-left:.35rem"></i>
-            الموقع الجغرافي
-            <span style="font-size:.78rem;font-weight:400;color:rgba(255,255,255,.45);margin-right:.4rem">
-              (اسحب الدبوس لتحديد موقعك بدقة)
-            </span>
+            <i class="fas fa-map-marker-alt" style="color:#18bfef;margin-left:.35rem"></i>الموقع الجغرافي
+            <span style="font-size:.78rem;font-weight:400;color:rgba(255,255,255,.4);margin-right:.4rem">(اسحب الدبوس لضبط موقعك)</span>
           </label>
           <div id="custMap"></div>
           <div id="custLocStatus" class="cust-loc-status detecting">
-            <i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد الموقع تلقائياً...
+            <i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد الموقع...
           </div>
           <button class="btn-retry-loc" onclick="retryLocation()">
             <i class="fas fa-crosshairs"></i>&nbsp;إعادة تحديد GPS
           </button>
         </div>
-
         <div id="custFormErr" class="cust-err"></div>
-
-        <button class="btn-cust-submit" id="custSubmitBtn" onclick="submitCustomerInfo()">
-          <i class="fas fa-arrow-left"></i>&nbsp;تأكيد والمتابعة لصفحة الطلب
+        <button class="btn-cust-primary" id="custSubmitBtn" onclick="submitCustomerInfo()">
+          <i class="fas fa-user-check"></i>&nbsp;تسجيل البيانات
         </button>
+      </div>
 
-      </div><!-- /stepDetails -->
+      <!-- ══ NEW CUSTOMER: Success + Start Order ══ -->
+      <div id="stepSuccess" style="display:none">
+        <div class="cust-success-msg">
+          <i class="fas fa-check-circle"></i>
+          <span>تم تسجيل بياناتك بنجاح</span>
+        </div>
+        <button class="btn-cust-primary btn-start-order" onclick="goToOrderPage()">
+          <i class="fas fa-shopping-cart"></i>&nbsp;ابدأ الطلب
+        </button>
+      </div>
 
     </div>
   </div>
@@ -1894,25 +1999,23 @@
     if (el) el.style.display = visible ? '' : 'none';
   }
 
-  // ── Reset form to initial state (phone only) ────────────
+  // ── Reset all steps (back to phone-only state) ──────────
   function _resetForm() {
-    _showStep('stepWhatsapp', false);
-    _showStep('stepWhatsappExisting', false);
-    _showStep('stepDetails', false);
-    document.getElementById('custName').value    = '';
-    document.getElementById('custArea').value    = '';
-    document.getElementById('custAddress').value = '';
-    document.getElementById('custWhatsapp').value = '';
-    document.getElementById('custWhatsappExisting').value = '';
+    ['stepExisting','stepWhatsapp','stepDetails','stepSuccess'].forEach(id => _showStep(id, false));
+    _showStep('editFormWrap', false);
+    _showStep('custWhatsappField', false);
+    ['custName','custArea','custAddress','custWhatsapp',
+     'editName','editWhatsapp','editArea','editAddress'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
     document.getElementById('custLookupStatus').textContent = '';
     document.getElementById('custLookupStatus').className   = 'cust-lookup-status';
-    if (document.getElementById('custFormErr'))
-      document.getElementById('custFormErr').textContent = '';
-    // Uncheck all radios
+    const errEl = document.getElementById('custFormErr');
+    if (errEl) errEl.textContent = '';
     document.querySelectorAll('input[name="waOpt"]').forEach(r => r.checked = false);
     window._existingCustomerId = null;
     window._custLocation = null;
-    // Destroy old map so it re-initializes fresh
     if (_custMap) { _custMap.remove(); _custMap = null; _custMarker = null; }
   }
 
@@ -1923,7 +2026,15 @@
     document.getElementById('custPhone').value = '';
     _resetForm();
     showPage('customerPage');
-    document.getElementById('custPhone').focus();
+    setTimeout(() => document.getElementById('custPhone').focus(), 100);
+  }
+
+  // ── Go directly to order page (used by both existing + new customers) ──
+  async function goToOrderPage() {
+    const store = window._pendingStore;
+    if (!store) return;
+    await selectStore(store.folder, store.name, store.tag);
+    setTimeout(() => orderNow(store.folder), 150);
   }
 
   // ── Leaflet map init ────────────────────────────────────
@@ -1993,6 +2104,69 @@
     el.innerHTML = html;
   }
 
+  // ── Edit mode for existing customer ────────────────────
+  function startEditMode() {
+    const c = window._existingCustomer || {};
+    document.getElementById('editName').value     = c.name     || '';
+    document.getElementById('editWhatsapp').value = c.whatsapp || document.getElementById('custPhone').value.trim();
+    document.getElementById('editArea').value     = c.area     || '';
+    document.getElementById('editAddress').value  = c.address  || '';
+    document.getElementById('editFormErr').textContent = '';
+    _showStep('editFormWrap', true);
+    setTimeout(() => document.getElementById('editName').focus(), 80);
+  }
+
+  function cancelEditMode() {
+    _showStep('editFormWrap', false);
+  }
+
+  async function saveEditedInfo() {
+    const phone    = document.getElementById('custPhone').value.trim();
+    const name     = document.getElementById('editName').value.trim();
+    const whatsapp = document.getElementById('editWhatsapp').value.trim();
+    const area     = document.getElementById('editArea').value.trim();
+    const address  = document.getElementById('editAddress').value.trim();
+    const errEl    = document.getElementById('editFormErr');
+
+    if (!name)    { errEl.textContent = '⚠ الاسم مطلوب'; return; }
+    if (!area)    { errEl.textContent = '⚠ المنطقة مطلوبة'; return; }
+    if (!address) { errEl.textContent = '⚠ العنوان مطلوب'; return; }
+    errEl.textContent = '';
+
+    const btn = document.getElementById('editSaveBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>&nbsp;جاري الحفظ...';
+
+    try {
+      const result = await _callScript('createOrUpdateCustomer', {
+        phone, name, area, address,
+        whatsapp: whatsapp || phone,
+        userTimezone: 'Asia/Dubai',
+      });
+      if (!result.success) throw new Error(result.message);
+
+      // Update info card display
+      document.getElementById('eciName').textContent     = name;
+      document.getElementById('eciWhatsapp').textContent = whatsapp || phone;
+      document.getElementById('eciArea').textContent     = area;
+      document.getElementById('eciAddress').textContent  = address;
+
+      // Update localStorage
+      const saved = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
+      localStorage.setItem('homiCart_customer', JSON.stringify({ ...saved, name, area, address, whatsapp: whatsapp || phone }));
+
+      // Hide edit form
+      _showStep('editFormWrap', false);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save"></i>&nbsp;حفظ التعديلات';
+
+    } catch(e) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save"></i>&nbsp;حفظ التعديلات';
+      errEl.textContent = 'خطأ: ' + (e.message || 'تأكد من الاتصال');
+    }
+  }
+
   // ── WhatsApp radio selected ─────────────────────────────
   function onWaOptionChange() {
     const opt   = document.querySelector('input[name="waOpt"]:checked')?.value;
@@ -2047,11 +2221,12 @@
       const result = await _callScript('getCustomer', { phone });
 
       if (result.success && result.customer) {
-        // ── EXISTING CUSTOMER → save data + redirect directly to order page ──
+        // ── EXISTING CUSTOMER: show info card + action buttons ──
         const c = result.customer;
         window._existingCustomerId = c.id;
+        window._existingCustomer   = c;
 
-        // Save to localStorage for confirm/order pages
+        // Save to localStorage
         localStorage.setItem('homiCart_customer', JSON.stringify({
           phone,
           name      : c.name     || '',
@@ -2063,13 +2238,18 @@
           longitude : c.longitude || '',
         }));
 
-        statusEl.className = 'cust-lookup-status found';
-        statusEl.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp;مرحباً! تم التعرف عليك، جاري الانتقال...';
+        // Populate info card
+        document.getElementById('eciName').textContent    = c.name     || '-';
+        document.getElementById('eciPhone').textContent   = phone;
+        document.getElementById('eciWhatsapp').textContent= c.whatsapp || phone;
+        document.getElementById('eciArea').textContent    = c.area     || '-';
+        document.getElementById('eciAddress').textContent = c.address  || '-';
 
-        // Redirect directly to order page — no form needed
-        const store = window._pendingStore;
-        await selectStore(store.folder, store.name, store.tag);
-        setTimeout(() => orderNow(store.folder), 150);
+        statusEl.className = 'cust-lookup-status found';
+        statusEl.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp;مرحباً! تم العثور على بياناتك';
+
+        // Show info card + action buttons
+        _showStep('stepExisting', true);
 
       } else {
         // ── NEW CUSTOMER ───────────────────────────────────
@@ -2092,10 +2272,7 @@
     const name     = document.getElementById('custName').value.trim();
     const area     = document.getElementById('custArea').value.trim();
     const address  = document.getElementById('custAddress').value.trim();
-    // Read WhatsApp from correct field based on whether existing/new customer
-    const whatsapp = window._existingCustomerId
-      ? document.getElementById('custWhatsappExisting').value.trim()
-      : document.getElementById('custWhatsapp').value.trim();
+    const whatsapp = document.getElementById('custWhatsapp').value.trim();
     const errEl    = document.getElementById('custFormErr');
 
     if (!phone)   { errEl.textContent = '⚠ رقم الهاتف مطلوب';        document.getElementById('custPhone').focus();   return; }
@@ -2136,14 +2313,12 @@
         longitude     : loc?.lng || '',
       }));
 
-      // FIX 2 & 3: Load store then go DIRECTLY to order panel (skip menu browsing)
-      btn.innerHTML = '<i class="fas fa-check"></i>&nbsp;تم! جاري الانتقال...';
-      const store = window._pendingStore;
-      // selectStore sets up store context + loads images in background
-      await selectStore(store.folder, store.name, store.tag);
-      // Immediately open the order panel on top — no need to click "اطلب الآن"
-      // Store routing is automatic: SHEET_NAMES[store.folder] picks the right tab
-      setTimeout(() => orderNow(store.folder), 150);
+      // Hide registration form, show success + Start Order button
+      _showStep('stepWhatsapp', false);
+      _showStep('stepDetails', false);
+      _showStep('stepSuccess', true);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-user-check"></i>&nbsp;تسجيل البيانات';
 
     } catch(e) {
       btn.disabled = false;
