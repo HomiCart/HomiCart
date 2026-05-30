@@ -1157,6 +1157,54 @@
     }
     .order-success-btns .btn-op-save,
     .order-success-btns .btn-op-cancel { flex: 1; min-width: 140px; }
+    /* ── My Orders List ── */
+    .my-orders-wrap { max-width: 680px; margin: 1.5rem auto; padding: 0 1rem 3rem; }
+    .my-orders-title {
+      font-family: 'Alexandria', sans-serif; font-size: 1.1rem;
+      font-weight: 700; color: #fff; margin-bottom: 1rem;
+      display: flex; align-items: center; gap: .6rem;
+    }
+    .my-orders-list { display: flex; flex-direction: column; gap: .9rem; }
+    .order-card {
+      background: rgba(255,255,255,.04);
+      border: 1.5px solid rgba(255,255,255,.1);
+      border-radius: 14px; padding: 1rem 1.2rem;
+      display: flex; flex-direction: column; gap: .55rem;
+      transition: border-color .2s;
+    }
+    .order-card.editable { border-color: rgba(24,191,239,.25); cursor: default; }
+    .order-card-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+    .order-card-id { font-family: monospace; font-size: .82rem; color: #18bfef; }
+    .order-card-date { font-family: 'Cairo', sans-serif; font-size: .78rem; color: rgba(255,255,255,.4); }
+    .order-status-badge {
+      font-family: 'Cairo', sans-serif; font-size: .75rem; font-weight: 600;
+      padding: .2rem .7rem; border-radius: 50px;
+    }
+    .status-New        { background: rgba(24,191,239,.15); color: #18bfef; }
+    .status-Preparing  { background: rgba(255,165,0,.15);  color: #ffa500; }
+    .status-Delivered  { background: rgba(40,200,100,.15); color: #28c864; }
+    .status-Cancelled  { background: rgba(255,80,80,.15);  color: #ff5050; }
+    .order-card-items {
+      font-family: 'Cairo', sans-serif; font-size: .88rem;
+      color: rgba(255,255,255,.65); line-height: 1.7;
+      white-space: pre-line; max-height: 80px; overflow: hidden;
+      mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+    }
+    .btn-edit-order {
+      align-self: flex-end; margin-top: .3rem;
+      background: linear-gradient(135deg,#18bfef,#0d9bcb);
+      color: #fff; font-family: 'Cairo', sans-serif; font-size: .88rem;
+      font-weight: 600; border: none; border-radius: 50px;
+      padding: .45rem 1.2rem; cursor: pointer;
+      display: flex; align-items: center; gap: .4rem;
+      transition: filter .2s;
+    }
+    .btn-edit-order:hover { filter: brightness(1.1); }
+    .btn-edit-order:disabled { opacity: .4; cursor: not-allowed; }
+    .no-orders-msg {
+      font-family: 'Cairo', sans-serif; font-size: .95rem;
+      color: rgba(255,255,255,.4); text-align: center; padding: 2rem;
+    }
 
     .btn-op-cancel {
       display: flex; align-items: center; justify-content: center; gap: .4rem;
@@ -2748,13 +2796,13 @@
     try {
       let result;
       if (isEditing) {
-        // ── EDIT: update same row, same OrderID ──────────────
-        result = await _callScript('updateOrderItems', {
+        // ── EDIT: update same row, generate NEW OrderID ──────
+        result = await _callScript('updateOrderWithNewId', {
           orderId : window._editingOrderId,
           items,
           sheet   : store.sheetName,
         }, 30000);
-        if (result.success) serverOrderId = window._editingOrderId;
+        if (result.success) serverOrderId = result.newOrderId || window._editingOrderId;
         else if (result.message) {
           // Status no longer "New" or window closed
           clearInterval(countdownTimer);
@@ -2831,8 +2879,8 @@
           </div>
         </div>
         <div class="order-success-btns">
-          <button class="btn-op-save" onclick="editOrder()">
-            <i class="fas fa-pen"></i>&nbsp;تعديل الطلب
+          <button class="btn-op-save" onclick="showMyOrders()">
+            <i class="fas fa-list-alt"></i>&nbsp;طلباتي وتعديلها
           </button>
           <button class="btn-op-cancel" onclick="returnToHome()">
             <i class="fas fa-home"></i>&nbsp;الصفحة الرئيسية
@@ -2840,6 +2888,105 @@
         </div>
       </div>`;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     MY ORDERS — fetch & display all customer orders
+  ══════════════════════════════════════════════════════ */
+
+  async function showMyOrders() {
+    const store    = window._opStore;
+    const customer = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
+    if (!customer.phone) { alert('لم يتم التعرف على رقم هاتفك'); return; }
+
+    document.getElementById('menuContainer').innerHTML = `
+      <div class="my-orders-wrap">
+        <div class="my-orders-title">
+          <i class="fas fa-list-alt" style="color:#18bfef"></i> طلباتي من ${store?.cfg?.name || ''}
+        </div>
+        <div class="my-orders-list" id="myOrdersList">
+          <div class="no-orders-msg"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
+        </div>
+        <div style="margin-top:1.5rem">
+          <button class="btn-op-cancel" style="width:100%;justify-content:center" onclick="returnToHome()">
+            <i class="fas fa-home"></i>&nbsp;الصفحة الرئيسية
+          </button>
+        </div>
+      </div>`;
+
+    try {
+      const result = await _callScript('getOrdersByPhone', {
+        phone : customer.phone,
+        sheet : store?.sheetName || '',
+      }, 20000);
+
+      const list = document.getElementById('myOrdersList');
+      if (!list) return;
+
+      const orders = result.orders || [];
+      if (!orders.length) {
+        list.innerHTML = '<div class="no-orders-msg">لا توجد طلبات سابقة</div>';
+        return;
+      }
+
+      // Sort newest first
+      orders.sort((a, b) => (b.date || '') > (a.date || '') ? 1 : -1);
+
+      const windowOpen = isOrderWindowOpen();
+
+      list.innerHTML = orders.map(o => {
+        const canEdit = windowOpen && o.status === 'New';
+        const statusClass = 'status-' + (o.status || 'New');
+        const dateStr = o.date ? String(o.date).substring(0, 16) : '—';
+        return `
+          <div class="order-card ${canEdit ? 'editable' : ''}">
+            <div class="order-card-top">
+              <span class="order-card-id">${o.id}</span>
+              <span class="order-status-badge ${statusClass}">${_statusAr(o.status)}</span>
+              <span class="order-card-date">${dateStr}</span>
+            </div>
+            <div class="order-card-items">${o.items || '—'}</div>
+            ${canEdit
+              ? `<button class="btn-edit-order" onclick="loadOrderForEdit('${o.id}', \`${(o.items||'').replace(/`/g,"'")}\`)">
+                   <i class="fas fa-pen"></i> تعديل هذا الطلب
+                 </button>`
+              : `<span style="font-family:'Cairo',sans-serif;font-size:.78rem;color:rgba(255,255,255,.3);align-self:flex-end">
+                   ${canEdit ? '' : (o.status === 'New' ? '🔒 النافذة مغلقة' : '⛔ لا يمكن التعديل')}
+                 </span>`
+            }
+          </div>`;
+      }).join('');
+
+    } catch(e) {
+      const list = document.getElementById('myOrdersList');
+      if (list) list.innerHTML = `<div class="no-orders-msg" style="color:#ff8080">تعذر تحميل الطلبات: ${e.message}</div>`;
+    }
+  }
+
+  function _statusAr(s) {
+    return { New: 'جديد', Preparing: 'جاري التحضير', Delivered: 'تم التوصيل', Cancelled: 'ملغي' }[s] || s;
+  }
+
+  function loadOrderForEdit(orderId, items) {
+    window._editingOrderId = orderId;
+    _opSaved = false;
+    const store = window._opStore;
+    if (!store) return;
+    orderNow(store.storeKey);
+    setTimeout(() => {
+      const ta  = document.getElementById('opItemsInput');
+      const btn = document.getElementById('opSaveBtn');
+      const lbl = document.getElementById('opSaveTxt');
+      if (ta)  { ta.value = items; ta.focus(); }
+      if (btn)   btn.disabled = false;
+      if (lbl)   lbl.textContent = 'حفظ التعديلات';
+      // Show edit indicator
+      const err = document.getElementById('opError');
+      if (err) {
+        err.textContent = `✏️ تعديل الطلب: ${orderId}`;
+        err.style.color = '#18bfef';
+      }
+    }, 400);
   }
 
   /* ── Edit order — reopen same order for editing (updates same row) ── */
