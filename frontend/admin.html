@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HomiCart — لوحة التحكم</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>HomiCart — لوحة التحكم v2</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;600;700;800&family=Cairo:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -387,26 +390,12 @@ function toast(msg, type='info') {
 //  OVERVIEW — load stats
 // ════════════════════════════════════════════════════════
 async function loadOverview() {
-  // Step 1: quick ping to verify connectivity
-  try {
-    const ping = await api('ping', {}, 8000);
-    console.log('[Admin] ping:', ping.message);
-  } catch(e) {
-    document.getElementById('storeBars').innerHTML =
-      `<div class="empty-state" style="color:#ff6060">
-         <i class="fas fa-exclamation-triangle"></i><br>
-         تعذر الاتصال بالخادم<br>
-         <small style="font-size:.75rem;opacity:.6">${e.message}</small><br>
-         <small style="font-size:.72rem;opacity:.5">تأكد من نشر الـ Apps Script بشكل صحيح</small>
-       </div>`;
-    ['st-total','st-new','st-preparing','st-delivered','st-cancelled']
-      .forEach(id => document.getElementById(id).textContent = '!');
-    return;
-  }
+  // Show loading state
+  document.getElementById('storeBars').innerHTML =
+    '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i>&nbsp; جاري التحميل...</div>';
 
-  // Step 2: load stats
   try {
-    const res = await api('getAdminStats', {}, 30000);
+    const res = await api('getAdminStats', {}, 40000);
     if (!res.success) throw new Error(res.message);
 
     const s = res.stats;
