@@ -1425,23 +1425,12 @@
     });
   }
 
-  /* ── Render stores — loads card backgrounds from GitHub ── */
-  async function renderStores() {
-    // Pre-fetch first image from each store's GitHub folder for the card background
-    const cardPhotos = await Promise.all(stores.map(async s => {
-      const cfg = MENU_CONFIG[s.folder];
-      const ghFolder = cfg?.githubFolder || '';
-      if (ghFolder) {
-        const imgs = await fetchImages(ghFolder);
-        if (imgs.length > 0) return _imgUrl(imgs[0].url);
-      }
-      return s.photo; // fallback to static photo if GitHub fetch fails
-    }));
-
-    // Real store cards
-    const realHtml = stores.map((s, idx) => `
-      <div class="store-card" onclick="selectStore('${s.folder}', '${s.name}', '${s.tag}')">
-        <div class="store-card-bg" style="background-image:url('${cardPhotos[idx]}')"></div>
+  /* ── Render stores ── */
+  function renderStores() {
+    // Step 1 — Draw cards immediately (no waiting) so the UI is instant
+    const realHtml = stores.map(s => `
+      <div class="store-card" id="card-${s.id}" onclick="selectStore('${s.folder}', '${s.name}', '${s.tag}')">
+        <div class="store-card-bg" id="card-bg-${s.id}"></div>
         <div class="store-card-overlay"></div>
         <div class="store-badge"><i class="fas fa-tag"></i>${s.tag}</div>
         <div class="store-card-content">
@@ -1455,7 +1444,6 @@
       </div>
     `).join('');
 
-    // Coming soon placeholder cards
     const csHtml = comingSoonStores.map(s => `
       <div class="store-card coming-soon">
         <div class="cs-bg"></div>
@@ -1476,11 +1464,24 @@
 
     document.getElementById('storesContainer').innerHTML = realHtml + csHtml;
 
-    // Animate in all cards
+    // Animate cards in immediately
     requestAnimationFrame(() => {
       document.querySelectorAll('.store-card').forEach((c, i) => {
         setTimeout(() => c.classList.add('visible'), 80 + i * 120);
       });
+    });
+
+    // Step 2 — Load card background images from GitHub in the background (non-blocking)
+    stores.forEach(async s => {
+      try {
+        const cfg = MENU_CONFIG[s.folder];
+        const ghFolder = cfg?.githubFolder || '';
+        if (!ghFolder) return;
+        const imgs = await fetchImages(ghFolder);
+        if (!imgs.length) return;
+        const bgEl = document.getElementById('card-bg-' + s.id);
+        if (bgEl) bgEl.style.backgroundImage = `url('${imgs[0].url}')`;
+      } catch(e) { /* keep card visible without background image */ }
     });
   }
 
