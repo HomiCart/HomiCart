@@ -540,7 +540,11 @@ async function startNewBatch(storeKey) {
   if (!confirm('بدء دورة جديدة؟\n\nسيتم إنشاء BatchID جديد. الطلبات الجديدة ستُضاف لهذه الدورة.')) return;
   try {
     const res = await api('startNewBatch', { store: storeKey });
-    if (res.success) { toast('✓ تم بدء الدورة: ' + res.batchId, 'success'); loadBatchStatus(storeKey); }
+    if (res.success) {
+      const msg = res.autoClosedOrders > 0 ?  —  طلب تحول لـ جاري التحضير : '';
+      toast('✓ دورة جديدة بدأت' + msg, 'success');
+      loadBatchStatus(storeKey); loadStoreOrders(storeKey);
+    }
     else toast('خطأ: ' + res.message, 'error');
   } catch(e) { toast('تعذر: ' + e.message, 'error'); }
 }
