@@ -2548,10 +2548,8 @@
     'Al Fayoumy'       : 'AlFayoumi',  // → "AlFayoumi" tab
   };
 
-  // Calls Google Apps Script via GET — the only reliable method from GitHub Pages.
-  // POST to Apps Script triggers a redirect that CORS blocks; GET works cleanly.
-  async function _callScript(action, data, timeoutMs = 20000) {
-    // Remove empty values to keep URL short
+  // Calls Google Apps Script via GET with full logging and timeout
+  async function _callScript(action, data, timeoutMs = 15000) {
     const clean = {};
     Object.entries(data || {}).forEach(([k, v]) => {
       if (v !== '' && v != null) clean[k] = v;
@@ -2559,17 +2557,28 @@
     const params = new URLSearchParams({ action, ...clean });
     const url = `${APPS_SCRIPT_URL}?${params.toString()}`;
 
-    // Abort if it takes longer than timeoutMs (default 20s)
+    console.log('[HomiCart] _callScript →', action);
+    console.log('[HomiCart] URL:', url.substring(0, 120) + (url.length > 120 ? '...' : ''));
+
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => {
+      console.warn('[HomiCart] TIMEOUT – aborting after', timeoutMs, 'ms');
+      controller.abort();
+    }, timeoutMs);
+
     try {
       const res = await fetch(url, { redirect: 'follow', signal: controller.signal });
       clearTimeout(timer);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
+      console.log('[HomiCart] HTTP status:', res.status);
+      const text = await res.text();
+      console.log('[HomiCart] raw response:', text.substring(0, 300));
+      if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + text.substring(0, 100));
+      return JSON.parse(text);
     } catch(e) {
       clearTimeout(timer);
-      if (e.name === 'AbortError') throw new Error('انتهت مهلة الاتصال — حاول مجدداً');
+      console.error('[HomiCart] _callScript error:', e.name, e.message);
+      if (e.name === 'AbortError') throw new Error('انتهت مهلة الاتصال (15ث) — تأكد من الاتصال وحاول مجدداً');
+      if (e instanceof SyntaxError) throw new Error('رد غير متوقع من الخادم — تأكد من نشر الـ Apps Script');
       throw e;
     }
   }
@@ -2690,6 +2699,14 @@
     btn.disabled = true;
     document.getElementById('opSaveTxt').textContent = 'جاري الإرسال...';
 
+    // Countdown so user sees it's working (not frozen)
+    let secs = 15;
+    const countdownTimer = setInterval(() => {
+      secs--;
+      if (secs > 0) document.getElementById('opSaveTxt').textContent = `جاري الإرسال... (${secs}ث)`;
+      else clearInterval(countdownTimer);
+    }, 1000);
+
     const store    = window._opStore;
     const customer = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
 
@@ -2725,6 +2742,7 @@
         savedAt   : Date.now(),
       }));
 
+      clearInterval(countdownTimer);
       // Show success view
       document.getElementById('opWriteView').style.display  = 'none';
       document.getElementById('opSuccessView').style.display = '';
@@ -2735,10 +2753,11 @@
       document.getElementById('opConfirmItems').textContent   = items;
 
     } catch (e) {
+      clearInterval(countdownTimer);
       btn.disabled = false;
       document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
-      err.textContent = 'تعذر إرسال الطلب — تأكد من الاتصال بالإنترنت.';
-      console.error('[saveOrder]', e);
+      err.textContent = e.message || 'تعذر إرسال الطلب — تأكد من الاتصال بالإنترنت.';
+      console.error('[saveOrder] FAILED:', e);
     }
   }
 
