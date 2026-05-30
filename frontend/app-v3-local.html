@@ -2729,8 +2729,8 @@
 
   // ── Per-store closing times — update these dates to control each store's window ──
   const STORE_CLOSING_TIMES = {
-    'Al Rokn AL masry': '2025-07-01 23:00:00',   // الركن المصري closing time
-    'Al Fayoumy'      : '2025-07-01 22:00:00',   // الفيومي closing time
+    'Al Rokn AL masry': '2027-01-01 23:00:00',   // الركن المصري closing time
+    'Al Fayoumy'      : '2027-01-01 22:00:00',   // الفيومي closing time
   };
 
   // Sheet names MUST match your Google Apps Script tabs
@@ -3220,7 +3220,8 @@
   function updateCountdownForStore(storeKey) {
     const closingStr = STORE_CLOSING_TIMES[storeKey];
     if (!closingStr) { hideCountdown(); return; }
-    _cdEndTime = new Date(closingStr);
+    _cdEndTime = new Date(closingStr.trim());
+    if (isNaN(_cdEndTime.getTime())) { hideCountdown(); return; }
     startCountdown();
   }
 
@@ -3302,7 +3303,7 @@
     <div class="cd-left">
       <i class="fas fa-clock cd-icon"></i>
       <div class="cd-labels">
-        <span class="cd-title">وقت إغلاق الطلبات</span>
+        <span class="cd-title">وقت اغلاق تلقة الطلبات</span>
         <span class="cd-date" id="cdDate"></span>
       </div>
     </div>
