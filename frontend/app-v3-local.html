@@ -2897,27 +2897,33 @@
   async function loadOrderWindow() {
     try {
       const res = await _callScript('getOrderWindow', {}, 10000);
-      window._orderWindow = res;
-      console.log('[OrderWindow]', res.phase, res.isOpen);
-      // Auto-close timer: schedule closeOrderWindow when end time arrives
-      if (res.isOpen && res.end) {
-        const msLeft = new Date(res.end) - new Date();
-        if (msLeft > 0 && msLeft < 24 * 60 * 60 * 1000) {
-          setTimeout(() => {
-            window._orderWindow = { isOpen: false, phase: 'closed' };
-            console.log('[OrderWindow] auto-closed by timer');
-            _callScript('closeOrderWindow', {}, 30000).catch(() => {});
-          }, msLeft);
+      // Only close if explicitly configured AND closed
+      if (res && res.success && res.phase && res.phase !== 'unknown') {
+        window._orderWindow = res;
+        console.log('[OrderWindow]', res.phase, res.isOpen);
+        // Auto-close timer
+        if (res.isOpen && res.end) {
+          const msLeft = new Date(res.end) - new Date();
+          if (msLeft > 0 && msLeft < 24 * 60 * 60 * 1000) {
+            setTimeout(() => {
+              window._orderWindow = { isOpen: false, phase: 'closed' };
+              _callScript('closeOrderWindow', {}, 30000).catch(() => {});
+            }, msLeft);
+          }
         }
+      } else {
+        // Unknown action (old .gs) or no settings → default open
+        window._orderWindow = { isOpen: true, phase: 'no_settings' };
       }
     } catch(e) {
-      console.warn('[OrderWindow] could not load:', e.message);
-      window._orderWindow = { isOpen: true, phase: 'unknown' }; // fail-open
+      console.warn('[OrderWindow] could not load — defaulting to open:', e.message);
+      window._orderWindow = { isOpen: true, phase: 'no_settings' };
     }
   }
 
   function isOrderWindowOpen() {
-    if (!window._orderWindow) return true; // fail-open if not loaded yet
+    if (!window._orderWindow) return true; // not loaded yet → open
+    if (window._orderWindow.phase === 'no_settings') return true; // not configured → open
     return window._orderWindow.isOpen === true;
   }
 
