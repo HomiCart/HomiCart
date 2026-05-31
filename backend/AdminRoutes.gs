@@ -90,16 +90,26 @@ function _getRouteLinksData() {
   try {
     var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('RouteLinks');
     if (!sheet || sheet.getLastRow() < 2) return [];
-    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getValues();
-    return data.filter(function(r) { return r[2]; }).map(function(r) {
-      return {
-        route : r[0],
-        stops : r[1],
-        url   : String(r[2]).replace(/=HYPERLINK\("([^"]+)".*/, '$1'),
-        notes : r[3]
-      };
-    });
-  } catch(err) { return []; }
+
+    var lastDataRow = sheet.getLastRow() - 1;
+    var values   = sheet.getRange(2, 1, lastDataRow, 4).getValues();
+    // Column C stores =HYPERLINK("URL","text") — getValues() returns display text,
+    // NOT the URL. Must use getFormulas() to get the actual Google Maps URL.
+    var formulas = sheet.getRange(2, 3, lastDataRow, 1).getFormulas();
+
+    return values
+      .filter(function(r) { return r[0]; })
+      .map(function(r, i) {
+        var formula = (formulas[i] && formulas[i][0]) ? formulas[i][0] : '';
+        // Extract URL from: =HYPERLINK("https://www.google.com/maps/dir/...","Open Route N")
+        var match = formula.match(/HYPERLINK\("([^"]+)"/i);
+        var url   = match ? match[1] : String(r[2] || '');
+        return { route: r[0], stops: r[1], url: url, notes: r[3] };
+      });
+  } catch(err) {
+    console.log('_getRouteLinksData error:', err.toString());
+    return [];
+  }
 }
 
 
@@ -110,26 +120,27 @@ function _getRouteLinksData() {
 
 function getVendorOrders(sheetName) {
   try {
-    var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(sheetName || 'Orders');
+    var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(sheetName || SHEET_ORDERS);
     if (!sheet || sheet.getLastRow() < 2) return { success: true, orders: [] };
-    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 15).getValues();
+
+    // v18.0 orders sheet: exactly 12 columns
+    // Col: ID(1) CustID(2) Items(3) Name(4) Phone(5) Date(6)
+    //      Status(7) UpdatedAt(8) Notes(9) Location(10) Vendor(11) BatchID(12)
+    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 12).getValues();
     var orders = data
       .filter(function(r) { return r[0]; })
       .map(function(r) {
         return {
-          orderId    : r[0],
-          clientId   : r[1],
-          items      : r[2],
-          name       : r[3],
-          phone      : r[4],
+          orderId    : r[0],   // OrderID
+          clientId   : r[1],   // CustomerID
+          items      : r[2],   // Items
+          name       : r[3],   // CustomerName
+          phone      : r[4],   // Phone
           date       : r[5] ? String(r[5]).substring(0, 10) : '',
-          status     : r[6],
-          notes      : r[8],
-          location   : r[9],
-          latitude   : r[10],
-          longitude  : r[11],
-          mapsLink   : r[12],
-          hasLocation: !!(r[10] && r[11])
+          status     : r[6],   // Status: New | Preparing | Delivered | Cancelled
+          notes      : r[8],   // Notes
+          location   : r[9],   // Location URL (maps link stored at order time)
+          hasLocation: !!(r[9]) // has a location URL
         };
       });
     return { success: true, orders: orders };
@@ -351,12 +362,16 @@ function processVendorFull(sheetName, workspaceTab, startLat, startLng) {
     var waText = _getWorkspaceExportText(wsSheet);
     var links  = _getRouteLinksData();
 
+    var noCoords = confirmed.length - validEntries.length;
+    var msg = 'تم ترتيب مسار ' + validEntries.length + ' أوردر من أصل ' + confirmed.length + ' Preparing';
+    if (noCoords > 0) msg += ' — ' + noCoords + ' بدون موقع في DataBase';
+
     return {
       success      : true,
-      message      : 'تم معالجة ' + confirmed.length + ' أوردر ✅',
-      ordersCount  : confirmed.length,
-      routedCount  : validEntries.length,
-      noCoords     : confirmed.length - validEntries.length,
+      message      : msg,
+      ordersCount  : confirmed.length,    // total Preparing orders in sheet
+      routedCount  : validEntries.length, // orders that had location and got routed
+      noCoords     : noCoords,            // orders skipped (no lat/lng in DataBase)
       links        : links,
       whatsappText : waText
     };
