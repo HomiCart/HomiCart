@@ -182,6 +182,17 @@ function doGet(e) {
         parseFloat(e.parameter.lng)
       );
     }
+    else if (action === 'processVendorFull') {
+      result = processVendorFull(
+        e.parameter.sheet,
+        e.parameter.workspace,
+        parseFloat(e.parameter.lat),
+        parseFloat(e.parameter.lng)
+      );
+    }
+    else if (action === 'getWorkspaceExport') {
+      result = getWorkspaceExport(e.parameter.workspace);
+    }
     else {
       result = { success: false, message: 'Invalid action.', receivedAction: action };
     }
@@ -541,6 +552,244 @@ function runFullRoutePipeline() {
     GenerateRoutesFromColumnA();
     return { success: true, message: 'اكتمل الترتيب وتوليد الروابط ✅', links: getRouteLinks().links };
   } catch(err) { return { success: false, message: err.toString() }; }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FULL VENDOR PIPELINE
+//  Replaces 5 manual steps with 1 function call.
+//
+//  Steps performed automatically:
+//   1. Read مؤكد orders from Orders / AlFayoumi sheet
+//   2. JOIN with DataBase → get name, phone, area, address, location
+//   3. Clear & populate Workspace / FWorkspace tab (all columns A–L)
+//   4. Write Combined Data formula in column L (WhatsApp-ready format)
+//   5. Populate Routes sheet with lat/lng + set start point
+//   6. Run nearestNeighborOrder() + 2-OPT optimization
+//   7. Write route numbers back to Workspace column E
+//   8. AUTO-SORT Workspace by route number (column E)
+//   9. Run GenerateRoutesFromColumnA() → RouteLinks sheet
+//  10. Update order status → "جاري التحضير"
+//  11. Return combined WhatsApp text + Maps links
+//
+//  Workspace columns:
+//   A=Index  B=—  C=OrderID  D=CustomerID  E=RouteNumber
+//   F=Mobile  G=Name  H=Area  I=Address  J=MapsLink
+//   K=OrderItems  L=CombinedData(formula)
+// ══════════════════════════════════════════════════════════════
+function processVendorFull(sheetName, workspaceTab, startLat, startLng) {
+  try {
+    var ss           = SpreadsheetApp.openById(SS_ID);
+    var ordersSheet  = ss.getSheetByName(sheetName);
+    var dbSheet      = ss.getSheetByName('DataBase');
+    var wsSheet      = ss.getSheetByName(workspaceTab);
+
+    if (!ordersSheet) return { success: false, message: 'شيت ' + sheetName + ' مش موجود' };
+    if (!dbSheet)     return { success: false, message: 'شيت DataBase مش موجود' };
+    if (!wsSheet)     return { success: false, message: 'شيت ' + workspaceTab + ' مش موجود' };
+
+    // ── Step 1: Get مؤكد orders ───────────────────────────────────
+    var oLastRow = ordersSheet.getLastRow();
+    if (oLastRow < 2) return { success: false, message: 'لا توجد طلبات' };
+
+    var ordersAll = ordersSheet.getRange(2, 1, oLastRow - 1, 15).getValues();
+    var confirmed = ordersAll.filter(function(r) {
+      return r[0] && String(r[6]).trim() === 'مؤكد';
+    });
+
+    if (confirmed.length === 0) {
+      return { success: false, message: 'لا توجد طلبات بحالة "مؤكد" في ' + sheetName };
+    }
+
+    // ── Step 2: Build customer lookup map from DataBase ───────────
+    var dbLastRow = dbSheet.getLastRow();
+    var dbData    = dbLastRow >= 2
+      ? dbSheet.getRange(2, 1, dbLastRow - 1, 17).getValues()
+      : [];
+
+    var byId = {};
+    var byPhone = {};
+    dbData.forEach(function(r) {
+      var id = String(r[0]).trim();
+      var ph = String(r[2]).replace(/\s/g, '').replace(/^\+?971/, '0').replace(/^00971/, '0');
+      var obj = {
+        name    : r[1]  || '',
+        phone   : r[2]  || '',
+        area    : r[4]  || '',
+        address : r[5]  || '',
+        location: r[6]  || '',
+        lat     : r[14] || '',
+        lng     : r[15] || '',
+        mapsLink: r[16] || ''
+      };
+      if (id) byId[id]     = obj;
+      if (ph) byPhone[ph]  = obj;
+    });
+
+    // ── Step 3: Build workspace rows ──────────────────────────────
+    var wsRows = [];           // rows to write into workspace
+    var routeEntries = [];     // matching entries for Routes sheet
+
+    confirmed.forEach(function(order, idx) {
+      var orderId  = order[0];
+      var clientId = String(order[1]).trim();
+      var items    = String(order[2] || '').trim();
+      var rawPhone = String(order[4] || '').replace(/\s/g, '').replace(/^\+?971/, '0').replace(/^00971/, '0');
+      var c        = byId[clientId] || byPhone[rawPhone] || {};
+      var mapsLink = c.mapsLink
+                   || (c.lat && c.lng ? 'https://www.google.com/maps?q=' + c.lat + ',' + c.lng : '');
+
+      wsRows.push([
+        idx + 1,          // A: row index
+        '',               // B: separator
+        orderId,          // C: OrderID
+        clientId,         // D: CustomerID
+        '',               // E: Route number — filled after routing
+        c.phone  || order[4] || '', // F: Mobile
+        c.name   || order[3] || '', // G: Name
+        c.area   || '',             // H: Area
+        c.address|| '',             // I: Address
+        mapsLink,                   // J: Maps link
+        items,                      // K: Sep-Text Order (items)
+        ''                          // L: Combined Data (formula inserted below)
+      ]);
+
+      routeEntries.push({
+        wsIdx   : idx,
+        lat     : c.lat,
+        lng     : c.lng,
+        mapsLink: mapsLink,
+        hasCoords: !!(c.lat && c.lng)
+      });
+    });
+
+    // ── Step 4: Clear workspace tab (keep header row 1) ───────────
+    if (wsSheet.getLastRow() > 1) {
+      wsSheet.getRange(2, 1, wsSheet.getLastRow() - 1, 12).clearContent();
+    }
+
+    // Write all workspace rows at once
+    if (wsRows.length > 0) {
+      wsSheet.getRange(2, 1, wsRows.length, 12).setValues(wsRows);
+
+      // Insert Combined Data formula in column L (col 12) per row
+      for (var fi = 0; fi < wsRows.length; fi++) {
+        var fr = fi + 2;
+        wsSheet.getRange(fr, 12).setFormula(
+          '="🧾 رقم "&E' + fr + '&CHAR(10)' +
+          '&"📞 "&F' + fr + '&CHAR(10)' +
+          '&"👤 "&G' + fr + '&CHAR(10)' +
+          '&"📍 "&H' + fr + '&" - "&I' + fr + '&CHAR(10)' +
+          '&"🗺️ "&J' + fr + '&CHAR(10)' +
+          '&"🛒 الاوردر 👇"&CHAR(10)&K' + fr + '&CHAR(10)' +
+          '&"---------------------------"'
+        );
+      }
+    }
+
+    // ── Step 5: Populate Routes sheet ────────────────────────────
+    var routesSheet = ss.getSheetByName('Routes');
+    if (!routesSheet) routesSheet = ss.insertSheet('Routes');
+    routesSheet.clearContents();
+
+    routesSheet.getRange('H1').setValue(parseFloat(startLat) || 0);
+    routesSheet.getRange('I1').setValue(parseFloat(startLng) || 0);
+
+    // Only entries with coords go into Routes
+    var validEntries = routeEntries.filter(function(e) { return e.hasCoords; });
+    if (validEntries.length > 0) {
+      var routeRows = validEntries.map(function(e) {
+        return [e.mapsLink, '', '', e.lat, e.lng, '', ''];
+      });
+      routesSheet.getRange(2, 1, routeRows.length, 7).setValues(routeRows);
+    }
+
+    // ── Step 6: Run route optimization ───────────────────────────
+    if (validEntries.length > 0) {
+      nearestNeighborOrder(); // writes visit order to Routes col G
+    }
+
+    // ── Step 7: Write route numbers back to Workspace column E ───
+    if (validEntries.length > 0) {
+      var routeOrderVals = routesSheet.getRange(2, 7, validEntries.length, 1).getValues();
+      validEntries.forEach(function(e, ri) {
+        var wsRow    = e.wsIdx + 2; // +2: header offset
+        var routeNum = routeOrderVals[ri] ? routeOrderVals[ri][0] : '';
+        if (routeNum) wsSheet.getRange(wsRow, 5).setValue(routeNum);
+      });
+    }
+
+    // ── Step 8: Sort Workspace by route number (col E = col 5) ───
+    var wsDataLast = wsSheet.getLastRow();
+    if (wsDataLast > 2) {
+      wsSheet.getRange(2, 1, wsDataLast - 1, 12).sort({ column: 5, ascending: true });
+    }
+
+    // ── Step 9: Generate Google Maps route links ──────────────────
+    if (validEntries.length > 0) {
+      GenerateRoutesFromColumnA();
+    }
+
+    // ── Step 10: Update order statuses in batch ───────────────────
+    var confirmedIds = {};
+    confirmed.forEach(function(o) { confirmedIds[String(o[0])] = true; });
+    var now = Utilities.formatDate(new Date(), 'Asia/Dubai', 'yyyy-MM-dd HH:mm:ss');
+
+    // Build updated status array
+    var statusUpdate = ordersAll.map(function(r) {
+      if (confirmedIds[String(r[0])]) return ['جاري التحضير'];
+      return [r[6]]; // keep existing status
+    });
+    ordersSheet.getRange(2, 7, statusUpdate.length, 1).setValues(statusUpdate);
+
+    // Update LastUpdated for confirmed rows
+    var lastUpdArray = ordersAll.map(function(r) {
+      if (confirmedIds[String(r[0])]) return [now];
+      return [r[7]];
+    });
+    ordersSheet.getRange(2, 8, lastUpdArray.length, 1).setValues(lastUpdArray);
+
+    // ── Step 11: Compile WhatsApp text from workspace col L ───────
+    var wsExport  = _getWorkspaceExport(wsSheet);
+    var mapLinks  = getRouteLinks().links || [];
+
+    return {
+      success      : true,
+      message      : 'تم معالجة ' + confirmed.length + ' أوردر ✅',
+      ordersCount  : confirmed.length,
+      routedCount  : validEntries.length,
+      noCoords     : confirmed.length - validEntries.length,
+      links        : mapLinks,
+      whatsappText : wsExport
+    };
+
+  } catch(err) {
+    return { success: false, message: 'خطأ: ' + err.toString() };
+  }
+}
+
+// Returns all Combined Data (col L) joined for WhatsApp sending
+function _getWorkspaceExport(wsSheet) {
+  try {
+    var lastRow = wsSheet.getLastRow();
+    if (lastRow < 2) return '';
+    var vals = wsSheet.getRange(2, 12, lastRow - 1, 1).getValues();
+    return vals
+      .map(function(r) { return String(r[0] || '').trim(); })
+      .filter(function(t) { return t; })
+      .join('\n\n');
+  } catch(e) { return ''; }
+}
+
+// Action: get workspace export text
+function getWorkspaceExport(workspaceTab) {
+  try {
+    var ss = SpreadsheetApp.openById(SS_ID);
+    var ws = ss.getSheetByName(workspaceTab);
+    if (!ws) return { success: false, message: workspaceTab + ' not found' };
+    return { success: true, text: _getWorkspaceExport(ws) };
+  } catch(e) {
+    return { success: false, message: e.toString() };
+  }
 }
 
 // Get all orders from a vendor sheet (Orders or AlFayoumi)

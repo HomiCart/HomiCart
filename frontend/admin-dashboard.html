@@ -554,7 +554,14 @@
       white-space: nowrap;
     }
     .route-link-btn:hover { background: #218838; }
-  </style>
+      /* Pipeline steps strip */
+    .pipeline-steps { display:flex;align-items:center;flex-wrap:wrap;gap:4px;background:#f8f9ff;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px; }
+    .ps { background:#667eea;color:white;padding:3px 9px;border-radius:20px;font-weight:700;white-space:nowrap; }
+    .ps-arr { color:#aaa;font-weight:700; }
+    .vrc-action-btn { flex:1;min-width:140px;padding:11px 16px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;transition:filter .2s,transform .2s; }
+    .vrc-action-btn:hover { filter:brightness(1.08);transform:translateY(-1px); }
+
+</style>
 </head>
 <body>
 
@@ -661,7 +668,7 @@
         <!-- ════ Routing Card ════ -->
         <div class="vendor-routing-card">
           <div class="vrc-header">
-            <span class="vrc-title">🗺️ ترتيب مسار التوصيل</span>
+            <span class="vrc-title">🚀 معالجة الأوردرات دفعة واحدة</span>
             <span class="vrc-badge" id="vrcBadge">—</span>
           </div>
           <p class="vrc-desc">
@@ -682,8 +689,8 @@
             <button class="vrc-gps-btn" onclick="vrcGetLocation()">📱 موقعي</button>
           </div>
 
-          <button class="vrc-run-btn" id="vrcRunBtn" onclick="runVendorRoute()">
-            🚀 رتّب المسار وابدأ التحضير
+          <button class="vrc-run-btn" id="vrcRunBtn" onclick="processVendorOrders()">
+            🚀 معالجة كل الأوردرات المؤكدة
           </button>
 
           <!-- Progress -->
@@ -693,8 +700,12 @@
           <div id="vrcStatus" style="margin-top:8px;font-size:13px;color:#555;min-height:18px;text-align:center"></div>
 
           <!-- Generated Links -->
-          <div id="vrcLinks" style="margin-top:14px;display:none">
-            <div style="font-weight:700;font-size:14px;color:#333;margin-bottom:10px">📌 روابط المسار</div>
+          <div id="vrcResults" style="display:none;margin-top:18px">
+            <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+              <button style="padding:10px 18px;background:#25d366;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:14px" onclick="copyWhatsapp()">📋 نسخ للواتساب</button>
+              <button style="padding:10px 18px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:14px" onclick="printWorkspace()">📄 طباعة / PDF</button>
+            </div>
+            <div style="font-weight:700;font-size:13px;color:#333;margin-bottom:8px">📌 روابط المسار</div>
             <div id="vrcLinksContainer"></div>
           </div>
         </div>
@@ -1038,81 +1049,116 @@
     }, () => alert('تعذّر تحديد الموقع'));
   }
 
-  async function runVendorRoute() {
+  // Workspace tab mapping per vendor
+  var VENDOR_WORKSPACE = { 'Orders': 'Workspace', 'AlFayoumi': 'FWorkspace' };
+
+  async function processVendorOrders() {
     const lat = document.getElementById('vrcLat').value.trim();
     const lng = document.getElementById('vrcLng').value.trim();
-    if (!lat || !lng) { alert('أدخل نقطة البداية (Latitude & Longitude) أولاً'); return; }
+    if (!lat || !lng) { alert('أدخل نقطة البداية أولاً'); return; }
+    const wsTab = VENDOR_WORKSPACE[_currentVendorSheet];
+    if (!wsTab) { alert('لا يوجد Workspace لهذا التاجر'); return; }
 
-    const btn = document.getElementById('vrcRunBtn');
-    btn.disabled = true;
-
+    const btn  = document.getElementById('vrcRunBtn');
     const prog = document.getElementById('vrcProgressWrap');
     const fill = document.getElementById('vrcProgressFill');
-    const status = document.getElementById('vrcStatus');
+    const st   = document.getElementById('vrcStatus');
 
+    btn.disabled = true;
     prog.style.display = 'block';
-    document.getElementById('vrcLinks').style.display = 'none';
 
-    const steps = [
-      [15,  '⚡ جاري ترتيب المسار بالـ AI...'],
-      [45,  '🔄 تطبيق تحسين 2-OPT...'],
-      [70,  '🔗 توليد روابط Google Maps...'],
-      [90,  '✏️ تحديث حالة الطلبات...'],
+    const pipeline = [
+      [12, '📋 تجميع الأوردرات المؤكدة...'],
+      [26, '🔍 جلب بيانات العملاء من DataBase...'],
+      [42, '✏️ تمليء الـ Workspace تلقائياً...'],
+      [58, '⚡ ترتيب المسار بـ Nearest Neighbor + 2-OPT...'],
+      [72, '🔀 فرز تلقائي حسب رقم المسار...'],
+      [85, '🔗 توليد روابط Google Maps...'],
+      [94, '✅ تحديث حالة الأوردرات → جاري التحضير...'],
     ];
-
     let si = 0;
     const tick = setInterval(() => {
-      if (si < steps.length) {
-        fill.style.width = steps[si][0] + '%';
-        status.textContent = steps[si][1];
-        status.style.color = '#f39c12';
+      if (si < pipeline.length) {
+        fill.style.width = pipeline[si][0] + '%';
+        st.textContent = pipeline[si][1];
+        st.style.color = '#f39c12';
         si++;
       }
-    }, 900);
+    }, 1000);
 
     try {
       const url = ROUTE_SCRIPT
-        + '?action=routeVendorOrders'
-        + '&sheet=' + _currentVendorSheet
+        + '?action=processVendorFull'
+        + '&sheet=' + encodeURIComponent(_currentVendorSheet)
+        + '&workspace=' + encodeURIComponent(wsTab)
         + '&lat=' + encodeURIComponent(lat)
         + '&lng=' + encodeURIComponent(lng);
 
-      const res  = await fetch(url);
-      const data = await res.json();
+      const r    = await fetch(url);
+      const data = await r.json();
       clearInterval(tick);
-
       if (!data.success) throw new Error(data.message);
 
       fill.style.width = '100%';
-      status.textContent = '✅ ' + data.message;
-      status.style.color = '#28a745';
+      st.textContent = '✅ ' + data.message + (data.noCoords ? ' ⚠️ ' + data.noCoords + ' بدون موقع' : '');
+      st.style.color = '#28a745';
 
-      // Refresh orders list
+      // Cache WhatsApp text
+      window._lastWhatsappText = data.whatsappText || '';
+      window._lastWorkspaceTab = wsTab;
+
+      // Show results div
+      document.getElementById('vrcResults').style.display = 'block';
+
+      // Render Maps links
+      const lc = document.getElementById('vrcLinksContainer');
+      lc.innerHTML = (data.links && data.links.length)
+        ? data.links.map(l => '<div class="vrc-link-item"><div class="vrc-link-num">' + l.route + '</div><div class="vrc-link-info"><div class="vrc-link-title">مسار رقم ' + l.route + '</div><div class="vrc-link-sub">' + l.stops + ' موقع</div></div><a href="' + l.url + '" target="_blank" class="vrc-link-open">📍 افتح</a></div>').join('')
+        : '<p style="color:#999;font-size:13px">لا توجد روابط — تحقق من شيت RouteLinks</p>';
+
       await loadOrders();
-
-      // Show links
-      if (data.links && data.links.length) {
-        const container = document.getElementById('vrcLinksContainer');
-        container.innerHTML = data.links.map(l => `
-          <div class="vrc-link-item">
-            <div class="vrc-link-num">${l.route}</div>
-            <div class="vrc-link-info">
-              <div class="vrc-link-title">مسار رقم ${l.route}</div>
-              <div class="vrc-link-sub">${l.stops} موقع · ${l.notes||''}</div>
-            </div>
-            <a href="${l.url}" target="_blank" class="vrc-link-open">📍 افتح المسار</a>
-          </div>`).join('');
-        document.getElementById('vrcLinks').style.display = 'block';
-      }
     } catch(e) {
       clearInterval(tick);
-      status.textContent = '❌ ' + e.message;
-      status.style.color = '#dc3545';
+      st.textContent = '❌ ' + e.message;
+      st.style.color = '#dc3545';
     } finally {
       btn.disabled = false;
       setTimeout(() => { prog.style.display = 'none'; fill.style.width = '0%'; }, 2000);
     }
   }
+
+  async function copyWhatsapp() {
+    let text = window._lastWhatsappText || '';
+    if (!text) {
+      const ws  = VENDOR_WORKSPACE[_currentVendorSheet];
+      const r   = await fetch(ROUTE_SCRIPT + '?action=getWorkspaceExport&workspace=' + encodeURIComponent(ws || ''));
+      const d   = await r.json();
+      text = d.text || '';
+    }
+    if (!text) { alert('قم بمعالجة الأوردرات أولاً'); return; }
+    const btn = document.getElementById('btnWhatsapp');
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch(e) {
+      const el = document.createElement('textarea');
+      el.value = text; document.body.appendChild(el); el.select();
+      document.execCommand('copy'); document.body.removeChild(el);
+    }
+    const orig = btn.textContent;
+    btn.textContent = '✅ تم النسخ!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  }
+
+  function printWorkspace() {
+    const text = window._lastWhatsappText || '';
+    if (!text) { alert('قم بمعالجة الأوردرات أولاً'); return; }
+    const vendor = _currentVendorSheet === 'Orders' ? 'الركن المصري 🥩' : 'الفيومي 🍗';
+    const rows   = text.split('---------------------------').map(t => t.trim()).filter(t => t);
+    const w = window.open('', '_blank');
+    w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>أوردرات ' + vendor + '</title><style>body{font-family:Arial,sans-serif;direction:rtl;padding:20px;font-size:13px}.ob{border:1px solid #ddd;border-radius:8px;padding:14px;margin-bottom:14px;page-break-inside:avoid;white-space:pre-line}h2{margin-bottom:18px}@media print{.ob{margin-bottom:10px}}</style></head><body><h2>📦 أوردرات ' + vendor + ' — ' + new Date().toLocaleDateString('ar-AE') + '</h2>' + rows.map(r => '<div class="ob">' + r.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>').join('') + '<script>window.print();</script></body></html>');
+    w.document.close();
+  }
+
 
   async function loadSchedule() {
     try {
