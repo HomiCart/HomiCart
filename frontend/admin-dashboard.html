@@ -343,6 +343,126 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+
+    /* ══════════════════════════════
+       ROUTES SECTION
+    ══════════════════════════════ */
+    .routes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 768px) { .routes-grid { grid-template-columns: 1fr; } }
+
+    .route-card {
+      background: white;
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+      border-top: 4px solid #667eea;
+    }
+    .route-card.step2 { border-top-color: #28a745; }
+    .route-card.combined { border-top-color: #f39c12; grid-column: 1 / -1; }
+
+    .route-card h3 {
+      font-size: 16px; font-weight: 700; color: #333;
+      margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+    }
+    .route-card p {
+      font-size: 13px; color: #888; margin-bottom: 16px; line-height: 1.6;
+    }
+
+    .step-badge {
+      background: #667eea; color: white;
+      font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 50px; white-space: nowrap;
+    }
+    .step-badge.s2 { background: #28a745; }
+    .step-badge.sc { background: #f39c12; }
+
+    .route-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 12px 20px;
+      border: none; border-radius: 8px; cursor: pointer;
+      font-size: 15px; font-weight: 700; font-family: inherit;
+      transition: all .2s;
+    }
+    .route-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .route-btn.btn-blue  { background: #667eea; color: white; }
+    .route-btn.btn-green { background: #28a745; color: white; }
+    .route-btn.btn-orange{ background: #f39c12; color: white; }
+    .route-btn.btn-blue:hover:not(:disabled)  { background: #5a6fd6; transform: translateY(-1px); }
+    .route-btn.btn-green:hover:not(:disabled) { background: #218838; transform: translateY(-1px); }
+    .route-btn.btn-orange:hover:not(:disabled){ background: #e08e0b; transform: translateY(-1px); }
+
+    .start-point-card {
+      background: white; border-radius: 14px;
+      padding: 20px 24px; margin-bottom: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+      border-right: 5px solid #17a2b8;
+    }
+    .start-point-card h3 { font-size: 15px; font-weight: 700; color: #333; margin-bottom: 12px; }
+    .coords-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+    .coords-row .field { flex: 1; min-width: 160px; }
+    .coords-row label { font-size: 12px; color: #666; display: block; margin-bottom: 4px; }
+    .coords-row input {
+      width: 100%; padding: 9px 12px; border: 1px solid #ddd;
+      border-radius: 7px; font-size: 14px; direction: ltr;
+    }
+    .btn-locate {
+      padding: 9px 16px; background: #17a2b8; color: white;
+      border: none; border-radius: 7px; cursor: pointer;
+      font-size: 13px; font-weight: 600; white-space: nowrap;
+      transition: background .2s;
+    }
+    .btn-locate:hover { background: #138496; }
+
+    .progress-bar-wrap {
+      display: none; margin-top: 12px;
+      background: #eee; border-radius: 50px; height: 8px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      border-radius: 50px;
+      transition: width .6s ease;
+    }
+    .route-status {
+      margin-top: 10px; font-size: 13px; color: #555;
+      min-height: 20px; text-align: center;
+    }
+
+    /* Generated links output */
+    .route-links-section {
+      background: white; border-radius: 14px;
+      padding: 20px 24px; margin-top: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+      display: none;
+    }
+    .route-links-section h3 { font-size: 15px; font-weight: 700; color: #333; margin-bottom: 14px; }
+    .route-link-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; background: #f8f9ff;
+      border-radius: 9px; margin-bottom: 10px;
+      border-right: 4px solid #667eea;
+    }
+    .route-link-num {
+      background: #667eea; color: white;
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px; flex-shrink: 0;
+    }
+    .route-link-info { flex: 1; }
+    .route-link-title { font-weight: 600; font-size: 14px; color: #333; }
+    .route-link-sub   { font-size: 12px; color: #999; margin-top: 2px; }
+    .route-link-btn {
+      padding: 7px 14px; background: #28a745; color: white;
+      border: none; border-radius: 6px; cursor: pointer;
+      font-size: 13px; font-weight: 600; text-decoration: none;
+      white-space: nowrap;
+    }
+    .route-link-btn:hover { background: #218838; }
   </style>
 </head>
 <body>
@@ -373,6 +493,9 @@
     </div>
     <div class="nav-item" onclick="switchSection('analytics')">
       📈 التحليلات
+    </div>
+    <div class="nav-item" onclick="switchSection('routes')">
+      🗺️ إدارة المسارات
     </div>
   </div>
 
@@ -486,6 +609,96 @@
 
       <h3>توزيع الطلبات حسب الحالة</h3>
       <div id="analyticsContainer"></div>
+    </div>
+
+    <!-- ═══════════ SECTION: Routes ═══════════ -->
+    <div id="routes" class="section">
+      <h2 style="margin-bottom:6px">🗺️ إدارة المسارات</h2>
+      <p style="color:#999;font-size:13px;margin-bottom:24px">
+        رتّب مسار التوصيل بأقل مسافة ممكنة، ثم ولّد روابط Google Maps جاهزة للسائق.
+      </p>
+
+      <!-- Start Point -->
+      <div class="start-point-card">
+        <h3>📍 نقطة البداية (موقع المستودع / نقطة الانطلاق)</h3>
+        <div class="coords-row">
+          <div class="field">
+            <label>Latitude (خط العرض)</label>
+            <input type="number" id="startLat" step="any" placeholder="25.204849">
+          </div>
+          <div class="field">
+            <label>Longitude (خط الطول)</label>
+            <input type="number" id="startLng" step="any" placeholder="55.270782">
+          </div>
+          <button class="btn-locate" onclick="useMyLocation()">📱 موقعي الحالي</button>
+          <button class="btn-locate" style="background:#667eea" onclick="saveStartPoint()">💾 حفظ</button>
+        </div>
+      </div>
+
+      <!-- Step Buttons -->
+      <div class="routes-grid">
+
+        <!-- Step 1 -->
+        <div class="route-card">
+          <h3>
+            <span class="step-badge">خطوة 1</span>
+            ⚡ ترتيب المسار بالـ AI
+          </h3>
+          <p>
+            يقرأ مواقع العملاء من شيت <strong>Routes</strong> ويرتبهم
+            بأقصر مسار ممكن باستخدام خوارزمية <em>Nearest Neighbor + 2-OPT</em>.
+            يكتب ترتيب الزيارة في العمود G.
+          </p>
+          <button class="route-btn btn-blue" id="btnStep1" onclick="runStep1()">
+            ⚡ ابدأ ترتيب المسار
+          </button>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="route-card step2">
+          <h3>
+            <span class="step-badge s2">خطوة 2</span>
+            🔗 توليد روابط Google Maps
+          </h3>
+          <p>
+            يرتب الشيت حسب ترتيب الزيارة، ثم يقسّم المواقع لمجموعات
+            (كل 10 مواقع) ويولّد رابط Google Maps جاهز لكل مجموعة
+            في شيت <strong>RouteLinks</strong>.
+          </p>
+          <button class="route-btn btn-green" id="btnStep2" onclick="runStep2()">
+            🔗 ولّد روابط Google Maps
+          </button>
+        </div>
+
+        <!-- Combined -->
+        <div class="route-card combined">
+          <h3>
+            <span class="step-badge sc">الخطوتين معًا</span>
+            🚀 ترتيب + توليد الروابط دفعة واحدة
+          </h3>
+          <p>
+            يشغّل الخطوة 1 والخطوة 2 تلقائيًا بالترتيب ويعرض النتيجة مباشرةً —
+            الأسرع عندما تريد النتيجة النهائية فورًا.
+          </p>
+          <button class="route-btn btn-orange" id="btnAll" onclick="runAllWithSteps()">
+            🚀 ترتيب وتوليد الروابط (الكل)
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Progress & Status -->
+      <div id="progressWrap" class="progress-bar-wrap">
+        <div id="progressFill" class="progress-bar-fill"></div>
+      </div>
+      <div id="routeStatus" class="route-status"></div>
+
+      <!-- Generated Links Output -->
+      <div id="routeLinksSection" class="route-links-section">
+        <h3>📌 روابط المسار المولّدة</h3>
+        <div id="routeLinksContainer"></div>
+      </div>
+
     </div>
 
   </div>
@@ -702,6 +915,137 @@
 
   function filterOrdersByStatus(status) {
     // Filter implementation
+  }
+
+  // ══════════════════════════════════════════════════════
+  //  ROUTES — call Apps Script routing functions
+  // ══════════════════════════════════════════════════════
+  const ROUTE_SCRIPT = 'https://script.google.com/macros/s/AKfycbwRW2K-GbHfawvZMpxk5ExfyYg5EIhFpUgTy-nHaMjtNR1ZiWn-9BuZpRSWACTEGLqNlA/exec';
+
+  async function callRouteScript(action, extraParams = '') {
+    const url = ROUTE_SCRIPT + '?action=' + action + (extraParams ? '&' + extraParams : '');
+    const res = await fetch(url);
+    return res.json();
+  }
+
+  function setRouteStatus(msg, color) {
+    document.getElementById('routeStatus').textContent = msg;
+    document.getElementById('routeStatus').style.color = color || '#555';
+  }
+
+  function setProgress(pct) {
+    const wrap = document.getElementById('progressWrap');
+    const fill = document.getElementById('progressFill');
+    wrap.style.display = pct > 0 ? 'block' : 'none';
+    fill.style.width = pct + '%';
+  }
+
+  function disableRouteBtns(yes) {
+    ['btnStep1','btnStep2','btnAll'].forEach(id => {
+      document.getElementById(id).disabled = yes;
+    });
+  }
+
+  async function saveStartPoint() {
+    const lat = document.getElementById('startLat').value.trim();
+    const lng = document.getElementById('startLng').value.trim();
+    if (!lat || !lng) { alert('أدخل Latitude و Longitude أولاً'); return; }
+    setRouteStatus('⏳ جاري حفظ نقطة البداية...', '#17a2b8');
+    await callRouteScript('setStartPoint', 'lat=' + lat + '&lng=' + lng);
+    setRouteStatus('✅ تم حفظ نقطة البداية', '#28a745');
+  }
+
+  function useMyLocation() {
+    if (!navigator.geolocation) { alert('المتصفح لا يدعم تحديد الموقع'); return; }
+    navigator.geolocation.getCurrentPosition(pos => {
+      document.getElementById('startLat').value = pos.coords.latitude.toFixed(6);
+      document.getElementById('startLng').value = pos.coords.longitude.toFixed(6);
+      setRouteStatus('📍 تم تحديد موقعك تلقائيًا', '#17a2b8');
+    }, () => alert('تعذّر تحديد الموقع — أدخله يدويًا'));
+  }
+
+  async function runStep1() {
+    disableRouteBtns(true);
+    setProgress(20);
+    setRouteStatus('⚡ الخطوة 1: جاري ترتيب المسار بالـ AI...', '#667eea');
+    try {
+      const r = await callRouteScript('runRouteOptimization');
+      if (!r.success) throw new Error(r.message);
+      setProgress(100);
+      setRouteStatus('✅ تم ترتيب المسار بنجاح! يمكنك الآن توليد الروابط.', '#28a745');
+    } catch(e) {
+      setRouteStatus('❌ خطأ: ' + e.message, '#dc3545');
+    } finally { disableRouteBtns(false); setTimeout(() => setProgress(0), 1500); }
+  }
+
+  async function runStep2() {
+    disableRouteBtns(true);
+    setProgress(30);
+    setRouteStatus('🔗 الخطوة 2: جاري توليد روابط Google Maps...', '#28a745');
+    try {
+      const r = await callRouteScript('generateRouteLinks');
+      if (!r.success) throw new Error(r.message);
+      setProgress(100);
+      setRouteStatus('✅ تم توليد الروابط بنجاح!', '#28a745');
+      showRouteLinks(r.links || []);
+    } catch(e) {
+      setRouteStatus('❌ خطأ: ' + e.message, '#dc3545');
+    } finally { disableRouteBtns(false); setTimeout(() => setProgress(0), 1500); }
+  }
+
+  async function runAll() {
+    disableRouteBtns(true);
+    setProgress(10);
+    setRouteStatus('⚡ الخطوة 1/2: ترتيب المسار بالـ AI...', '#f39c12');
+    try {
+      const r = await callRouteScript('runFullRoutePipeline');
+      if (!r.success) throw new Error(r.message);
+      setProgress(100);
+      setRouteStatus('✅ تم الترتيب وتوليد الروابط بنجاح!', '#28a745');
+      showRouteLinks(r.links || []);
+    } catch(e) {
+      setRouteStatus('❌ خطأ: ' + e.message, '#dc3545');
+    } finally { disableRouteBtns(false); setTimeout(() => setProgress(0), 1500); }
+  }
+
+  // Fake step 1→2 progress for the combined button
+  async function runAllWithSteps() {
+    disableRouteBtns(true);
+    setRouteStatus('⚡ الخطوة 1/2: ترتيب المسار بالـ AI...', '#f39c12');
+    for (let p = 10; p <= 45; p += 5) { setProgress(p); await new Promise(r => setTimeout(r, 120)); }
+    try {
+      const r1 = await callRouteScript('runRouteOptimization');
+      if (!r1.success) throw new Error(r1.message);
+      setRouteStatus('🔗 الخطوة 2/2: توليد روابط Google Maps...', '#f39c12');
+      for (let p = 50; p <= 85; p += 5) { setProgress(p); await new Promise(r => setTimeout(r, 100)); }
+      const r2 = await callRouteScript('generateRouteLinks');
+      if (!r2.success) throw new Error(r2.message);
+      setProgress(100);
+      setRouteStatus('✅ اكتمل! تم الترتيب وتوليد ' + (r2.links || []).length + ' مسار.', '#28a745');
+      showRouteLinks(r2.links || []);
+    } catch(e) {
+      setRouteStatus('❌ ' + e.message, '#dc3545');
+    } finally { disableRouteBtns(false); setTimeout(() => setProgress(0), 2000); }
+  }
+
+  function showRouteLinks(links) {
+    const section = document.getElementById('routeLinksSection');
+    const container = document.getElementById('routeLinksContainer');
+    if (!links || links.length === 0) {
+      section.style.display = 'block';
+      container.innerHTML = '<p style="color:#999;text-align:center">لا توجد روابط بعد — قم بتشغيل الخطوات أولاً</p>';
+      return;
+    }
+    section.style.display = 'block';
+    container.innerHTML = links.map(l => `
+      <div class="route-link-item">
+        <div class="route-link-num">${l.route}</div>
+        <div class="route-link-info">
+          <div class="route-link-title">مسار رقم ${l.route}</div>
+          <div class="route-link-sub">${l.stops} موقع · ${l.notes || ''}</div>
+        </div>
+        <a href="${l.url}" target="_blank" class="route-link-btn">📍 افتح المسار</a>
+      </div>`).join('');
   }
 
   // Initialize on page load

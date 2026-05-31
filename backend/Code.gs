@@ -156,6 +156,22 @@ function doGet(e) {
     else if (action === 'ping') {
       result = { success: true, message: 'pong' };
     }
+    // ── Routing actions ──────────────────────────────────────────
+    else if (action === 'setStartPoint') {
+      result = setStartPoint(parseFloat(e.parameter.lat), parseFloat(e.parameter.lng));
+    }
+    else if (action === 'runRouteOptimization') {
+      result = runRouteOptimization();
+    }
+    else if (action === 'generateRouteLinks') {
+      result = generateRouteLinks();
+    }
+    else if (action === 'runFullRoutePipeline') {
+      result = runFullRoutePipeline();
+    }
+    else if (action === 'getRouteLinks') {
+      result = getRouteLinks();
+    }
     else {
       result = { success: false, message: 'Invalid action.', receivedAction: action };
     }
@@ -474,6 +490,61 @@ function setupDriveFolders() {
 
 // Keep authorizeDriveAccess as an alias
 function authorizeDriveAccess() { return setupDriveFolders(); }
+
+// ══════════════════════════════════════════════════════════════
+//  ROUTING ACTIONS
+//  These wrap the functions in Routing.gs and RouteLinks.gs.
+//  Called by the admin dashboard via doGet.
+// ══════════════════════════════════════════════════════════════
+
+// Write start lat/lng to Routes sheet H1 & I1
+function setStartPoint(lat, lng) {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName('Routes');
+    if (!sheet) return { success: false, message: 'شيت Routes مش موجود' };
+    sheet.getRange('H1').setValue(lat);
+    sheet.getRange('I1').setValue(lng);
+    return { success: true, message: 'تم حفظ نقطة البداية: ' + lat + ', ' + lng };
+  } catch(err) { return { success: false, message: err.toString() }; }
+}
+
+// Step 1 — run nearest-neighbor + 2-OPT optimization
+function runRouteOptimization() {
+  try {
+    nearestNeighborOrder();   // defined in Routing.gs
+    return { success: true, message: 'تم ترتيب المسار بنجاح ✅' };
+  } catch(err) { return { success: false, message: err.toString() }; }
+}
+
+// Step 2 — sort by visit order and generate Google Maps links
+function generateRouteLinks() {
+  try {
+    GenerateRoutesFromColumnA();   // defined in RouteLinks.gs
+    return { success: true, message: 'تم توليد الروابط بنجاح ✅', links: getRouteLinks().links };
+  } catch(err) { return { success: false, message: err.toString() }; }
+}
+
+// Run both steps in sequence
+function runFullRoutePipeline() {
+  try {
+    nearestNeighborOrder();
+    GenerateRoutesFromColumnA();
+    return { success: true, message: 'اكتمل الترتيب وتوليد الروابط ✅', links: getRouteLinks().links };
+  } catch(err) { return { success: false, message: err.toString() }; }
+}
+
+// Read generated links from RouteLinks sheet
+function getRouteLinks() {
+  try {
+    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName('RouteLinks');
+    if (!sheet || sheet.getLastRow() < 2) return { success: true, links: [] };
+    const data  = sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getValues();
+    const links = data
+      .filter(r => r[2])
+      .map(r => ({ route: r[0], stops: r[1], url: String(r[2]).replace(/^=HYPERLINK\("([^"]+)".*/, '$1'), notes: r[3] }));
+    return { success: true, links };
+  } catch(err) { return { success: false, message: err.toString(), links: [] }; }
+}
 
 // ========== Core Functions (unchanged from v15.0) ==========
 
