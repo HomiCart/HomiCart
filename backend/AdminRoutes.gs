@@ -291,11 +291,22 @@ function processVendorFull(sheetName, workspaceTab, startLat, startLng) {
       var items    = String(order[2] || '').trim();
       var rawPh    = String(order[4] || '').replace(/[\s\-\(\)]/g,'').replace(/^\+?971/,'0').replace(/^00971/,'0');
       var c   = byId[clientId] || byPhone[rawPh] || {};
+
+      // ── Get lat/lng: try DataBase cols 10-11 first, then extract from location URL ──
       var lat = String(c.lat || '').trim();
       var lng = String(c.lng || '').trim();
 
-      // ALWAYS build the Maps URL from numeric lat/lng — NEVER from c.location
-      // c.location may contain an address text that GenerateRoutesFromColumnA()
+      // Fallback: many customers store only a Maps URL in c.location (col 7),
+      // not separate lat/lng numbers. Extract from ?q=lat,lng if needed.
+      if ((!lat || !lng) && c.location) {
+        var locStr = String(c.location);
+        var locMatch = locStr.match(/[?&]q=(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/i)
+                    || locStr.match(/@(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/i);
+        if (locMatch) { lat = locMatch[1]; lng = locMatch[2]; }
+      }
+
+      // ALWAYS build the Maps URL from numeric lat/lng — NEVER from c.location text.
+      // GenerateRoutesFromColumnA()
       // cannot parse. Only ?q=LAT,LNG format is correctly extracted by
       // extractLatLngFromGoogleMapsLink() in RouteLinks.gs
       var mapsUrl = (lat && lng)
@@ -341,22 +352,37 @@ function processVendorFull(sheetName, workspaceTab, startLat, startLng) {
     }
 
     // ── 5. Populate Routes sheet ──────────────────────────────────
-    var routesSheet = ss.getSheetByName('Routes');
+    var routesSheet  = ss.getSheetByName('Routes');
     if (!routesSheet) routesSheet = ss.insertSheet('Routes');
     routesSheet.clearContents();
     routesSheet.getRange('H1').setValue(parseFloat(startLat) || 0);
     routesSheet.getRange('I1').setValue(parseFloat(startLng) || 0);
 
+    // Also clear RouteLinks to avoid returning stale data from a previous run
+    var routeLinksSheet = ss.getSheetByName('RouteLinks');
+    if (routeLinksSheet) routeLinksSheet.clearContents();
+
     var validEntries = routeEntries.filter(function(e) { return e.hasCoords; });
-    if (validEntries.length > 0) {
-      var routeRows = validEntries.map(function(e) {
-        return [e.maps, '', '', e.lat, e.lng, '', ''];
-      });
-      routesSheet.getRange(2, 1, routeRows.length, 7).setValues(routeRows);
+
+    if (validEntries.length === 0) {
+      return {
+        success     : false,
+        message     : 'لا يوجد موقع محدد لأي عميل في DataBase. تأكد من تسجيل lat/lng للعملاء أو أن عمود Location يحتوي على رابط Google Maps.',
+        ordersCount : confirmed.length,
+        routedCount : 0,
+        noCoords    : confirmed.length,
+        links       : [],
+        whatsappText: ''
+      };
     }
 
+    var routeRows = validEntries.map(function(e) {
+      return [e.maps, '', '', e.lat, e.lng, '', ''];
+    });
+    routesSheet.getRange(2, 1, routeRows.length, 7).setValues(routeRows);
+
     // ── 6. Run route optimization ─────────────────────────────────
-    if (validEntries.length > 0) nearestNeighborOrder();
+    nearestNeighborOrder();
 
     // ── 7. Write route numbers back to Workspace col E ────────────
     if (validEntries.length > 0) {
