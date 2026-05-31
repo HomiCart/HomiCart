@@ -56,7 +56,7 @@ function tryRoutingAction(e) {
 
 function _setStartPoint(lat, lng) {
   try {
-    var sheet = SpreadsheetApp.openById(SS_ID).getSheetByName('Routes');
+    var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Routes');
     if (!sheet) return { success: false, message: 'شيت Routes مش موجود' };
     sheet.getRange('H1').setValue(parseFloat(lat) || 0);
     sheet.getRange('I1').setValue(parseFloat(lng) || 0);
@@ -88,7 +88,7 @@ function _runFullRoutePipeline() {
 
 function _getRouteLinksData() {
   try {
-    var sheet = SpreadsheetApp.openById(SS_ID).getSheetByName('RouteLinks');
+    var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('RouteLinks');
     if (!sheet || sheet.getLastRow() < 2) return [];
     var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getValues();
     return data.filter(function(r) { return r[2]; }).map(function(r) {
@@ -110,7 +110,7 @@ function _getRouteLinksData() {
 
 function getVendorOrders(sheetName) {
   try {
-    var sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(sheetName || 'Orders');
+    var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(sheetName || 'Orders');
     if (!sheet || sheet.getLastRow() < 2) return { success: true, orders: [] };
     var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 15).getValues();
     var orders = data
@@ -146,7 +146,7 @@ function getVendorOrders(sheetName) {
 
 function routeVendorOrders(sheetName, startLat, startLng) {
   try {
-    var ss          = SpreadsheetApp.openById(SS_ID);
+    var ss          = SpreadsheetApp.openById(SPREADSHEET_ID);
     var ordersSheet = ss.getSheetByName(sheetName || 'Orders');
     if (!ordersSheet) return { success: false, message: 'شيت ' + sheetName + ' مش موجود' };
 
@@ -214,7 +214,7 @@ function routeVendorOrders(sheetName, startLat, startLng) {
 
 function processVendorFull(sheetName, workspaceTab, startLat, startLng) {
   try {
-    var ss          = SpreadsheetApp.openById(SS_ID);
+    var ss          = SpreadsheetApp.openById(SPREADSHEET_ID);
     var ordersSheet = ss.getSheetByName(sheetName);
     var dbSheet     = ss.getSheetByName('DataBase');
     var wsSheet     = ss.getSheetByName(workspaceTab);
@@ -383,7 +383,7 @@ function _getWorkspaceExportText(wsSheet) {
 // Action: get workspace export text for a given tab name
 function getWorkspaceExport(workspaceTab) {
   try {
-    var ws = SpreadsheetApp.openById(SS_ID).getSheetByName(workspaceTab);
+    var ws = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(workspaceTab);
     if (!ws) return { success: false, message: workspaceTab + ' not found' };
     return { success: true, text: _getWorkspaceExportText(ws) };
   } catch(e) {
