@@ -345,7 +345,98 @@
     }
 
     /* ══════════════════════════════
-       ROUTES SECTION
+       VENDOR TABS + ORDERS
+    ══════════════════════════════ */
+    .vendor-tabs-row { display:flex; gap:10px; margin-bottom:20px; }
+    .vendor-tab-btn {
+      padding:10px 22px; border:2px solid #ddd; background:white;
+      border-radius:8px; cursor:pointer; font-size:14px; font-weight:600;
+      font-family:inherit; transition:all .2s; color:#666;
+    }
+    .vendor-tab-btn:hover  { border-color:#667eea; color:#667eea; }
+    .vendor-tab-btn.active { background:#667eea; border-color:#667eea; color:white; }
+
+    .orders-toolbar {
+      display:flex; gap:12px; align-items:center;
+      flex-wrap:wrap; margin-bottom:14px;
+    }
+    .orders-search {
+      flex:1; min-width:200px; padding:9px 14px;
+      border:1px solid #ddd; border-radius:8px; font-size:14px;
+    }
+    .status-filters { display:flex; gap:6px; flex-wrap:wrap; }
+    .sf-btn {
+      padding:6px 14px; border:1.5px solid #ddd; background:white;
+      border-radius:20px; cursor:pointer; font-size:12px; font-weight:600;
+      font-family:inherit; transition:all .2s; color:#666;
+    }
+    .sf-btn:hover  { border-color:#667eea; color:#667eea; }
+    .sf-btn.active { background:#667eea; border-color:#667eea; color:white; }
+
+    /* Orders table */
+    .orders-table { width:100%; border-collapse:collapse; background:white; border-radius:10px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+    .orders-table th { background:#f8f9fa; padding:12px 14px; font-size:13px; color:#555; text-align:right; border-bottom:1px solid #eee; }
+    .orders-table td { padding:11px 14px; font-size:13px; border-bottom:1px solid #f5f5f5; vertical-align:middle; }
+    .orders-table tr:hover td { background:#fafbff; }
+    .status-pill {
+      display:inline-block; padding:3px 10px; border-radius:20px;
+      font-size:11px; font-weight:700; white-space:nowrap;
+    }
+    .status-new       { background:#e8f5e9; color:#2e7d32; }
+    .status-confirmed { background:#e3f2fd; color:#1565c0; }
+    .status-preparing { background:#fff8e1; color:#e65100; }
+    .status-cancelled { background:#fce4ec; color:#b71c1c; }
+    .status-default   { background:#f3f4f6; color:#555; }
+
+    /* Routing card inside vendor panel */
+    .vendor-routing-card {
+      margin-top:24px; background:white; border-radius:14px;
+      padding:22px 24px; box-shadow:0 2px 12px rgba(0,0,0,.07);
+      border-top:4px solid #f39c12;
+    }
+    .vrc-header { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+    .vrc-title  { font-size:16px; font-weight:800; color:#333; }
+    .vrc-badge  {
+      background:#e8f5e9; color:#2e7d32; font-size:12px; font-weight:700;
+      padding:3px 10px; border-radius:20px; white-space:nowrap;
+    }
+    .vrc-desc   { font-size:13px; color:#888; margin-bottom:14px; line-height:1.6; }
+    .vrc-coords { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:14px; }
+    .vrc-field  { flex:1; min-width:150px; }
+    .vrc-field label { font-size:12px; color:#666; display:block; margin-bottom:4px; }
+    .vrc-field input {
+      width:100%; padding:8px 11px; border:1px solid #ddd;
+      border-radius:7px; font-size:13px; direction:ltr;
+    }
+    .vrc-gps-btn {
+      padding:8px 14px; background:#17a2b8; color:white;
+      border:none; border-radius:7px; cursor:pointer; font-size:13px;
+      font-weight:600; white-space:nowrap; transition:background .2s;
+    }
+    .vrc-gps-btn:hover { background:#138496; }
+    .vrc-run-btn {
+      width:100%; padding:13px; background:linear-gradient(135deg,#f39c12,#e08e0b);
+      color:white; border:none; border-radius:9px; cursor:pointer;
+      font-size:15px; font-weight:800; font-family:inherit;
+      transition:all .2s; box-shadow:0 4px 14px rgba(243,156,18,.30);
+    }
+    .vrc-run-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 18px rgba(243,156,18,.45); }
+    .vrc-run-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+
+    .vrc-link-item {
+      display:flex; align-items:center; gap:10px; padding:10px 14px;
+      background:#f8f9ff; border-radius:8px; margin-bottom:8px;
+      border-right:4px solid #667eea;
+    }
+    .vrc-link-num { background:#667eea; color:white; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0; }
+    .vrc-link-info { flex:1; }
+    .vrc-link-title { font-weight:600; font-size:13px; color:#333; }
+    .vrc-link-sub   { font-size:11px; color:#999; }
+    .vrc-link-open  { padding:6px 12px; background:#28a745; color:white; border:none; border-radius:6px; cursor:pointer; font-size:12px; font-weight:700; text-decoration:none; white-space:nowrap; }
+    .vrc-link-open:hover { background:#218838; }
+
+    /* ══════════════════════════════
+       ROUTES SECTION (standalone — kept for reference, hidden from nav)
     ══════════════════════════════ */
     .routes-grid {
       display: grid;
@@ -494,9 +585,6 @@
     <div class="nav-item" onclick="switchSection('analytics')">
       📈 التحليلات
     </div>
-    <div class="nav-item" onclick="switchSection('routes')">
-      🗺️ إدارة المسارات
-    </div>
   </div>
 
   <!-- Main Content Area -->
@@ -536,27 +624,82 @@
       <div id="recentOrdersContainer"></div>
     </div>
 
-    <!-- Section 2: Orders Management -->
+    <!-- Section 2: Orders Management (per vendor) -->
     <div id="orders" class="section">
       <h2>📦 إدارة الطلبات</h2>
 
-      <div class="search-box">
-        <input type="text" id="orderSearch" placeholder="ابحث عن رقم الطلب أو رقم الهاتف..."
-               onkeyup="filterOrders()">
+      <!-- Vendor Tabs -->
+      <div class="vendor-tabs-row">
+        <button class="vendor-tab-btn active" id="vTab_Orders"
+                onclick="switchVendorTab('Orders','الركن المصري',this)">
+          🥩 الركن المصري
+        </button>
+        <button class="vendor-tab-btn" id="vTab_AlFayoumi"
+                onclick="switchVendorTab('AlFayoumi','الفيومي',this)">
+          🍗 الفيومي
+        </button>
       </div>
 
-      <div style="margin-bottom: 15px;">
-        <select onchange="filterOrdersByStatus(this.value)" style="width: 200px;">
-          <option value="">جميع الحالات</option>
-          <option value="New">طلبات جديدة</option>
-          <option value="Processing">قيد المعالجة</option>
-          <option value="Delivery">قيد التوصيل</option>
-          <option value="Delivered">مسلمة</option>
-          <option value="Cancelled">ملغاة</option>
-        </select>
-      </div>
+      <!-- Per-vendor panel -->
+      <div class="vendor-panel" id="vendorPanel">
 
-      <div id="ordersContainer"></div>
+        <!-- Orders Table -->
+        <div class="orders-toolbar">
+          <input type="text" id="orderSearch" placeholder="🔍 ابحث باسم العميل أو رقم الطلب..."
+                 oninput="filterOrdersTable()" class="orders-search">
+          <div class="status-filters" id="statusFilters">
+            <button class="sf-btn active" onclick="setStatusFilter('',this)">الكل</button>
+            <button class="sf-btn" onclick="setStatusFilter('جديد',this)">🆕 جديد</button>
+            <button class="sf-btn" onclick="setStatusFilter('مؤكد',this)">✅ مؤكد</button>
+            <button class="sf-btn" onclick="setStatusFilter('جاري التحضير',this)">🔄 جاري التحضير</button>
+            <button class="sf-btn" onclick="setStatusFilter('ملغي',this)">❌ ملغي</button>
+          </div>
+        </div>
+
+        <div id="ordersContainer"></div>
+
+        <!-- ════ Routing Card ════ -->
+        <div class="vendor-routing-card">
+          <div class="vrc-header">
+            <span class="vrc-title">🗺️ ترتيب مسار التوصيل</span>
+            <span class="vrc-badge" id="vrcBadge">—</span>
+          </div>
+          <p class="vrc-desc">
+            يأخذ الأوردرات <strong>المؤكدة</strong> ويرتب أقصر مسار توصيل ممكن
+            ويحول حالتها تلقائياً إلى <strong>جاري التحضير</strong>.
+          </p>
+
+          <!-- Start Point -->
+          <div class="vrc-coords">
+            <div class="vrc-field">
+              <label>Latitude (خط العرض)</label>
+              <input type="number" id="vrcLat" step="any" placeholder="25.204849">
+            </div>
+            <div class="vrc-field">
+              <label>Longitude (خط الطول)</label>
+              <input type="number" id="vrcLng" step="any" placeholder="55.270782">
+            </div>
+            <button class="vrc-gps-btn" onclick="vrcGetLocation()">📱 موقعي</button>
+          </div>
+
+          <button class="vrc-run-btn" id="vrcRunBtn" onclick="runVendorRoute()">
+            🚀 رتّب المسار وابدأ التحضير
+          </button>
+
+          <!-- Progress -->
+          <div id="vrcProgressWrap" style="display:none;margin-top:10px;background:#eee;border-radius:50px;height:7px;overflow:hidden">
+            <div id="vrcProgressFill" style="height:100%;width:0%;background:linear-gradient(90deg,#667eea,#764ba2);border-radius:50px;transition:width .5s ease"></div>
+          </div>
+          <div id="vrcStatus" style="margin-top:8px;font-size:13px;color:#555;min-height:18px;text-align:center"></div>
+
+          <!-- Generated Links -->
+          <div id="vrcLinks" style="margin-top:14px;display:none">
+            <div style="font-weight:700;font-size:14px;color:#333;margin-bottom:10px">📌 روابط المسار</div>
+            <div id="vrcLinksContainer"></div>
+          </div>
+        </div>
+
+      </div>
     </div>
 
     <!-- Section 3: Schedule -->
@@ -778,31 +921,196 @@
     event.target.classList.add('active');
 
     // Load data based on section
-    if (section === 'orders') loadOrders();
+    if (section === 'orders') { _currentVendorSheet = 'Orders'; loadOrders(); }
     if (section === 'schedule') loadSchedule();
     if (section === 'menu') loadMenu();
     if (section === 'analytics') loadAnalytics();
   }
 
+  // ══════════════════════════════════════════════════════
+  //  VENDOR TABS & ORDERS
+  // ══════════════════════════════════════════════════════
+  var _currentVendorSheet = 'Orders';
+  var _allOrders = [];
+  var _statusFilter = '';
+
+  function switchVendorTab(sheetName, label, btn) {
+    _currentVendorSheet = sheetName;
+    _statusFilter = '';
+    document.querySelectorAll('.vendor-tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.sf-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.sf-btn').classList.add('active');
+    document.getElementById('vrcLinks').style.display = 'none';
+    document.getElementById('vrcStatus').textContent = '';
+    loadOrders();
+  }
+
   async function loadOrders() {
+    document.getElementById('ordersContainer').innerHTML =
+      '<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
     try {
-      document.getElementById('ordersContainer').innerHTML = '<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+      const res  = await fetch(ROUTE_SCRIPT + '?action=getVendorOrders&sheet=' + _currentVendorSheet);
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+      _allOrders = data.orders || [];
+      renderOrdersTable();
+      updateRoutingBadge();
+    } catch(e) {
+      document.getElementById('ordersContainer').innerHTML =
+        '<div class="error">❌ خطأ في تحميل الطلبات: ' + e.message + '</div>';
+    }
+  }
 
-      // Fetch from both sheets
-      const response = await fetch(API_URL + '?action=getOrders&phone=*');
-      const data = await response.json();
+  function setStatusFilter(status, btn) {
+    _statusFilter = status;
+    document.querySelectorAll('.sf-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderOrdersTable();
+  }
 
-      // For now, show a message
-      document.getElementById('ordersContainer').innerHTML = `
-        <div style="background: white; padding: 20px; border-radius: 10px;">
-          <p>سيتم عرض الطلبات من Google Sheets هنا</p>
-          <p style="color: #999; font-size: 12px; margin-top: 10px;">
-            في الإصدار الكامل، سيتم جلب جميع الطلبات من البيانات وعرضها مع خيارات التحديث والإلغاء
-          </p>
-        </div>
-      `;
-    } catch (e) {
-      document.getElementById('ordersContainer').innerHTML = '<div class="error">خطأ في تحميل الطلبات</div>';
+  function filterOrdersTable() {
+    renderOrdersTable();
+  }
+
+  function renderOrdersTable() {
+    const q = (document.getElementById('orderSearch')?.value || '').toLowerCase();
+    const filtered = _allOrders.filter(o => {
+      const matchStatus = !_statusFilter || o.status === _statusFilter;
+      const matchQ = !q || (o.orderId||'').toLowerCase().includes(q)
+                       || (o.name||'').toLowerCase().includes(q)
+                       || (o.phone||'').includes(q);
+      return matchStatus && matchQ;
+    });
+
+    if (!filtered.length) {
+      document.getElementById('ordersContainer').innerHTML =
+        '<div style="text-align:center;padding:30px;color:#999">لا توجد طلبات</div>';
+      return;
+    }
+
+    const statusClass = s => {
+      if (s==='جديد') return 'status-new';
+      if (s==='مؤكد') return 'status-confirmed';
+      if (s==='جاري التحضير') return 'status-preparing';
+      if (s==='ملغي') return 'status-cancelled';
+      return 'status-default';
+    };
+
+    document.getElementById('ordersContainer').innerHTML = `
+      <table class="orders-table">
+        <thead>
+          <tr>
+            <th>رقم الطلب</th><th>العميل</th><th>الهاتف</th>
+            <th>الأصناف</th><th>التاريخ</th><th>الحالة</th><th>موقع</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map(o => `
+            <tr>
+              <td><b>${o.orderId||'-'}</b></td>
+              <td>${o.name||'-'}</td>
+              <td dir="ltr">${o.phone||'-'}</td>
+              <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.items||'-'}</td>
+              <td style="font-size:11px;color:#999">${o.date||'-'}</td>
+              <td><span class="status-pill ${statusClass(o.status)}">${o.status||'-'}</span></td>
+              <td>${o.hasLocation ? '📍' : '<span style="color:#ccc">—</span>'}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  function updateRoutingBadge() {
+    const confirmed = _allOrders.filter(o => o.status === 'مؤكد' && o.hasLocation).length;
+    const badge = document.getElementById('vrcBadge');
+    badge.textContent = confirmed + ' طلب مؤكد جاهز للترتيب';
+    badge.style.background = confirmed > 0 ? '#e8f5e9' : '#f3f4f6';
+    badge.style.color = confirmed > 0 ? '#2e7d32' : '#999';
+  }
+
+  // ── Routing from within vendor tab ────────────────────────────
+  function vrcGetLocation() {
+    if (!navigator.geolocation) { alert('المتصفح لا يدعم تحديد الموقع'); return; }
+    navigator.geolocation.getCurrentPosition(pos => {
+      document.getElementById('vrcLat').value = pos.coords.latitude.toFixed(6);
+      document.getElementById('vrcLng').value = pos.coords.longitude.toFixed(6);
+      document.getElementById('vrcStatus').textContent = '📍 تم تحديد موقعك';
+    }, () => alert('تعذّر تحديد الموقع'));
+  }
+
+  async function runVendorRoute() {
+    const lat = document.getElementById('vrcLat').value.trim();
+    const lng = document.getElementById('vrcLng').value.trim();
+    if (!lat || !lng) { alert('أدخل نقطة البداية (Latitude & Longitude) أولاً'); return; }
+
+    const btn = document.getElementById('vrcRunBtn');
+    btn.disabled = true;
+
+    const prog = document.getElementById('vrcProgressWrap');
+    const fill = document.getElementById('vrcProgressFill');
+    const status = document.getElementById('vrcStatus');
+
+    prog.style.display = 'block';
+    document.getElementById('vrcLinks').style.display = 'none';
+
+    const steps = [
+      [15,  '⚡ جاري ترتيب المسار بالـ AI...'],
+      [45,  '🔄 تطبيق تحسين 2-OPT...'],
+      [70,  '🔗 توليد روابط Google Maps...'],
+      [90,  '✏️ تحديث حالة الطلبات...'],
+    ];
+
+    let si = 0;
+    const tick = setInterval(() => {
+      if (si < steps.length) {
+        fill.style.width = steps[si][0] + '%';
+        status.textContent = steps[si][1];
+        status.style.color = '#f39c12';
+        si++;
+      }
+    }, 900);
+
+    try {
+      const url = ROUTE_SCRIPT
+        + '?action=routeVendorOrders'
+        + '&sheet=' + _currentVendorSheet
+        + '&lat=' + encodeURIComponent(lat)
+        + '&lng=' + encodeURIComponent(lng);
+
+      const res  = await fetch(url);
+      const data = await res.json();
+      clearInterval(tick);
+
+      if (!data.success) throw new Error(data.message);
+
+      fill.style.width = '100%';
+      status.textContent = '✅ ' + data.message;
+      status.style.color = '#28a745';
+
+      // Refresh orders list
+      await loadOrders();
+
+      // Show links
+      if (data.links && data.links.length) {
+        const container = document.getElementById('vrcLinksContainer');
+        container.innerHTML = data.links.map(l => `
+          <div class="vrc-link-item">
+            <div class="vrc-link-num">${l.route}</div>
+            <div class="vrc-link-info">
+              <div class="vrc-link-title">مسار رقم ${l.route}</div>
+              <div class="vrc-link-sub">${l.stops} موقع · ${l.notes||''}</div>
+            </div>
+            <a href="${l.url}" target="_blank" class="vrc-link-open">📍 افتح المسار</a>
+          </div>`).join('');
+        document.getElementById('vrcLinks').style.display = 'block';
+      }
+    } catch(e) {
+      clearInterval(tick);
+      status.textContent = '❌ ' + e.message;
+      status.style.color = '#dc3545';
+    } finally {
+      btn.disabled = false;
+      setTimeout(() => { prog.style.display = 'none'; fill.style.width = '0%'; }, 2000);
     }
   }
 

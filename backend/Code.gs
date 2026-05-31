@@ -172,6 +172,16 @@ function doGet(e) {
     else if (action === 'getRouteLinks') {
       result = getRouteLinks();
     }
+    else if (action === 'getVendorOrders') {
+      result = getVendorOrders(e.parameter.sheet);
+    }
+    else if (action === 'routeVendorOrders') {
+      result = routeVendorOrders(
+        e.parameter.sheet,
+        parseFloat(e.parameter.lat),
+        parseFloat(e.parameter.lng)
+      );
+    }
     else {
       result = { success: false, message: 'Invalid action.', receivedAction: action };
     }
@@ -531,6 +541,114 @@ function runFullRoutePipeline() {
     GenerateRoutesFromColumnA();
     return { success: true, message: 'اكتمل الترتيب وتوليد الروابط ✅', links: getRouteLinks().links };
   } catch(err) { return { success: false, message: err.toString() }; }
+}
+
+// Get all orders from a vendor sheet (Orders or AlFayoumi)
+function getVendorOrders(sheetName) {
+  try {
+    var sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(sheetName || 'Orders');
+    if (!sheet || sheet.getLastRow() < 2) return { success: true, orders: [] };
+    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 15).getValues();
+    var orders = data
+      .filter(function(r) { return r[0]; }) // skip blank rows
+      .map(function(r) {
+        return {
+          orderId    : r[0],  // A: OrderID
+          clientId   : r[1],  // B: CustomerID
+          items      : r[2],  // C: Items
+          name       : r[3],  // D: CustomerName
+          phone      : r[4],  // E: Phone
+          date       : r[5] ? String(r[5]).substring(0,10) : '',  // F: OrderDate
+          status     : r[6],  // G: Status
+          notes      : r[8],  // I: Notes
+          location   : r[9],  // J: Location
+          latitude   : r[10], // K: Latitude
+          longitude  : r[11], // L: Longitude
+          mapsLink   : r[12], // M: GoogleMapsLink
+          hasLocation: !!(r[10] && r[11])
+        };
+      });
+    return { success: true, orders: orders };
+  } catch(err) {
+    return { success: false, message: err.toString(), orders: [] };
+  }
+}
+
+// Route confirmed orders for a vendor:
+// 1. Gets "مؤكد" orders with locations from sheetName
+// 2. Writes them to Routes sheet
+// 3. Runs optimization (nearestNeighborOrder)
+// 4. Generates Google Maps links (GenerateRoutesFromColumnA)
+// 5. Updates order status to "جاري التحضير"
+// 6. Returns the generated links
+function routeVendorOrders(sheetName, startLat, startLng) {
+  try {
+    var ss           = SpreadsheetApp.openById(SS_ID);
+    var ordersSheet  = ss.getSheetByName(sheetName || 'Orders');
+    if (!ordersSheet) return { success: false, message: 'شيت ' + sheetName + ' مش موجود' };
+
+    var lastRow = ordersSheet.getLastRow();
+    if (lastRow < 2) return { success: false, message: 'لا توجد طلبات في هذا الشيت' };
+
+    var data = ordersSheet.getRange(2, 1, lastRow - 1, 15).getValues();
+
+    // Filter confirmed orders that have lat/lng
+    var confirmed = [];
+    for (var i = 0; i < data.length; i++) {
+      var status = String(data[i][6]).trim();
+      var lat    = data[i][10];
+      var lng    = data[i][11];
+      var maps   = data[i][12];
+      if (status === 'مؤكد' && lat && lng) {
+        confirmed.push({ rowIndex: i + 2, orderId: data[i][0], lat: lat, lng: lng, maps: maps });
+      }
+    }
+
+    if (confirmed.length === 0) {
+      return { success: false, message: 'لا توجد طلبات مؤكدة مع موقع محدد في هذا الشيت' };
+    }
+
+    // Prepare / clear Routes sheet
+    var routesSheet = ss.getSheetByName('Routes');
+    if (!routesSheet) routesSheet = ss.insertSheet('Routes');
+    routesSheet.clearContents();
+
+    // Set start point
+    routesSheet.getRange('H1').setValue(startLat || 0);
+    routesSheet.getRange('I1').setValue(startLng || 0);
+
+    // Write confirmed orders to Routes sheet
+    // Columns: A=MapsLink, B=OrderID, C=(empty), D=Lat, E=Lng, F=(empty), G=VisitOrder
+    var routesData = confirmed.map(function(o) {
+      return [o.maps || '', o.orderId, '', o.lat, o.lng, '', ''];
+    });
+    routesSheet.getRange(2, 1, routesData.length, 7).setValues(routesData);
+
+    // Run route optimization (from Routing.gs)
+    nearestNeighborOrder();
+
+    // Generate Google Maps links (from RouteLinks.gs)
+    GenerateRoutesFromColumnA();
+
+    // Update order status to "جاري التحضير"
+    for (var j = 0; j < confirmed.length; j++) {
+      ordersSheet.getRange(confirmed[j].rowIndex, 7).setValue('جاري التحضير');
+    }
+
+    var now = Utilities.formatDate(new Date(), 'Asia/Dubai', 'yyyy-MM-dd HH:mm:ss');
+    for (var k = 0; k < confirmed.length; k++) {
+      ordersSheet.getRange(confirmed[k].rowIndex, 8).setValue(now); // LastUpdated
+    }
+
+    return {
+      success     : true,
+      message     : 'تم ترتيب ' + confirmed.length + ' طلب وتحويلهم لـ "جاري التحضير" ✅',
+      ordersCount : confirmed.length,
+      links       : getRouteLinks().links
+    };
+  } catch(err) {
+    return { success: false, message: err.toString() };
+  }
 }
 
 // Read generated links from RouteLinks sheet
