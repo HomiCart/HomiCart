@@ -155,7 +155,7 @@ function routeVendorOrders(sheetName, startLat, startLng) {
 
     var data = ordersSheet.getRange(2, 1, lastRow - 1, 15).getValues();
     var confirmed = data.filter(function(r) {
-      return r[0] && String(r[6]).trim() === 'مؤكد' && r[10] && r[11];
+      var st = String(r[6]).trim(); return r[0] && (st === 'Preparing' || st === 'جاري التحضير') && r[10] && r[11];
     });
 
     if (confirmed.length === 0)
@@ -229,11 +229,11 @@ function processVendorFull(sheetName, workspaceTab, startLat, startLng) {
 
     var allOrders = ordersSheet.getRange(2, 1, oLast - 1, 15).getValues();
     var confirmed = allOrders.filter(function(r) {
-      return r[0] && String(r[6]).trim() === 'مؤكد';
+ var st = String(r[6]).trim(); return r[0] && (st === 'Preparing' || st === 'جاري التحضير');
     });
 
     if (confirmed.length === 0)
-      return { success: false, message: 'لا توجد طلبات بحالة "مؤكد" في ' + sheetName };
+      return { success: false, message: 'لا توجد طلبات بحالة Preparing في ' + sheetName
 
     // ── 2. Build customer lookup from DataBase ────────────────────
     var dbLast = dbSheet.getLastRow();

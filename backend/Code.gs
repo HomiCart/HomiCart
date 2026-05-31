@@ -587,17 +587,18 @@ function processVendorFull(sheetName, workspaceTab, startLat, startLng) {
     if (!dbSheet)     return { success: false, message: 'شيت DataBase مش موجود' };
     if (!wsSheet)     return { success: false, message: 'شيت ' + workspaceTab + ' مش موجود' };
 
-    // ── Step 1: Get مؤكد orders ───────────────────────────────────
+    // ── Step 1: Get Preparing orders ────────────────────────────────
     var oLastRow = ordersSheet.getLastRow();
     if (oLastRow < 2) return { success: false, message: 'لا توجد طلبات' };
 
     var ordersAll = ordersSheet.getRange(2, 1, oLastRow - 1, 15).getValues();
     var confirmed = ordersAll.filter(function(r) {
-      return r[0] && String(r[6]).trim() === 'مؤكد';
+      var status = String(r[6]).trim();
+      return r[0] && (status === 'Preparing' || status === 'جاري التحضير');
     });
 
     if (confirmed.length === 0) {
-      return { success: false, message: 'لا توجد طلبات بحالة "مؤكد" في ' + sheetName };
+      return { success: false, message: 'لا توجد طلبات بحالة "Preparing" في ' + sheetName };
     }
 
     // ── Step 2: Build customer lookup map from DataBase ───────────
@@ -729,19 +730,12 @@ function processVendorFull(sheetName, workspaceTab, startLat, startLng) {
       GenerateRoutesFromColumnA();
     }
 
-    // ── Step 10: Update order statuses in batch ───────────────────
+    // ── Step 10: Update LastUpdated timestamp (status stays Preparing) ──
     var confirmedIds = {};
     confirmed.forEach(function(o) { confirmedIds[String(o[0])] = true; });
     var now = Utilities.formatDate(new Date(), 'Asia/Dubai', 'yyyy-MM-dd HH:mm:ss');
 
-    // Build updated status array
-    var statusUpdate = ordersAll.map(function(r) {
-      if (confirmedIds[String(r[0])]) return ['جاري التحضير'];
-      return [r[6]]; // keep existing status
-    });
-    ordersSheet.getRange(2, 7, statusUpdate.length, 1).setValues(statusUpdate);
-
-    // Update LastUpdated for confirmed rows
+    // Only update LastUpdated — do NOT change status (stays Preparing)
     var lastUpdArray = ordersAll.map(function(r) {
       if (confirmedIds[String(r[0])]) return [now];
       return [r[7]];
