@@ -233,19 +233,20 @@ function processVendorFull(sheetName, workspaceTab, startLat, startLng) {
     });
 
     if (confirmed.length === 0)
-      return { success: false, message: 'لا توجد طلبات بحالة Preparing في ' + sheetName
+      return { success: false, message: 'لا توجد طلبات بحالة Preparing في ' + sheetName };
 
     // ── 2. Build customer lookup from DataBase ────────────────────
     var dbLast = dbSheet.getLastRow();
-    var dbData = dbLast >= 2 ? dbSheet.getRange(2, 1, dbLast - 1, 17).getValues() : [];
+    // v18.0 DataBase: 11 cols — Lat=col10(r[9]), Lng=col11(r[10])
+    var dbData = dbLast >= 2 ? dbSheet.getRange(2, 1, dbLast - 1, 11).getValues() : [];
 
     var byId    = {};
     var byPhone = {};
     dbData.forEach(function(r) {
       var id = String(r[0]).trim();
-      var ph = String(r[2]).replace(/[\s\-\(\)]/g,'').replace(/^\+?971/,'0').replace(/^00971/,'0');
+      var ph = _cleanPhone ? _cleanPhone(String(r[2]||'')) : String(r[2]||'').replace(/[\s\-\(\)]/g,'').replace(/^\+?971/,'0').replace(/^00971/,'0');
       var obj = { name: r[1]||'', phone: r[2]||'', area: r[4]||'', address: r[5]||'',
-                  location: r[6]||'', lat: r[14]||'', lng: r[15]||'', mapsLink: r[16]||'' };
+                  location: r[6]||'', lat: r[9]||'', lng: r[10]||'' };
       if (id) byId[id]    = obj;
       if (ph) byPhone[ph] = obj;
     });
