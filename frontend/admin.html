@@ -326,8 +326,8 @@ select option { background:#0d1a28; color:#fff; }
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRW2K-GbHfawvZMpxk5ExfyYg5EIhFpUgTy-nHaMjtNR1ZiWn-9BuZpRSWACTEGLqNlA/exec';
 
 const STORES = [
-  { key:'AlRoknAlMasry', name:'الركن المصري', color:'#ef4444', folder:'Al Rokn AL masry' },
-  { key:'AlFayoumi',     name:'الفيومي',      color:'#f59e0b', folder:'Al Fayoumy'       },
+  { key:'AlRoknAlMasry', name:'الركن المصري', color:'#ef4444', folder:'Al Rokn AL masry', sheet:'Orders',    workspace:'Workspace'  },
+  { key:'AlFayoumi',     name:'الفيومي',      color:'#f59e0b', folder:'Al Fayoumy',       sheet:'AlFayoumi', workspace:'FWorkspace' },
 ];
 
 // ════════════════════════════════════════════════════════
@@ -518,7 +518,58 @@ async function renderStorePage(storeKey) {
       <div class="table-wrap" id="table-${storeKey}">
         <div class="empty-state"><i class="fas fa-spinner fa-spin"></i><br>جاري التحميل...</div>
       </div>
-    </div>`;
+    </div>
+
+      <!-- ══ Processing Pipeline Card ══ -->
+      <div style="margin-top:1.8rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:1.5rem 1.6rem;border-top:3px solid #f59e0b">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:.5rem">
+          <span style="font-family:'Alexandria',sans-serif;font-size:1rem;font-weight:800;color:#fff">🚀 معالجة الأوردرات دفعة واحدة</span>
+          <span id="proc-badge-${storeKey}" style="background:rgba(245,158,11,.15);color:#f59e0b;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px">—</span>
+        </div>
+        <p style="font-size:12px;color:rgba(255,255,255,.35);margin-bottom:1rem;line-height:1.7">
+          يملّي الـ Workspace ← يرتّب المسار ← يفرز ← يولّد روابط Maps ← يحوّل الحالة لـ <strong style="color:#f59e0b">جاري التحضير</strong>
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:.9rem">
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:11px;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Latitude</label>
+            <input type="number" id="proc-lat-${storeKey}" step="any" placeholder="25.204849"
+              style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none">
+          </div>
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:11px;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Longitude</label>
+            <input type="number" id="proc-lng-${storeKey}" step="any" placeholder="55.270782"
+              style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none">
+          </div>
+          <button onclick="procGetLocation('${storeKey}')"
+            style="padding:8px 13px;background:#17a2b8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap">
+            📱 موقعي
+          </button>
+        </div>
+        <button id="proc-btn-${storeKey}" onclick="runProcessPipeline('${storeKey}')"
+          style="width:100%;padding:13px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:800;font-family:'Cairo',sans-serif">
+          🚀 معالجة كل الأوردرات المؤكدة
+        </button>
+        <div id="proc-prog-${storeKey}" style="display:none;margin-top:10px;background:rgba(255,255,255,.08);border-radius:50px;height:7px;overflow:hidden">
+          <div id="proc-fill-${storeKey}" style="height:100%;width:0%;background:linear-gradient(90deg,#18bfef,#f59e0b);border-radius:50px;transition:width .6s ease"></div>
+        </div>
+        <div id="proc-status-${storeKey}" style="margin-top:7px;font-size:12px;color:rgba(255,255,255,.4);min-height:16px;text-align:center"></div>
+        <div id="proc-results-${storeKey}" style="display:none;margin-top:14px">
+          <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+            <button onclick="procCopyWhatsapp('${storeKey}')"
+              style="flex:1;padding:10px;background:#25d366;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">
+              📋 نسخ للواتساب
+            </button>
+            <button onclick="procPrint('${storeKey}')"
+              style="flex:1;padding:10px;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">
+              📄 طباعة / PDF
+            </button>
+          </div>
+          <div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:6px">📌 روابط المسار</div>
+          <div id="proc-links-${storeKey}"></div>
+        </div>
+      </div>
+
+    `;
 
   // Load data
   loadStoreWindow(storeKey);
@@ -956,6 +1007,127 @@ async function confirmExtend() {
   } catch(e) { toast('تعذر: ' + e.message, 'error'); }
   btn.disabled = false;
   btn.innerHTML = '<i class="fas fa-check"></i> تأكيد التمديد';
+}
+
+// ════════════════════════════════════════════════════════
+//  PROCESSING PIPELINE
+// ════════════════════════════════════════════════════════
+var _procResults = {};
+
+function procGetLocation(storeKey) {
+  if (!navigator.geolocation) { toast('المتصفح لا يدعم تحديد الموقع', 'error'); return; }
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    document.getElementById('proc-lat-' + storeKey).value = pos.coords.latitude.toFixed(6);
+    document.getElementById('proc-lng-' + storeKey).value = pos.coords.longitude.toFixed(6);
+    document.getElementById('proc-status-' + storeKey).textContent = '📍 تم تحديد موقعك';
+  }, function() { toast('تعذّر تحديد الموقع', 'error'); });
+}
+
+async function runProcessPipeline(storeKey) {
+  var store = STORES.find(function(s) { return s.key === storeKey; });
+  if (!store) return;
+  var lat = (document.getElementById('proc-lat-' + storeKey).value || '').trim();
+  var lng = (document.getElementById('proc-lng-' + storeKey).value || '').trim();
+  if (!lat || !lng) { toast('أدخل نقطة البداية أولاً', 'error'); return; }
+
+  var btn    = document.getElementById('proc-btn-'    + storeKey);
+  var prog   = document.getElementById('proc-prog-'   + storeKey);
+  var fill   = document.getElementById('proc-fill-'   + storeKey);
+  var status = document.getElementById('proc-status-' + storeKey);
+  var res    = document.getElementById('proc-results-'+ storeKey);
+
+  btn.disabled = true; prog.style.display = 'block'; res.style.display = 'none';
+
+  var steps = [
+    [12,'📋 تجميع الأوردرات المؤكدة...'],
+    [28,'🔍 جلب بيانات العملاء...'],
+    [45,'✏️ تمليء الـ Workspace...'],
+    [60,'⚡ ترتيب المسار...'],
+    [75,'🔀 فرز تلقائي...'],
+    [88,'🔗 توليد روابط Google Maps...'],
+    [95,'✅ تحديث الحالة...'],
+  ];
+  var si = 0;
+  var tick = setInterval(function() {
+    if (si < steps.length) {
+      fill.style.width = steps[si][0] + '%';
+      status.textContent = steps[si][1];
+      status.style.color = '#f59e0b';
+      si++;
+    }
+  }, 1000);
+
+  try {
+    var data = await api('processVendorFull', {
+      sheet: store.sheet, workspace: store.workspace, lat: lat, lng: lng
+    }, 120000);
+    clearInterval(tick);
+    if (!data.success) throw new Error(data.message);
+
+    fill.style.width = '100%';
+    status.textContent = '\u2705 ' + data.message + (data.noCoords ? ' \u26a0\ufe0f ' + data.noCoords + ' بدون موقع' : '');
+    status.style.color = '#28c864';
+    _procResults[storeKey] = { text: data.whatsappText || '', store: store };
+
+    var lc = document.getElementById('proc-links-' + storeKey);
+    if (data.links && data.links.length) {
+      lc.innerHTML = data.links.map(function(l) {
+        return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(255,255,255,.04);border-radius:8px;margin-bottom:6px;border-right:3px solid #18bfef">'
+          + '<div style="background:#18bfef;color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">' + l.route + '</div>'
+          + '<div style="flex:1;font-size:12px"><div style="font-weight:700;color:#fff">\u0645\u0633\u0627\u0631 ' + l.route + '</div><div style="color:rgba(255,255,255,.35)">' + l.stops + ' \u0645\u0648\u0642\u0639</div></div>'
+          + '<a href="' + l.url + '" target="_blank" style="padding:5px 12px;background:#28c864;color:#fff;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap">\ud83d\udccd \u0627\u0641\u062a\u062d</a>'
+          + '</div>';
+      }).join('');
+    } else {
+      lc.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:12px;text-align:center;padding:8px">لا توجد روابط</div>';
+    }
+    res.style.display = 'block';
+    loadStoreOrders(storeKey);
+    toast('\u2705 ' + data.message, 'success');
+  } catch(e) {
+    clearInterval(tick);
+    status.textContent = '\u274c ' + e.message;
+    status.style.color = '#ff6060';
+    toast('\u274c ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    setTimeout(function() { prog.style.display = 'none'; fill.style.width = '0%'; }, 2000);
+  }
+}
+
+async function procCopyWhatsapp(storeKey) {
+  var store = STORES.find(function(s) { return s.key === storeKey; });
+  var text = (_procResults[storeKey] || {}).text || '';
+  if (!text && store) {
+    try { var r = await api('getWorkspaceExport', { workspace: store.workspace }); text = r.text || ''; } catch(e) {}
+  }
+  if (!text) { toast('قم بمعالجة الأوردرات أولاً', 'error'); return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('\u2705 تم النسخ! الصق في واتساب.', 'success');
+  } catch(e) {
+    var el = document.createElement('textarea');
+    el.value = text; document.body.appendChild(el); el.select();
+    document.execCommand('copy'); document.body.removeChild(el);
+    toast('\u2705 تم النسخ!', 'success');
+  }
+}
+
+function procPrint(storeKey) {
+  var store = STORES.find(function(s) { return s.key === storeKey; });
+  var text  = (_procResults[storeKey] || {}).text || '';
+  if (!text) { toast('قم بمعالجة الأوردرات أولاً', 'error'); return; }
+  var rows = text.split('---------------------------').map(function(t) { return t.trim(); }).filter(function(t) { return t; });
+  var w = window.open('', '_blank');
+  var sName = store ? store.name : '';
+  w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>أوردرات ' + sName + '</title>'
+    + '<style>body{font-family:Arial;direction:rtl;padding:20px;font-size:13px}'
+    + '.ob{border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:12px;page-break-inside:avoid;white-space:pre-line}'
+    + 'h2{margin-bottom:16px}@media print{body{padding:0}}</style></head><body>'
+    + '<h2>أوردرات ' + sName + ' - ' + new Date().toLocaleDateString('ar-AE') + '</h2>'
+    + rows.map(function(r) { return '<div class="ob">' + r.replace(/</g,'&lt;') + '</div>'; }).join('')
+    + '<script>window.print();<\/script></body></html>');
+  w.document.close();
 }
 </script>
 
