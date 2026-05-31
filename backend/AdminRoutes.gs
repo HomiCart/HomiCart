@@ -164,13 +164,28 @@ function routeVendorOrders(sheetName, startLat, startLng) {
     var lastRow = ordersSheet.getLastRow();
     if (lastRow < 2) return { success: false, message: 'لا توجد طلبات' };
 
-    var data = ordersSheet.getRange(2, 1, lastRow - 1, 15).getValues();
+    // v18.0: Orders sheet has 12 cols — no lat/lng in orders, lookup from DataBase
+    var data = ordersSheet.getRange(2, 1, lastRow - 1, 12).getValues();
+
+    // Get customer lat/lng from DataBase
+    var dbSheet = ss.getSheetByName('DataBase');
+    var byId = {};
+    if (dbSheet && dbSheet.getLastRow() >= 2) {
+      dbSheet.getRange(2, 1, dbSheet.getLastRow()-1, 11).getValues().forEach(function(r) {
+        var id = String(r[0]).trim();
+        if (id) byId[id] = { lat: String(r[9]||'').trim(), lng: String(r[10]||'').trim() };
+      });
+    }
+
     var confirmed = data.filter(function(r) {
-      var st = String(r[6]).trim(); return r[0] && (st === 'Preparing' || st === 'جاري التحضير') && r[10] && r[11];
+      var st  = String(r[6]).trim();
+      var cId = String(r[1]).trim();
+      var c   = byId[cId] || {};
+      return r[0] && (st === 'Preparing') && c.lat && c.lng;
     });
 
     if (confirmed.length === 0)
-      return { success: false, message: 'لا توجد طلبات مؤكدة مع موقع محدد' };
+      return { success: false, message: 'لا توجد طلبات Preparing مع موقع محدد في DataBase' };
 
     var routesSheet = ss.getSheetByName('Routes');
     if (!routesSheet) routesSheet = ss.insertSheet('Routes');
@@ -178,8 +193,12 @@ function routeVendorOrders(sheetName, startLat, startLng) {
     routesSheet.getRange('H1').setValue(startLat || 0);
     routesSheet.getRange('I1').setValue(startLng || 0);
 
+    // Always use ?q=lat,lng format so extractLatLngFromGoogleMapsLink() can parse it
     var routeRows = confirmed.map(function(r) {
-      return [r[12] || '', '', '', r[10], r[11], '', ''];
+      var cId = String(r[1]).trim();
+      var c   = byId[cId] || {};
+      var url = 'https://www.google.com/maps?q=' + c.lat + ',' + c.lng;
+      return [url, '', '', c.lat, c.lng, '', ''];
     });
     routesSheet.getRange(2, 1, routeRows.length, 7).setValues(routeRows);
 
@@ -271,23 +290,32 @@ function processVendorFull(sheetName, workspaceTab, startLat, startLng) {
       var clientId = String(order[1]).trim();
       var items    = String(order[2] || '').trim();
       var rawPh    = String(order[4] || '').replace(/[\s\-\(\)]/g,'').replace(/^\+?971/,'0').replace(/^00971/,'0');
-      var c        = byId[clientId] || byPhone[rawPh] || {};
-      var maps     = c.mapsLink || (c.lat && c.lng ? 'https://www.google.com/maps?q='+c.lat+','+c.lng : '');
+      var c   = byId[clientId] || byPhone[rawPh] || {};
+      var lat = String(c.lat || '').trim();
+      var lng = String(c.lng || '').trim();
+
+      // ALWAYS build the Maps URL from numeric lat/lng — NEVER from c.location
+      // c.location may contain an address text that GenerateRoutesFromColumnA()
+      // cannot parse. Only ?q=LAT,LNG format is correctly extracted by
+      // extractLatLngFromGoogleMapsLink() in RouteLinks.gs
+      var mapsUrl = (lat && lng)
+        ? 'https://www.google.com/maps?q=' + lat + ',' + lng
+        : '';
 
       wsRows.push([
         idx + 1, '',         // A: index, B: empty
         orderId, clientId,   // C: OrderID, D: CustomerID
         '',                  // E: Route Number (filled after routing)
-        c.phone  || order[4] || '',  // F: Mobile
-        c.name   || order[3] || '',  // G: Name
-        c.area   || '',              // H: Area
-        c.address|| '',              // I: Address
-        maps,                        // J: Maps link
-        items,                       // K: Order items (Sep-Text Order)
-        ''                           // L: Combined Data (formula below)
+        c.phone   || order[4] || '',  // F: Mobile
+        c.name    || order[3] || '',  // G: Name
+        c.area    || '',              // H: Area
+        c.address || '',              // I: Address
+        mapsUrl,                      // J: Maps link (?q=lat,lng format)
+        items,                        // K: Order items (Sep-Text Order)
+        ''                            // L: Combined Data (formula below)
       ]);
 
-      routeEntries.push({ wsIdx: idx, lat: c.lat, lng: c.lng, maps: maps, hasCoords: !!(c.lat && c.lng) });
+      routeEntries.push({ wsIdx: idx, lat: lat, lng: lng, maps: mapsUrl, hasCoords: !!(lat && lng) });
     });
 
     // ── 4. Clear & write Workspace ────────────────────────────────
