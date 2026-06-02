@@ -412,11 +412,21 @@
         <div class="field">
           <label class="label"><span class="req">*</span> رقم الهاتف</label>
           <input type="tel" id="phoneInput" class="input"
-            placeholder="+971 50 123 4567" dir="ltr" style="text-align:right"
-            onkeydown="if(event.key==='Enter') lookupPhone()">
-          <div class="field-err" id="phoneErr">يرجى إدخال رقم هاتف صحيح</div>
+            placeholder="05XXXXXXXX"
+            dir="ltr" style="text-align:right"
+            inputmode="numeric"
+            maxlength="10"
+            autocomplete="tel"
+            oninput="phoneInputHandler(this)"
+            onkeydown="blockNonDigits(event); if(event.key==='Enter') lookupPhone()"
+            onpaste="handlePhonePaste(event)">
+          <div class="field-err" id="phoneErr" style="display:none">
+            رقم الهاتف غير صحيح، يرجى إدخال رقم يبدأ بـ 05 ويتكون من 10 أرقام فقط
+          </div>
+          <!-- live indicator -->
+          <div id="phoneHint" style="font-size:.8rem;margin-top:.35rem;min-height:1.1rem;color:rgba(255,255,255,.3)"></div>
         </div>
-        <button class="btn btn-teal" id="lookupBtn" onclick="lookupPhone()">
+        <button class="btn btn-teal" id="lookupBtn" onclick="lookupPhone()" disabled>
           <i class="fas fa-magnifying-glass"></i>
           <span id="lookupTxt">تحقق من الرقم</span>
         </button>
@@ -425,16 +435,100 @@
   }
 
   // ════════════════════════════════════════════════════════════════
+  //  PHONE VALIDATION — real-time
+  // ════════════════════════════════════════════════════════════════
+
+  // Valid UAE mobile: starts with 05, exactly 10 digits
+  function isValidPhone(v) {
+    return /^05\d{8}$/.test(v);
+  }
+
+  // Block any key that is NOT a digit (allow control keys)
+  function blockNonDigits(e) {
+    const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter','Home','End'];
+    if (allowed.includes(e.key)) return;
+    if (!/^\d$/.test(e.key)) e.preventDefault();
+  }
+
+  // Strip non-digits from pasted content
+  function handlePhonePaste(e) {
+    e.preventDefault();
+    const text   = (e.clipboardData || window.clipboardData).getData('text');
+    const digits = text.replace(/\D/g, '').substring(0, 10);
+    const input  = e.target;
+    input.value  = digits;
+    phoneInputHandler(input);
+  }
+
+  // Real-time validation as user types
+  function phoneInputHandler(input) {
+    // Strip any non-digit that slipped through
+    const clean = input.value.replace(/\D/g, '').substring(0, 10);
+    if (input.value !== clean) input.value = clean;
+
+    const len    = clean.length;
+    const errEl  = document.getElementById('phoneErr');
+    const hint   = document.getElementById('phoneHint');
+    const btn    = document.getElementById('lookupBtn');
+
+    if (len === 0) {
+      // Empty — neutral state
+      input.classList.remove('error');
+      errEl.style.display = 'none';
+      hint.textContent    = '';
+      btn.disabled        = true;
+      return;
+    }
+
+    if (isValidPhone(clean)) {
+      // ✅ Valid
+      input.classList.remove('error');
+      input.style.borderColor = '#28a745';
+      input.style.boxShadow   = '0 0 0 3px rgba(40,167,69,.12)';
+      errEl.style.display     = 'none';
+      hint.textContent        = '✅ رقم صحيح';
+      hint.style.color        = '#28a745';
+      btn.disabled            = false;
+    } else {
+      // ❌ Invalid — show live hint
+      input.style.borderColor = '';
+      input.style.boxShadow   = '';
+      btn.disabled            = true;
+
+      if (len < 10) {
+        // Still typing — guidance only, no red error yet
+        input.classList.remove('error');
+        errEl.style.display = 'none';
+        if (!clean.startsWith('05') && len >= 2) {
+          hint.textContent  = '⚠️ يجب أن يبدأ الرقم بـ 05';
+          hint.style.color  = '#f59e0b';
+        } else {
+          hint.textContent  = len + ' / 10 رقم';
+          hint.style.color  = 'rgba(255,255,255,.35)';
+        }
+      } else {
+        // Full 10 digits but wrong format — show error
+        input.classList.add('error');
+        errEl.style.display = 'block';
+        hint.textContent    = '';
+      }
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════
   //  PHONE LOOKUP
   // ════════════════════════════════════════════════════════════════
   async function lookupPhone() {
     const phone = document.getElementById('phoneInput').value.trim();
-    if (phone.replace(/[\s\+\-\(\)]/g,'').length < 8) {
-      document.getElementById('phoneErr').classList.add('show');
-      document.getElementById('phoneInput').classList.add('error');
+    if (!isValidPhone(phone)) {
+      const input = document.getElementById('phoneInput');
+      const err   = document.getElementById('phoneErr');
+      input.classList.add('error');
+      err.style.display = 'block';
+      input.focus();
       return;
     }
-    document.getElementById('phoneErr').classList.remove('show');
+    document.getElementById('phoneErr').style.display = 'none';
     document.getElementById('phoneInput').classList.remove('error');
     const btn = document.getElementById('lookupBtn');
     btn.disabled = true;
@@ -507,8 +601,15 @@
         <div class="field">
           <label class="label"><span class="req">*</span> رقم الهاتف</label>
           <input type="tel" id="regPhone" class="input" value="${phone}"
-            dir="ltr" style="text-align:right" placeholder="+971 50 123 4567">
-          <div class="field-err" id="errPhone">رقم الهاتف مطلوب</div>
+            dir="ltr" style="text-align:right"
+            placeholder="05XXXXXXXX"
+            inputmode="numeric" maxlength="10"
+            oninput="regPhoneHandler(this)"
+            onkeydown="blockNonDigits(event)"
+            onpaste="handlePhonePaste(event)">
+          <div class="field-err" id="errPhone" style="display:none">
+            رقم الهاتف غير صحيح، يرجى إدخال رقم يبدأ بـ 05 ويتكون من 10 أرقام فقط
+          </div>
         </div>
         <div class="field">
           <label class="label">الإمارة</label>
@@ -541,8 +642,10 @@
 
     let ok = true;
     if (!name)  { _showErr('regName',  'errName',  'الاسم مطلوب');           ok = false; }
-    if (!phone || phone.replace(/[\s\+\-\(\)]/g,'').length < 8) {
-                  _showErr('regPhone', 'errPhone', 'رقم الهاتف مطلوب');       ok = false; }
+    if (!isValidPhone(phone)) {
+      _showErr('regPhone', 'errPhone', 'رقم الهاتف غير صحيح، يرجى إدخال رقم يبدأ بـ 05 ويتكون من 10 أرقام فقط');
+      ok = false;
+    }
     if (!ok) return;
 
     _setBtnLoading('submitBtn', 'submitTxt', 'جاري التسجيل ...');
@@ -650,7 +753,35 @@
     const el = document.getElementById(inputId);
     const er = document.getElementById(errId);
     if (el) el.classList.add('error');
-    if (er) { er.textContent = msg; er.classList.add('show'); }
+    if (er) { er.textContent = msg; er.classList.add('show'); er.style.display = 'block'; }
+  }
+
+  // Real-time handler for the registration phone field
+  function regPhoneHandler(input) {
+    const clean = input.value.replace(/\D/g, '').substring(0, 10);
+    if (input.value !== clean) input.value = clean;
+    const errEl = document.getElementById('errPhone');
+    if (!errEl) return;
+    if (clean.length === 0) {
+      input.classList.remove('error');
+      input.style.borderColor = '';
+      errEl.style.display = 'none';
+    } else if (isValidPhone(clean)) {
+      input.classList.remove('error');
+      input.style.borderColor = '#28a745';
+      input.style.boxShadow   = '0 0 0 3px rgba(40,167,69,.12)';
+      errEl.style.display     = 'none';
+    } else if (clean.length === 10) {
+      input.classList.add('error');
+      input.style.borderColor = '';
+      input.style.boxShadow   = '';
+      errEl.style.display     = 'block';
+      errEl.textContent       = 'رقم الهاتف غير صحيح، يرجى إدخال رقم يبدأ بـ 05 ويتكون من 10 أرقام فقط';
+    } else {
+      input.classList.remove('error');
+      input.style.borderColor = '';
+      errEl.style.display     = 'none';
+    }
   }
 
   function _setBtnLoading(btnId, txtId, msg) {
