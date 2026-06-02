@@ -1211,6 +1211,70 @@ function _setupSettingsSheet(ss) {
 
 function onOpen() { setupSheets(); }
 
+// ════════════════════════════════════════════════════════════════
+//  SERVER-SIDE AUTO-CLOSE  (runs every 1 minute via time trigger)
+//  Checks if any batch window has expired → converts New → Preparing
+//  This works even when NO browser tab is open.
+//
+//  ONE-TIME SETUP: Run setupAutoCloseTrigger() once from the editor
+//  to register the recurring 1-minute trigger.
+// ════════════════════════════════════════════════════════════════
+
+// Run this ONCE from the Apps Script editor (function dropdown → Run)
+function setupAutoCloseTrigger() {
+  // Remove any existing checkAndCloseExpiredBatches triggers
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'checkAndCloseExpiredBatches') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  // Create new trigger: every 1 minute
+  ScriptApp.newTrigger('checkAndCloseExpiredBatches')
+    .timeBased()
+    .everyMinutes(1)
+    .create();
+  console.log('✅ Auto-close trigger set up — runs every 1 minute');
+  return { success: true, message: 'Auto-close trigger registered ✅' };
+}
+
+// Called automatically every minute by Apps Script trigger
+// Checks both stores — if window has expired and batch is still active → close it
+function checkAndCloseExpiredBatches() {
+  try {
+    var ss       = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var settings = ss.getSheetByName(SHEET_SETTINGS);
+    if (!settings) return;
+
+    // Build settings map
+    var rows = settings.getDataRange().getValues();
+    var cfg  = {};
+    rows.forEach(function(r) { if (r[0]) cfg[r[0].toString().trim()] = r[1]; });
+
+    var now    = new Date();
+    var stores = [SHEET_ORDERS, SHEET_FAYOUMI]; // AlRoknAlMasry, AlFayoumi
+
+    stores.forEach(function(store) {
+      var endStr      = cfg[store + '_end']          || null;
+      var batchStatus = (cfg[store + '_batch_status'] || 'closed').toString().trim();
+
+      // Only act if batch is still active and an end time is set
+      if (!endStr || batchStatus !== 'active') return;
+
+      var endTime = new Date(endStr.toString().trim());
+      if (isNaN(endTime.getTime())) return;
+
+      // Has the window expired?
+      if (now >= endTime) {
+        console.log('[AutoClose] Batch window expired for: ' + store + ' — closing now');
+        var result = closeBatch({ store: store });
+        console.log('[AutoClose] Result:', result.message);
+      }
+    });
+  } catch(err) {
+    console.error('[AutoClose] Error:', err.toString());
+  }
+}
+
 // ============================================================
 //  PRIVATE HELPERS
 // ============================================================
