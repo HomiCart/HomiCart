@@ -3444,8 +3444,9 @@
     tick();
     _cdInterval = setInterval(tick, 1000);
 
-    // Poll server every 30 s to detect manual admin close
-    // (timer might still be counting but admin already closed the batch)
+    // Poll server every 30 s to detect:
+    //  a) Manual admin close → hide timer
+    //  b) Batch extend with new end time → restart countdown
     if (_pollInterval) clearInterval(_pollInterval);
     _pollInterval = setInterval(async () => {
       const folder = window._currentStore?.folder;
@@ -3453,13 +3454,30 @@
       const key = SHEET_NAMES[folder] || folder;
       try {
         const res = await _callScript('getStoreOrderWindow', { store: key }, 8000);
-        if (res?.phase === 'closed' || res?.batchStatus === 'closed') {
-          window._batchPhase = 'closed';
+        if (!res?.success) return;
+        window._batchPhase = res.phase || window._batchPhase;
+
+        if (res.phase === 'closed' || res.batchStatus === 'closed') {
+          // Admin closed batch manually
           clearInterval(_pollInterval); _pollInterval = null;
           clearInterval(_cdInterval);   _cdInterval   = null;
-          hideCountdown(); // ← hide timer immediately when admin closes
+          hideCountdown();
+        } else if (res.end) {
+          // Check if end time changed (batch extended by admin)
+          const serverEnd = new Date(res.end.replace(' ', 'T'));
+          if (!isNaN(serverEnd.getTime())) {
+            const diff = _cdEndTime ? Math.abs(serverEnd - _cdEndTime) : Infinity;
+            if (diff > 60000) {
+              // End time changed by > 1 min — restart countdown with new time
+              _cdEndTime = serverEnd;
+              clearInterval(_cdInterval);   _cdInterval   = null;
+              clearInterval(_pollInterval); _pollInterval = null;
+              startCountdown(); // will re-create poll
+              console.log('[Batch] End time extended — countdown restarted');
+            }
+          }
         }
-      } catch(_) {} // silently ignore network errors
+      } catch(_) {}
     }, 30000);
   }
 

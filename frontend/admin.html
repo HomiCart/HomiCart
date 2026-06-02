@@ -950,8 +950,11 @@ async function openExtendModal(storeKey) {
   // Default new end = now + 2 hours
   const d = new Date(Date.now() + 2 * 3600000);
   const pad = n => String(n).padStart(2,'0');
-  const def = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  document.getElementById('extendNewEnd').value = def;
+  const def = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const defT = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  document.getElementById('extendNewDate').value = def;
+  document.getElementById('extendNewTime').value = defT;
+  document.getElementById('extendPreview').textContent = '';
   document.getElementById('extendBatchInfo').style.display = 'none';
   document.getElementById('extendModal').style.display = 'flex';
 
@@ -992,6 +995,7 @@ function onExtendBatchChange() {
     <div>🆔 <span style="font-family:monospace;color:#18bfef;font-size:.75rem">${batch.batchId}</span></div>
     <div>📅 أول طلب: <b style="color:#fff">${(batch.firstOrder||'—').substring(0,16)}</b></div>
     <div>📅 آخر طلب: <b style="color:#fff">${(batch.lastOrder||'—').substring(0,16)}</b></div>
+    <div id="extendEndInfo-${batchId}" style="color:#18bfef">⏰ جاري تحميل وقت الإغلاق...</div>
     <div>📦 إجمالي الطلبات: <b style="color:#fff">${batch.total}</b>
       &nbsp;|&nbsp; جديد: <span style="color:#18bfef">${batch.new}</span>
       &nbsp;|&nbsp; تحضير: <span style="color:#ffa500">${batch.preparing}</span>
@@ -1006,12 +1010,24 @@ function closeExtendModal() {
   _extendBatches = [];
 }
 
+function updateExtendPreview() {
+  const d = document.getElementById('extendNewDate').value;
+  const t = document.getElementById('extendNewTime').value;
+  const p = document.getElementById('extendPreview');
+  if (p && d && t) {
+    const dt = new Date(d + 'T' + t);
+    p.textContent = 'سيتم الإغلاق: ' + dt.toLocaleDateString('ar-AE', { weekday:'long', day:'numeric', month:'long' })
+                  + ' الساعة ' + dt.toLocaleTimeString('ar-AE', { hour:'2-digit', minute:'2-digit' });
+  }
+}
+
 async function confirmExtend() {
-  const newEndRaw = document.getElementById('extendNewEnd').value;
-  const batchId   = document.getElementById('extendBatchSelect').value;
-  if (!newEndRaw) { alert('يرجى تحديد وقت التمديد'); return; }
-  if (!batchId)   { alert('يرجى اختيار الدورة أولاً'); return; }
-  const newEnd = newEndRaw.replace('T',' ') + ':00';
+  const newDate  = document.getElementById('extendNewDate').value;
+  const newTime  = document.getElementById('extendNewTime').value;
+  const batchId  = document.getElementById('extendBatchSelect').value;
+  if (!newDate || !newTime) { alert('يرجى تحديد تاريخ ووقت الإغلاق'); return; }
+  if (!batchId) { alert('يرجى اختيار الدورة أولاً'); return; }
+  const newEnd = newDate + ' ' + newTime + ':00';
   const btn = document.getElementById('extendConfirmBtn');
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التمديد...';
@@ -1318,8 +1334,13 @@ function procPrint(storeKey) {
         <i class="fas fa-stop-circle" style="color:#ff6060;margin-left:.3rem"></i>
         وقت الإغلاق الجديد
       </label>
-      <input type="datetime-local" id="extendNewEnd"
-        style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.3);border-radius:9px;padding:.65rem 1rem;color:#fff;font-size:.95rem;outline:none">
+      <div style="display:flex;gap:.6rem">
+        <input type="date" id="extendNewDate" onchange="updateExtendPreview()"
+          style="flex:1;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.3);border-radius:9px;padding:.65rem .9rem;color:#fff;font-size:.95rem;outline:none;cursor:pointer">
+        <input type="time" id="extendNewTime" step="60" onchange="updateExtendPreview()"
+          style="width:130px;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.3);border-radius:9px;padding:.65rem .9rem;color:#fff;font-size:.95rem;outline:none;cursor:pointer">
+      </div>
+      <div id="extendPreview" style="font-size:.78rem;color:#18bfef;margin-top:.4rem;min-height:1rem"></div>
     </div>
 
     <div style="font-size:.78rem;color:rgba(255,255,255,.35);margin-bottom:1.2rem;line-height:1.7">
