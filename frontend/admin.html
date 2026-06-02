@@ -596,6 +596,7 @@ async function renderStorePage(storeKey) {
   loadStoreOrders(storeKey);
   loadBatchDropdown(storeKey);
   loadProcBatchDropdown(storeKey);
+  startBatchWatcher(storeKey);  // auto-close when time expires
 }
 
 // ── Batch functions ──
@@ -1008,6 +1009,42 @@ function closeExtendModal() {
   document.getElementById('extendModal').style.display = 'none';
   _extendStore   = null;
   _extendBatches = [];
+}
+
+// ── Batch auto-close watcher ─────────────────────────────────
+// Runs every 30s on the admin page — acts exactly like pressing 🔒 إغلاق
+// when the batch end time passes. Works for both normal close and extend.
+var _batchWatchers = {};
+
+function startBatchWatcher(storeKey) {
+  if (_batchWatchers[storeKey]) clearInterval(_batchWatchers[storeKey]);
+
+  _batchWatchers[storeKey] = setInterval(async function() {
+    try {
+      var res = await api('getStoreOrderWindow', { store: storeKey }, 8000);
+      if (!res || !res.success) return;
+
+      // Only act if batch is still active and end time is set
+      if (res.batchStatus !== 'active' || !res.end) return;
+
+      var endTime = new Date(res.end.replace(' ', 'T'));
+      if (isNaN(endTime.getTime())) return;
+
+      if (new Date() >= endTime) {
+        // Time's up — do exactly what the 🔒 close button does
+        clearInterval(_batchWatchers[storeKey]);
+        delete _batchWatchers[storeKey];
+
+        var closeRes = await api('closeBatch', { store: storeKey }, 20000);
+        if (closeRes && closeRes.success) {
+          toast('🔒 تم إغلاق الدورة تلقائياً — ' + (closeRes.ordersUpdated || 0) + ' طلب تحوّل لـ Preparing', 'success');
+          loadStoreOrders(storeKey);
+          loadBatchDropdown(storeKey);
+          loadProcBatchDropdown(storeKey);
+        }
+      }
+    } catch(_) {}
+  }, 30000); // check every 30 seconds
 }
 
 function updateExtendPreview() {
