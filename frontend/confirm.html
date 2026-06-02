@@ -456,7 +456,7 @@
             maxlength="10"
             autocomplete="tel"
             oninput="phoneInputHandler(this)"
-            onkeydown="blockNonDigits(event); if(event.key==='Enter') lookupPhone()"
+            onkeydown="blockNonDigits(event); if(event.key==='Enter') onPhoneEnter(this)"
             onpaste="handlePhonePaste(event)">
           <div class="field-err" id="phoneErr" style="display:none">
             رقم الهاتف غير صحيح، يرجى إدخال رقم يبدأ بـ 05 ويتكون من 10 أرقام فقط
@@ -553,17 +553,37 @@
     }
   }
 
+  // Called when user presses Enter on the phone input.
+  // Validates BEFORE doing anything — shows error if incomplete/wrong.
+  function onPhoneEnter(input) {
+    const val = (input.value || '').trim();
+    if (isValidPhone(val)) {
+      // ✅ Valid — proceed to lookup
+      lookupPhone();
+    } else {
+      // ❌ Invalid — show error immediately, do NOT proceed
+      const errEl = document.getElementById('phoneErr');
+      input.classList.add('error');
+      input.style.borderColor = '';
+      input.style.boxShadow   = '';
+      if (errEl) {
+        errEl.style.display = 'block';
+        errEl.textContent   = 'رقم الهاتف غير صحيح، يرجى إدخال رقم يبدأ بـ 05 ويتكون من 10 أرقام فقط';
+      }
+      const hint = document.getElementById('phoneHint');
+      if (hint) { hint.textContent = ''; }
+      input.focus();
+    }
+  }
+
   // ════════════════════════════════════════════════════════════════
   //  PHONE LOOKUP
   // ════════════════════════════════════════════════════════════════
   async function lookupPhone() {
     const phone = document.getElementById('phoneInput').value.trim();
+    // Hard validation guard — always check even if button was somehow enabled
     if (!isValidPhone(phone)) {
-      const input = document.getElementById('phoneInput');
-      const err   = document.getElementById('phoneErr');
-      input.classList.add('error');
-      err.style.display = 'block';
-      input.focus();
+      onPhoneEnter(document.getElementById('phoneInput'));
       return;
     }
     document.getElementById('phoneErr').style.display = 'none';
