@@ -665,14 +665,14 @@ function onBatchSelect(storeKey) {
 
   const val = sel.value;
 
-  // Update button text + icon based on selection
+  // Show 'بدء دورة جديدة' only when __new__ is selected; hide for existing batches
   if (btn) {
     if (val === '__new__') {
       btn.innerHTML = '<i class="fas fa-plus-circle"></i> بدء دورة جديدة';
       btn.style.background = 'linear-gradient(135deg,#18bfef,#0d9bcb)';
+      btn.style.display = '';
     } else {
-      btn.innerHTML = '<i class="fas fa-redo-alt"></i> تفعيل هذه الدورة';
-      btn.style.background = 'linear-gradient(135deg,#f5a623,#e08c00)';
+      btn.style.display = 'none'; // تفعيل هذه الدورة - removed
     }
   }
 

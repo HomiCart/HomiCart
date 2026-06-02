@@ -926,7 +926,8 @@ function extendBatch(p) {
     // Override batch reference for revert step
     const batch = { batchId: targetBatchId };
 
-    // 3. Revert "Preparing" → "New" for all orders with same BatchID
+    // 3. Revert ALL orders → "New" for this BatchID
+    //    (regardless of current status — Preparing, Delivered, Cancelled, etc.)
     const sheetName   = _validSheet(store) || SHEET_ORDERS;
     const ordersSheet = ss.getSheetByName(sheetName);
     let   revertedCount = 0;
@@ -940,9 +941,9 @@ function extendBatch(p) {
         data.forEach((row, idx) => {
           const rowBatch  = (row[ORD_BATCH-1]  || '').toString().trim();
           const rowStatus = (row[ORD_STATUS-1] || '').toString().trim();
-          // Filter: same BatchID + status is Preparing
-          if (rowBatch !== bid)          return;
-          if (rowStatus !== 'Preparing') return;
+          // Revert ALL orders in this batch back to New (no status filter)
+          if (rowBatch !== bid)    return;
+          if (rowStatus === 'New') return; // already New, skip
           const rowNum = idx + 2;
           ordersSheet.getRange(rowNum, ORD_STATUS).setValue('New');
           ordersSheet.getRange(rowNum, ORD_UPDATED).setValue(ts);
