@@ -1503,7 +1503,7 @@ function _getPipelineRouteLinks() {
         return {
           route : r[0],
           stops : r[1],
-          url   : String(r[2]).replace(/=HYPERLINK("([^"]+)".*/, '$1'),
+          url   : String(r[2]).replace(/=HYPERLINK\("([^"]+)".*/, '$1'),
           notes : r[3]
         };
       });
