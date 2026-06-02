@@ -562,17 +562,25 @@
       border-radius: 50px;
     }
     .ss-close {
-      width: 44px; height: 44px;
-      border-radius: 50%;
-      background: rgba(255,255,255,.08);
-      border: 1.5px solid rgba(255,255,255,.18);
+      display: flex; align-items: center; gap: .4rem;
+      background: rgba(255,255,255,.12);
+      border: 1.5px solid rgba(255,255,255,.25);
       color: #fff;
-      font-size: 1.1rem;
-      display: flex; align-items: center; justify-content: center;
+      font-size: .9rem; font-weight: 700;
+      font-family: 'Alexandria', sans-serif;
+      padding: .45rem 1rem;
+      border-radius: 50px;
       cursor: pointer;
-      transition: background .2s, transform .3s;
+      transition: background .2s, transform .18s, box-shadow .2s;
+      white-space: nowrap;
+      box-shadow: 0 2px 12px rgba(0,0,0,.35);
     }
-    .ss-close:hover { background: rgba(255,255,255,.18); transform: rotate(90deg); }
+    .ss-close:hover {
+      background: rgba(255,80,80,.35);
+      border-color: rgba(255,100,100,.55);
+      box-shadow: 0 4px 18px rgba(255,80,80,.25);
+    }
+    .ss-close i { font-size: 1rem; }
 
     /* Image area */
     .ss-img-wrap {
@@ -1768,7 +1776,9 @@
 <div id="slideshowModal" class="slideshow-modal">
   <div class="ss-topbar">
     <div class="ss-counter" id="ssCounter">1 / 1</div>
-    <button class="ss-close" onclick="closeSlideshow()"><i class="fas fa-times"></i></button>
+    <button class="ss-close" onclick="closeSlideshow()">
+      <i class="fas fa-times"></i> إغلاق
+    </button>
   </div>
   <div class="ss-img-wrap">
     <img id="ssImg" class="ss-img" src="" alt="منيو">
@@ -2154,22 +2164,41 @@
 
   function openSlideshow(images, startIndex = 0) {
     if (!images || !images.length) return;
-    // Store current set in a neutral key
     window._ssImages = images;
     ssIndex = startIndex;
-    // Rebuild dots for this image set
     document.getElementById('ssDots').innerHTML = images
       .map((_, i) => `<div class="ss-dot${i === startIndex ? ' active' : ''}" onclick="jumpToSlide(${i})"></div>`)
       .join('');
     _ssRender();
     document.getElementById('slideshowModal').classList.add('active');
     document.addEventListener('keydown', _ssKey);
+
+    // Push a history entry so the browser/phone back button closes the modal
+    // instead of navigating away from the page
+    history.pushState({ homiSlideshow: true }, '', window.location.href);
   }
 
   function closeSlideshow() {
-    document.getElementById('slideshowModal').classList.remove('active');
+    const modal = document.getElementById('slideshowModal');
+    if (!modal?.classList.contains('active')) return;
+    modal.classList.remove('active');
     document.removeEventListener('keydown', _ssKey);
+
+    // If we pushed a history entry for this slideshow, go back silently
+    if (history.state?.homiSlideshow) {
+      history.back();
+    }
   }
+
+  // Browser / phone back button → close slideshow, stay on page
+  window.addEventListener('popstate', function(e) {
+    const modal = document.getElementById('slideshowModal');
+    if (modal?.classList.contains('active')) {
+      modal.classList.remove('active');
+      document.removeEventListener('keydown', _ssKey);
+      // Don't navigate further — the popstate already consumed the back action
+    }
+  });
 
   function slideGo(dir) {
     const images = window._ssImages || [];
