@@ -3337,8 +3337,9 @@
     return '🔒 انتهى وقت تلقي الطلبات لهذه الدورة';
   }
 
-  let _cdInterval = null;
-  let _cdEndTime  = null;
+  let _cdInterval   = null;
+  let _cdEndTime    = null;
+  let _pollInterval = null; // polls server to detect manual admin close
 
   // Called on page boot — no API needed
   function loadOrderWindow() { return Promise.resolve(); }
@@ -3373,7 +3374,8 @@
     const el = document.getElementById('orderCountdown');
     if (el) el.classList.add('hidden');
     document.body.classList.remove('has-countdown');
-    if (_cdInterval) { clearInterval(_cdInterval); _cdInterval = null; }
+    if (_cdInterval)   { clearInterval(_cdInterval);   _cdInterval   = null; }
+    if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
   }
 
   function startCountdown() {
@@ -3394,19 +3396,29 @@
       const diff = _cdEndTime - now;
 
       if (diff <= 0) {
-        // Time's up — auto-close batch
-        el.classList.remove('hidden', 'warning', 'urgent');
+        // Time's up — show 00:00:00 briefly then hide
+        ['cdHours','cdMins','cdSecs'].forEach(id => {
+          const x = document.getElementById(id);
+          if (x) x.textContent = '00';
+        });
+        el.classList.remove('hidden', 'warning');
         el.classList.add('urgent');
-        ['cdHours','cdMins','cdSecs'].forEach(id => document.getElementById(id).textContent = '00');
         clearInterval(_cdInterval);
-        // Auto-close: New → Preparing + mark batch closed
-        window._batchPhase = 'closed'; // update phase so orders are blocked
+        if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
+
+        // Auto-close: New → Preparing on server
+        window._batchPhase = 'closed';
         const storeKey = SHEET_NAMES[window._currentStore?.folder] || '';
         if (storeKey) {
-          console.log('[Batch] Timer ended — auto-closing batch for:', storeKey);
           _callScript('closeBatch', { store: storeKey }, 30000)
-            .then(r => console.log('[Batch] Auto-closed:', r.message))
-            .catch(e => console.warn('[Batch] Auto-close failed:', e.message));
+            .then(r => console.log('[Batch] Auto-closed:', r?.message))
+            .catch(e => console.warn('[Batch] Auto-close failed:', e.message))
+            .finally(() => {
+              // Hide timer 2 seconds after auto-close attempt
+              setTimeout(() => hideCountdown(), 2000);
+            });
+        } else {
+          setTimeout(() => hideCountdown(), 2000);
         }
         return;
       }
@@ -3431,6 +3443,24 @@
     if (_cdInterval) clearInterval(_cdInterval);
     tick();
     _cdInterval = setInterval(tick, 1000);
+
+    // Poll server every 30 s to detect manual admin close
+    // (timer might still be counting but admin already closed the batch)
+    if (_pollInterval) clearInterval(_pollInterval);
+    _pollInterval = setInterval(async () => {
+      const folder = window._currentStore?.folder;
+      if (!folder) return;
+      const key = SHEET_NAMES[folder] || folder;
+      try {
+        const res = await _callScript('getStoreOrderWindow', { store: key }, 8000);
+        if (res?.phase === 'closed' || res?.batchStatus === 'closed') {
+          window._batchPhase = 'closed';
+          clearInterval(_pollInterval); _pollInterval = null;
+          clearInterval(_cdInterval);   _cdInterval   = null;
+          hideCountdown(); // ← hide timer immediately when admin closes
+        }
+      } catch(_) {} // silently ignore network errors
+    }, 30000);
   }
 
   function _setFlip(id, val) {
