@@ -1076,29 +1076,38 @@ function procGetLocation(storeKey) {
   }
 
   function onProcBatchChange(storeKey) {
-    var sel      = document.getElementById('proc-batch-'      + storeKey);
-    var info     = document.getElementById('proc-batch-info-' + storeKey);
-    var btn      = document.getElementById('proc-btn-'        + storeKey);
-    var warnEl   = document.getElementById('proc-warn-'       + storeKey);
+    var sel    = document.getElementById('proc-batch-'      + storeKey);
+    var info   = document.getElementById('proc-batch-info-' + storeKey);
+    var btn    = document.getElementById('proc-btn-'        + storeKey);
+    var warnEl = document.getElementById('proc-warn-'       + storeKey);
     if (!sel) return;
     var batchId = sel.value;
+
+    // No batch selected → disable button
     if (!batchId) {
-      if (info) info.textContent = '';
-      if (btn)  { btn.disabled = true; btn.style.opacity = '.5'; }
+      if (info)   info.textContent = '';
+      if (btn)    { btn.disabled = true; btn.style.opacity = '.5'; }
       if (warnEl) warnEl.style.display = 'none';
       return;
     }
+
+    // Batch selected → button always ENABLED (pipeline will explain if nothing to process)
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    if (warnEl) warnEl.style.display = 'none';
+
     var batches = _batchData[storeKey] || [];
     var batch   = batches.find(function(b){ return b.batchId === batchId; });
     if (batch && info) {
-      info.textContent = 'إجمالي: ' + batch.total
-        + ' | تحضير: ' + batch.preparing
+      var prepColor = batch.preparing > 0 ? '#28c864' : '#ffa500';
+      info.innerHTML = 'إجمالي: ' + batch.total
+        + ' | <span style="color:' + prepColor + ';font-weight:700">تحضير: ' + batch.preparing + '</span>'
         + ' | توصيل: ' + batch.delivered
-        + (batch.isActive ? ' | ★ نشطة' : ' | مغلقة');
+        + ' | جديد: ' + batch.new
+        + (batch.isActive ? ' | ★ نشطة' : ' | مغلقة')
+        + (batch.preparing === 0 && batch.new > 0
+            ? '<div style="margin-top:4px;color:#ffa500">⚠️ يوجد ' + batch.new + ' أوردر بحالة New — أغلق نافذة الطلبات أولاً لتحويلها إلى Preparing</div>'
+            : '');
     }
-    var hasPrep = batch ? batch.preparing > 0 : true;
-    if (btn) { btn.disabled = !hasPrep; btn.style.opacity = hasPrep ? '1' : '.5'; }
-    if (warnEl) warnEl.style.display = 'none';
   }
 
   // ── New runProcessPipeline: batch-aware + status validation ─────
@@ -1135,7 +1144,26 @@ function procGetLocation(storeKey) {
 
       if (!batchOrders.length) {
         toast('لا توجد أوردرات في هذه الدورة', 'error');
-        status.textContent = '⚠️ الدورة فارغة أو لا تحتوي أوردرات';
+        status.textContent = '⚠️ الدورة لا تحتوي أوردرات';
+        status.style.color = '#ffa500';
+        btn.disabled = false;
+        return;
+      }
+
+      // Check count of Preparing
+      var prepOrders = batchOrders.filter(function(o){ return o.status === 'Preparing'; });
+      var newOrders  = batchOrders.filter(function(o){ return o.status === 'New'; });
+
+      if (prepOrders.length === 0 && newOrders.length > 0) {
+        // All orders still New — guide admin to close the batch window first
+        if (warnList) warnList.innerHTML =
+          '<div style="margin-bottom:.4rem">يوجد <strong style="color:#fff">' + newOrders.length + '</strong> أوردر بحالة <strong style="color:#18bfef">New</strong> لم تُحوَّل بعد.</div>'
+          + '<div>لتحويلها إلى Preparing: اضغط زر <strong style="color:#ff6060">🔒 إغلاق</strong> في قسم الدورة الحالية أعلاه.</div>';
+        if (warnEl) {
+          warnEl.style.display = 'block';
+          warnEl.querySelector('div').textContent = 'خطوة مطلوبة قبل المعالجة:';
+        }
+        status.textContent = '⚠️ الأوردرات لا تزال بحالة New — يجب إغلاق الدورة أولاً';
         status.style.color = '#ffa500';
         btn.disabled = false;
         return;
