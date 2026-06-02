@@ -190,6 +190,44 @@
     }
     .field-err.show { display:block; }
 
+    /* ── WhatsApp country picker ─────────────────── */
+    .wa-wrap {
+      display:flex; border-radius:12px; overflow:hidden;
+      border:1.5px solid rgba(255,255,255,.10);
+      transition:border-color .22s, box-shadow .22s;
+    }
+    .wa-wrap:focus-within {
+      border-color:rgba(24,191,239,.55);
+      box-shadow:0 0 0 3px rgba(24,191,239,.10);
+    }
+    .wa-wrap.valid   { border-color:#28a745; box-shadow:0 0 0 3px rgba(40,167,69,.12); }
+    .wa-wrap.invalid { border-color:rgba(255,80,80,.55); box-shadow:0 0 0 3px rgba(255,80,80,.10); }
+
+    .wa-country {
+      background:rgba(255,255,255,.07);
+      border:none; border-left:1px solid rgba(255,255,255,.08);
+      color:#fff; font-size:.85rem; font-family:'Cairo',sans-serif;
+      padding:.78rem .55rem; cursor:pointer; outline:none;
+      min-width:90px; max-width:120px;
+      /* Custom arrow */
+      appearance:none; -webkit-appearance:none;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,.4)'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:left .6rem center;
+      padding-left:1.4rem;
+    }
+    .wa-country option { background:#0d1825; color:#fff; }
+    .wa-number {
+      flex:1; background:rgba(255,255,255,.04);
+      border:none; color:#fff; font-size:.95rem;
+      font-family:'Cairo',sans-serif;
+      padding:.8rem .9rem; outline:none; direction:ltr;
+    }
+    .wa-number::placeholder { color:rgba(255,255,255,.22); }
+    .wa-hint {
+      font-size:.78rem; margin-top:.3rem;
+      min-height:1rem; color:rgba(255,255,255,.35);
+    }
+
     /* ── Buttons ─────────────────────────────────── */
     .btn {
       display:flex; align-items:center; justify-content:center; gap:.45rem;
@@ -611,6 +649,51 @@
             رقم الهاتف غير صحيح، يرجى إدخال رقم يبدأ بـ 05 ويتكون من 10 أرقام فقط
           </div>
         </div>
+        <!-- WhatsApp (optional, international) -->
+        <div class="field">
+          <label class="label">
+            واتساب
+            <span style="font-size:.75rem;color:rgba(255,255,255,.35);font-weight:400"> (اختياري — يُستخدم لإرسال تأكيد الطلب)</span>
+          </label>
+          <div class="wa-wrap" id="waWrap">
+            <select class="wa-country" id="waCountry" onchange="waCountryChanged()" title="كود الدولة">
+              <option value="+971" data-min="9"  data-max="9">🇦🇪 +971</option>
+              <option value="+966" data-min="9"  data-max="9">🇸🇦 +966</option>
+              <option value="+20"  data-min="10" data-max="10">🇪🇬 +20</option>
+              <option value="+965" data-min="8"  data-max="8">🇰🇼 +965</option>
+              <option value="+973" data-min="8"  data-max="8">🇧🇭 +973</option>
+              <option value="+968" data-min="8"  data-max="8">🇴🇲 +968</option>
+              <option value="+974" data-min="8"  data-max="8">🇶🇦 +974</option>
+              <option value="+962" data-min="9"  data-max="9">🇯🇴 +962</option>
+              <option value="+961" data-min="7"  data-max="8">🇱🇧 +961</option>
+              <option value="+963" data-min="9"  data-max="9">🇸🇾 +963</option>
+              <option value="+964" data-min="10" data-max="10">🇮🇶 +964</option>
+              <option value="+970" data-min="9"  data-max="9">🇵🇸 +970</option>
+              <option value="+212" data-min="9"  data-max="9">🇲🇦 +212</option>
+              <option value="+213" data-min="9"  data-max="9">🇩🇿 +213</option>
+              <option value="+216" data-min="8"  data-max="8">🇹🇳 +216</option>
+              <option value="+91"  data-min="10" data-max="10">🇮🇳 +91</option>
+              <option value="+92"  data-min="10" data-max="10">🇵🇰 +92</option>
+              <option value="+880" data-min="10" data-max="10">🇧🇩 +880</option>
+              <option value="+63"  data-min="10" data-max="10">🇵🇭 +63</option>
+              <option value="+94"  data-min="9"  data-max="9">🇱🇰 +94</option>
+              <option value="+977" data-min="10" data-max="10">🇳🇵 +977</option>
+              <option value="+44"  data-min="10" data-max="10">🇬🇧 +44</option>
+              <option value="+1"   data-min="10" data-max="10">🇺🇸 +1</option>
+              <option value="+33"  data-min="9"  data-max="9">🇫🇷 +33</option>
+              <option value="+49"  data-min="10" data-max="11">🇩🇪 +49</option>
+            </select>
+            <input type="tel" id="waNumber" class="wa-number"
+              placeholder="XXXXXXXXX"
+              inputmode="numeric" maxlength="11"
+              oninput="waNumberHandler(this)"
+              onkeydown="blockNonDigits(event)"
+              onpaste="handlePhonePaste(event)">
+          </div>
+          <div class="wa-hint" id="waHint"></div>
+          <div class="field-err" id="errWa" style="display:none">رقم الواتساب غير صحيح — تحقق من عدد الأرقام</div>
+        </div>
+
         <div class="field">
           <label class="label">الإمارة</label>
           <input type="text" id="regEmirate" class="input" placeholder="مثال: عجمان">
@@ -646,13 +729,23 @@
       _showErr('regPhone', 'errPhone', 'رقم الهاتف غير صحيح، يرجى إدخال رقم يبدأ بـ 05 ويتكون من 10 أرقام فقط');
       ok = false;
     }
+    // WhatsApp: optional but must be valid if entered
+    const waResult = getFullWaNumber();
+    if (waResult === 'INVALID') {
+      document.getElementById('waWrap')?.classList.add('invalid');
+      const errWa = document.getElementById('errWa');
+      if (errWa) { errWa.style.display = 'block'; errWa.textContent = 'رقم الواتساب غير صحيح — تحقق من عدد الأرقام'; }
+      ok = false;
+    }
     if (!ok) return;
+
+    const whatsapp = (waResult && waResult !== 'INVALID') ? waResult : phone;
 
     _setBtnLoading('submitBtn', 'submitTxt', 'جاري التسجيل ...');
     try {
-      const reg = await _callScript('registerClient', { name, phone, emirate, address });
+      const reg = await _callScript('registerClient', { name, phone, whatsapp, emirate, address });
       if (reg.error) throw new Error(reg.error);
-      window._confirmedClient = { clientId: reg.clientId, name, phone, emirate, address };
+      window._confirmedClient = { clientId: reg.clientId, name, phone, whatsapp, emirate, address };
       await _doConfirmOrder();
     } catch(e) {
       _resetBtn('submitBtn', 'submitTxt', 'تسجيل وإرسال الطلب');
@@ -754,6 +847,83 @@
     const er = document.getElementById(errId);
     if (el) el.classList.add('error');
     if (er) { er.textContent = msg; er.classList.add('show'); er.style.display = 'block'; }
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  WHATSAPP INTERNATIONAL VALIDATION
+  // ════════════════════════════════════════════════════════════════
+
+  function _waCountryLimits() {
+    const sel = document.getElementById('waCountry');
+    if (!sel) return { min: 7, max: 12 };
+    const opt = sel.options[sel.selectedIndex];
+    return {
+      min: parseInt(opt?.dataset.min || 7),
+      max: parseInt(opt?.dataset.max || 12),
+    };
+  }
+
+  function waCountryChanged() {
+    const numEl = document.getElementById('waNumber');
+    if (numEl) { numEl.value = ''; numEl.focus(); }
+    waNumberHandler(document.getElementById('waNumber'));
+    // Update placeholder example
+    const cc    = document.getElementById('waCountry')?.value || '';
+    const lim   = _waCountryLimits();
+    if (numEl) numEl.placeholder = '0'.repeat(lim.min);
+  }
+
+  function waNumberHandler(input) {
+    if (!input) return;
+    const clean = (input.value || '').replace(/\D/g, '').substring(0, 13);
+    if (input.value !== clean) input.value = clean;
+
+    const wrap  = document.getElementById('waWrap');
+    const hint  = document.getElementById('waHint');
+    const errEl = document.getElementById('errWa');
+    const lim   = _waCountryLimits();
+
+    // Empty — optional field, neutral state
+    if (!clean) {
+      wrap?.classList.remove('valid','invalid');
+      if (hint) hint.textContent = '';
+      if (errEl) errEl.style.display = 'none';
+      return;
+    }
+
+    const tooShort = clean.length < lim.min;
+    const tooLong  = clean.length > lim.max;
+    const valid    = !tooShort && !tooLong;
+
+    if (valid) {
+      wrap?.classList.add('valid');
+      wrap?.classList.remove('invalid');
+      if (hint) { hint.textContent = '✅ رقم صحيح'; hint.style.color = '#28a745'; }
+      if (errEl) errEl.style.display = 'none';
+    } else if (tooLong) {
+      wrap?.classList.add('invalid');
+      wrap?.classList.remove('valid');
+      if (errEl) { errEl.style.display = 'block'; errEl.textContent = 'الرقم طويل جداً — الحد الأقصى ' + lim.max + ' أرقام'; }
+      if (hint) hint.textContent = '';
+    } else {
+      // Still typing
+      wrap?.classList.remove('valid','invalid');
+      if (errEl) errEl.style.display = 'none';
+      if (hint) {
+        hint.textContent = clean.length + ' / ' + lim.min + ' رقم';
+        hint.style.color = 'rgba(255,255,255,.35)';
+      }
+    }
+  }
+
+  // Returns full E.164 number (+971501234567) or null if empty/invalid
+  function getFullWaNumber() {
+    const cc     = document.getElementById('waCountry')?.value || '+971';
+    const numVal = (document.getElementById('waNumber')?.value || '').replace(/\D/g,'');
+    if (!numVal) return null;      // empty = optional, caller uses phone instead
+    const lim = _waCountryLimits();
+    if (numVal.length < lim.min || numVal.length > lim.max) return 'INVALID';
+    return cc + numVal;
   }
 
   // Real-time handler for the registration phone field
