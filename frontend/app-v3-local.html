@@ -1544,7 +1544,12 @@
       <!-- ══ STEP 1: Phone (always visible) ══ -->
       <div class="cust-field">
         <label class="cust-label">رقم الهاتف <span class="req">*</span></label>
-        <input type="tel" id="custPhone" class="cust-input" placeholder="05XXXXXXXX" oninput="onPhoneInput()" />
+        <input type="tel" id="custPhone" class="cust-input" placeholder="05XXXXXXXX"
+          inputmode="numeric" maxlength="10"
+          oninput="onPhoneInput()"
+          onkeydown="custBlockNonDigits(event)"
+          onpaste="custHandlePaste(event)" />
+        <div id="custPhoneHint" style="font-size:.78rem;margin-top:.3rem;min-height:1rem;color:rgba(255,255,255,.35)"></div>
         <div id="custLookupStatus" class="cust-lookup-status"></div>
       </div>
 
@@ -1633,7 +1638,12 @@
           </div>
           <div id="custWhatsappField" style="display:none">
             <input type="tel" id="custWhatsapp" class="cust-input" placeholder="05XXXXXXXX"
-              style="margin-top:.5rem" oninput="onWhatsappInput()" />
+              style="margin-top:.5rem"
+              inputmode="numeric" maxlength="10"
+              oninput="onWhatsappInput()"
+              onkeydown="custBlockNonDigits(event)"
+              onpaste="custHandlePaste(event)" />
+            <div id="custWaHint" style="font-size:.78rem;margin-top:.3rem;min-height:1rem;color:rgba(255,255,255,.35)"></div>
           </div>
         </div>
       </div>
@@ -2591,27 +2601,101 @@
 
   // ── WhatsApp input filled → reveal rest of form ─────────
   function onWhatsappInput() {
-    const val = document.getElementById('custWhatsapp').value.trim();
-    if (val.length >= 9 && document.getElementById('stepDetails').style.display === 'none') {
-      _showStep('stepDetails', true);
-      setTimeout(() => { initLeafletMap(_UAE_CENTER[0], _UAE_CENTER[1], false); requestGPS(); }, 120);
+    const inputEl = document.getElementById('custWhatsapp');
+    const clean   = (inputEl.value || '').replace(/\D/g, '').substring(0, 10);
+    if (inputEl.value !== clean) inputEl.value = clean;
+
+    const hintEl = document.getElementById('custWaHint');
+
+    if (_isCustPhoneValid(clean)) {
+      // ✅ Valid WhatsApp number — show details form
+      inputEl.style.borderColor = '#28a745';
+      inputEl.style.boxShadow   = '0 0 0 3px rgba(40,167,69,.12)';
+      if (hintEl) { hintEl.textContent = '✅ رقم صحيح'; hintEl.style.color = '#28a745'; }
+      if (document.getElementById('stepDetails').style.display === 'none') {
+        _showStep('stepDetails', true);
+        setTimeout(() => { initLeafletMap(_UAE_CENTER[0], _UAE_CENTER[1], false); requestGPS(); }, 120);
+      }
+    } else {
+      inputEl.style.borderColor = '';
+      inputEl.style.boxShadow   = '';
+      if (hintEl) {
+        if (!clean.startsWith('05') && clean.length >= 2) {
+          hintEl.textContent = '⚠️ يجب أن يبدأ بـ 05'; hintEl.style.color = '#f59e0b';
+        } else if (clean.length === 10) {
+          hintEl.textContent = '❌ رقم غير صحيح'; hintEl.style.color = '#ff6b6b';
+        } else {
+          hintEl.textContent = clean.length + ' / 10 رقم'; hintEl.style.color = 'rgba(255,255,255,.35)';
+        }
+      }
+      // Hide details form if WhatsApp invalid
+      _showStep('stepDetails', false);
     }
   }
 
   // ── Phone input: reset everything then lookup ──────────
   let _lookupTimer2 = null;
-  function onPhoneInput() {
-    const phone    = document.getElementById('custPhone').value.trim();
-    const statusEl = document.getElementById('custLookupStatus');
+  // ── Helpers: block non-digits + paste strip ──────────────────
+  function custBlockNonDigits(e) {
+    const allow = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter','Home','End'];
+    if (!allow.includes(e.key) && !/^\d$/.test(e.key)) e.preventDefault();
+  }
+  function custHandlePaste(e) {
+    e.preventDefault();
+    const digits = (e.clipboardData || window.clipboardData).getData('text')
+                   .replace(/\D/g, '').substring(0, 10);
+    e.target.value = digits;
+    onPhoneInput();
+  }
+  function _isCustPhoneValid(v) { return /^05\d{8}$/.test(v); }
 
-    // Always reset form on any phone edit
+  function onPhoneInput() {
+    const rawEl  = document.getElementById('custPhone');
+    // Strip any non-digit that slipped through
+    const clean  = (rawEl.value || '').replace(/\D/g, '').substring(0, 10);
+    if (rawEl.value !== clean) rawEl.value = clean;
+
+    const phone    = clean;
+    const statusEl = document.getElementById('custLookupStatus');
+    const hintEl   = document.getElementById('custPhoneHint');
+
+    // Always reset sub-steps on phone edit
     _resetForm();
     statusEl.className   = 'cust-lookup-status';
     statusEl.textContent = '';
     clearTimeout(_lookupTimer2);
-    if (phone.length < 9) return;
-    statusEl.textContent = 'جاري البحث...';
-    _lookupTimer2 = setTimeout(() => lookupCustomer(phone), 700);
+
+    // ── Live hint ──────────────────────────────────────────────
+    if (!phone) {
+      rawEl.style.borderColor = '';
+      if (hintEl) hintEl.textContent = '';
+      return;
+    }
+    if (_isCustPhoneValid(phone)) {
+      // ✅ Valid — start lookup after short delay
+      rawEl.style.borderColor = '#28a745';
+      rawEl.style.boxShadow   = '0 0 0 3px rgba(40,167,69,.12)';
+      if (hintEl) { hintEl.textContent = '✅ رقم صحيح'; hintEl.style.color = '#28a745'; }
+      statusEl.textContent = 'جاري البحث...';
+      _lookupTimer2 = setTimeout(() => lookupCustomer(phone), 700);
+    } else {
+      // ❌ Still typing or wrong format
+      rawEl.style.borderColor = '';
+      rawEl.style.boxShadow   = '';
+      if (hintEl) {
+        if (!phone.startsWith('05') && phone.length >= 2) {
+          hintEl.textContent = '⚠️ يجب أن يبدأ الرقم بـ 05';
+          hintEl.style.color = '#f59e0b';
+        } else if (phone.length === 10) {
+          hintEl.textContent = '❌ رقم غير صحيح — يجب أن يبدأ بـ 05';
+          hintEl.style.color = '#ff6b6b';
+        } else {
+          hintEl.textContent = phone.length + ' / 10 رقم';
+          hintEl.style.color = 'rgba(255,255,255,.35)';
+        }
+      }
+      // ← NO lookup, NO form steps shown
+    }
   }
 
   async function lookupCustomer(phone) {
