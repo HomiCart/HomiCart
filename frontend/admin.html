@@ -465,54 +465,7 @@ async function renderStorePage(storeKey) {
 
       <!-- Batch Control -->
       
-      <!-- ══ Processing Pipeline Card ══ -->
-      <div style="margin-top:1.8rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:1.5rem 1.6rem;border-top:3px solid #f59e0b">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:.5rem">
-          <span style="font-family:'Alexandria',sans-serif;font-size:1rem;font-weight:800;color:#fff">🚀 معالجة الأوردرات دفعة واحدة</span>
-          <span id="proc-badge-${storeKey}" style="background:rgba(245,158,11,.15);color:#f59e0b;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px">—</span>
-        </div>
-        <p style="font-size:12px;color:rgba(255,255,255,.35);margin-bottom:1rem;line-height:1.7">
-          يملّي الـ Workspace ← يرتّب المسار ← يفرز ← يولّد روابط Maps ← يحوّل الحالة لـ <strong style="color:#f59e0b">جاري التحضير</strong>
-        </p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:.9rem">
-          <div style="flex:1;min-width:140px">
-            <label style="font-size:11px;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Latitude</label>
-            <input type="number" id="proc-lat-${storeKey}" step="any" value="24.488321" placeholder="24.488321"
-              style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none">
-          </div>
-          <div style="flex:1;min-width:140px">
-            <label style="font-size:11px;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Longitude</label>
-            <input type="number" id="proc-lng-${storeKey}" step="any" value="54.36706" placeholder="54.36706"
-              style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none">
-          </div>
-          <button onclick="procGetLocation('${storeKey}')"
-            style="padding:8px 13px;background:#17a2b8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap">
-            📱 موقعي
-          </button>
-        </div>
-        <button id="proc-btn-${storeKey}" onclick="runProcessPipeline('${storeKey}')"
-          style="width:100%;padding:13px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:800;font-family:'Cairo',sans-serif">
-          🚀 معالجة كل الأوردرات المؤكدة
-        </button>
-        <div id="proc-prog-${storeKey}" style="display:none;margin-top:10px;background:rgba(255,255,255,.08);border-radius:50px;height:7px;overflow:hidden">
-          <div id="proc-fill-${storeKey}" style="height:100%;width:0%;background:linear-gradient(90deg,#18bfef,#f59e0b);border-radius:50px;transition:width .6s ease"></div>
-        </div>
-        <div id="proc-status-${storeKey}" style="margin-top:7px;font-size:12px;color:rgba(255,255,255,.4);min-height:16px;text-align:center"></div>
-        <div id="proc-results-${storeKey}" style="display:none;margin-top:14px">
-          <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-            <button onclick="procCopyWhatsapp('${storeKey}')"
-              style="flex:1;padding:10px;background:#25d366;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">
-              📋 نسخ للواتساب
-            </button>
-            <button onclick="procPrint('${storeKey}')"
-              style="flex:1;padding:10px;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">
-              📄 طباعة / PDF
-            </button>
-          </div>
-          <div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:6px">📌 روابط المسار</div>
-          <div id="proc-links-${storeKey}"></div>
-        </div>
-      </div>
+      
 
       <div class="section-head" style="margin-bottom:.8rem;margin-top:1.5rem">
         <div class="section-title"><i class="fas fa-layer-group"></i> الدورة الحالية (Batch)</div>
@@ -548,7 +501,73 @@ async function renderStorePage(storeKey) {
         <!-- Selected batch info -->
         <div id="batchInfoInline-${storeKey}" style="font-size:.78rem;color:rgba(255,255,255,.4);min-height:1.2rem"></div>
 
-      </div>
+      
+
+      <!-- ══ Processing Pipeline Card ══ -->
+      <div style="margin-top:1.8rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:1.5rem 1.6rem;border-top:3px solid #f59e0b">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:.5rem">
+          <span style="font-family:'Alexandria',sans-serif;font-size:1rem;font-weight:800;color:#fff">🚀 معالجة الأوردرات دفعة واحدة</span>
+          <span id="proc-badge-${storeKey}" style="background:rgba(245,158,11,.15);color:#f59e0b;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px">—</span>
+        </div>
+        <p style="font-size:12px;color:rgba(255,255,255,.35);margin-bottom:1rem;line-height:1.7">
+          يملّي الـ Workspace ← يرتّب المسار ← يفرز ← يولّد روابط Maps ← يحوّل الحالة لـ <strong style="color:#f59e0b">جاري التحضير</strong>
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:.9rem">
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:11px;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Latitude</label>
+            <input type="number" id="proc-lat-${storeKey}" step="any" value="24.488321" placeholder="24.488321"
+              style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none">
+          </div>
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:11px;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Longitude</label>
+            <input type="number" id="proc-lng-${storeKey}" step="any" value="54.36706" placeholder="54.36706"
+              style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none">
+          </div>
+          <button onclick="procGetLocation('${storeKey}')"
+            style="padding:8px 13px;background:#17a2b8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap">
+            📱 موقعي
+          </button>
+        </div>
+        <!-- Batch Selector for Pipeline -->
+        <div style="margin-bottom:.9rem">
+          <label style="font-size:11px;color:rgba(255,255,255,.45);display:block;margin-bottom:4px">
+            <i class="fas fa-layer-group" style="color:#f59e0b;margin-left:.3rem"></i>
+            اختر الدورة (Batch) المراد معالجة أوردراتها
+          </label>
+          <select id="proc-batch-${storeKey}" onchange="onProcBatchChange('${storeKey}')"
+            style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(245,158,11,.3);border-radius:9px;padding:.65rem 1rem;color:#fff;font-size:.88rem;outline:none;cursor:pointer;margin-bottom:.5rem">
+            <option value="">⏳ جاري تحميل الدورات...</option>
+          </select>
+          <div id="proc-batch-info-${storeKey}" style="font-size:.75rem;color:rgba(255,255,255,.35);min-height:1rem"></div>
+        </div>
+        <div id="proc-warn-${storeKey}" style="display:none;background:rgba(255,150,0,.1);border:1px solid rgba(255,150,0,.35);border-radius:9px;padding:10px 14px;margin-bottom:.9rem;font-size:12px;color:#ffa500;line-height:1.7">
+          <div style="font-weight:700;margin-bottom:.4rem"><i class="fas fa-exclamation-triangle"></i> تحذير — توجد أوردرات بحالة مختلفة في هذه الدورة:</div>
+          <div id="proc-warn-list-${storeKey}"></div>
+          <div style="margin-top:.5rem;font-size:.75rem;color:rgba(255,255,255,.4)">عدّل حالتها من الجدول ثم أعد المحاولة.</div>
+        </div>
+        <button id="proc-btn-${storeKey}" onclick="runProcessPipeline('${storeKey}')" disabled
+          style="width:100%;padding:13px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:800;font-family:'Cairo',sans-serif;opacity:.5">
+          🚀 معالجة أوردرات الدورة المختارة
+        </button>
+        <div id="proc-prog-${storeKey}" style="display:none;margin-top:10px;background:rgba(255,255,255,.08);border-radius:50px;height:7px;overflow:hidden">
+          <div id="proc-fill-${storeKey}" style="height:100%;width:0%;background:linear-gradient(90deg,#18bfef,#f59e0b);border-radius:50px;transition:width .6s ease"></div>
+        </div>
+        <div id="proc-status-${storeKey}" style="margin-top:7px;font-size:12px;color:rgba(255,255,255,.4);min-height:16px;text-align:center"></div>
+        <div id="proc-results-${storeKey}" style="display:none;margin-top:14px">
+          <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+            <button onclick="procCopyWhatsapp('${storeKey}')"
+              style="flex:1;padding:10px;background:#25d366;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">
+              📋 نسخ للواتساب
+            </button>
+            <button onclick="procPrint('${storeKey}')"
+              style="flex:1;padding:10px;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">
+              📄 طباعة / PDF
+            </button>
+          </div>
+          <div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:6px">📌 روابط المسار</div>
+          <div id="proc-links-${storeKey}"></div>
+        </div>
+      </div></div>
 
       <!-- Bulk Actions -->
       <div class="bulk-bar">
@@ -576,6 +595,7 @@ async function renderStorePage(storeKey) {
   loadStoreWindow(storeKey);
   loadStoreOrders(storeKey);
   loadBatchDropdown(storeKey);
+  loadProcBatchDropdown(storeKey);
 }
 
 // ── Batch functions ──
@@ -1024,77 +1044,186 @@ function procGetLocation(storeKey) {
   }, function() { toast('تعذّر تحديد الموقع', 'error'); });
 }
 
-async function runProcessPipeline(storeKey) {
-  var store = STORES.find(function(s) { return s.key === storeKey; });
-  if (!store) return;
-  var lat = (document.getElementById('proc-lat-' + storeKey).value || '').trim();
-  var lng = (document.getElementById('proc-lng-' + storeKey).value || '').trim();
-  if (!lat || !lng) { toast('أدخل نقطة البداية أولاً', 'error'); return; }
-
-  var btn    = document.getElementById('proc-btn-'    + storeKey);
-  var prog   = document.getElementById('proc-prog-'   + storeKey);
-  var fill   = document.getElementById('proc-fill-'   + storeKey);
-  var status = document.getElementById('proc-status-' + storeKey);
-  var res    = document.getElementById('proc-results-'+ storeKey);
-
-  btn.disabled = true; prog.style.display = 'block'; res.style.display = 'none';
-
-  var steps = [
-    [12,'📋 تجميع الأوردرات المؤكدة...'],
-    [28,'🔍 جلب بيانات العملاء...'],
-    [45,'✏️ تمليء الـ Workspace...'],
-    [60,'⚡ ترتيب المسار...'],
-    [75,'🔀 فرز تلقائي...'],
-    [88,'🔗 توليد روابط Google Maps...'],
-    [95,'✅ تحديث الحالة...'],
-  ];
-  var si = 0;
-  var tick = setInterval(function() {
-    if (si < steps.length) {
-      fill.style.width = steps[si][0] + '%';
-      status.textContent = steps[si][1];
-      status.style.color = '#f59e0b';
-      si++;
-    }
-  }, 1000);
-
-  try {
-    var data = await api('processVendorFull', {
-      sheet: store.sheet, workspace: store.workspace, lat: lat, lng: lng
-    }, 120000);
-    clearInterval(tick);
-    if (!data.success) throw new Error(data.message);
-
-    fill.style.width = '100%';
-    status.textContent = '\u2705 ' + data.message + (data.noCoords ? ' \u26a0\ufe0f ' + data.noCoords + ' بدون موقع' : '');
-    status.style.color = '#28c864';
-    _procResults[storeKey] = { text: data.whatsappText || '', store: store };
-
-    var lc = document.getElementById('proc-links-' + storeKey);
-    if (data.links && data.links.length) {
-      lc.innerHTML = data.links.map(function(l) {
-        return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(255,255,255,.04);border-radius:8px;margin-bottom:6px;border-right:3px solid #18bfef">'
-          + '<div style="background:#18bfef;color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">' + l.route + '</div>'
-          + '<div style="flex:1;font-size:12px"><div style="font-weight:700;color:#fff">\u0645\u0633\u0627\u0631 ' + l.route + '</div><div style="color:rgba(255,255,255,.35)">' + l.stops + ' \u0645\u0648\u0642\u0639</div></div>'
-          + '<a href="' + l.url + '" target="_blank" style="padding:5px 12px;background:#28c864;color:#fff;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap">\ud83d\udccd \u0627\u0641\u062a\u062d</a>'
-          + '</div>';
-      }).join('');
-    } else {
-      lc.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:12px;text-align:center;padding:8px">لا توجد روابط</div>';
-    }
-    res.style.display = 'block';
-    loadStoreOrders(storeKey);
-    toast('\u2705 ' + data.message, 'success');
-  } catch(e) {
-    clearInterval(tick);
-    status.textContent = '\u274c ' + e.message;
-    status.style.color = '#ff6060';
-    toast('\u274c ' + e.message, 'error');
-  } finally {
-    btn.disabled = false;
-    setTimeout(function() { prog.style.display = 'none'; fill.style.width = '0%'; }, 2000);
+  // ── Pipeline card: batch dropdown helpers ─────────────────────
+  async function loadProcBatchDropdown(storeKey) {
+    const sel = document.getElementById('proc-batch-' + storeKey);
+    if (!sel) return;
+    try {
+      const res = await api('getPreviousBatches', { store: storeKey });
+      const batches = res.batches || [];
+      _batchData[storeKey] = batches;
+      if (!batches.length) {
+        sel.innerHTML = '<option value="">لا توجد دورات — ابدأ دورة جديدة أولاً</option>';
+        return;
+      }
+      sel.innerHTML = '<option value="">— اختر دورة —</option>' +
+        batches.map(function(b) {
+          const short  = b.batchId.split('-').slice(-1)[0];
+          const active = b.isActive ? ' ★ نشطة' : '';
+          const date   = (b.firstOrder || '').substring(0, 10);
+          return '<option value="' + b.batchId + '">'
+               + active + ' ' + short + ' — ' + date
+               + ' (' + b.total + ' طلب | ' + b.preparing + ' تحضير)'
+               + '</option>';
+        }).join('');
+      // Auto-select batch with Preparing orders, else active
+      var withPrep = batches.find(function(b){ return b.preparing > 0; });
+      var active   = batches.find(function(b){ return b.isActive; });
+      if (withPrep) sel.value = withPrep.batchId;
+      else if (active) sel.value = active.batchId;
+      onProcBatchChange(storeKey);
+    } catch(e) { sel.innerHTML = '<option value="">تعذر التحميل</option>'; }
   }
-}
+
+  function onProcBatchChange(storeKey) {
+    var sel      = document.getElementById('proc-batch-'      + storeKey);
+    var info     = document.getElementById('proc-batch-info-' + storeKey);
+    var btn      = document.getElementById('proc-btn-'        + storeKey);
+    var warnEl   = document.getElementById('proc-warn-'       + storeKey);
+    if (!sel) return;
+    var batchId = sel.value;
+    if (!batchId) {
+      if (info) info.textContent = '';
+      if (btn)  { btn.disabled = true; btn.style.opacity = '.5'; }
+      if (warnEl) warnEl.style.display = 'none';
+      return;
+    }
+    var batches = _batchData[storeKey] || [];
+    var batch   = batches.find(function(b){ return b.batchId === batchId; });
+    if (batch && info) {
+      info.textContent = 'إجمالي: ' + batch.total
+        + ' | تحضير: ' + batch.preparing
+        + ' | توصيل: ' + batch.delivered
+        + (batch.isActive ? ' | ★ نشطة' : ' | مغلقة');
+    }
+    var hasPrep = batch ? batch.preparing > 0 : true;
+    if (btn) { btn.disabled = !hasPrep; btn.style.opacity = hasPrep ? '1' : '.5'; }
+    if (warnEl) warnEl.style.display = 'none';
+  }
+
+  // ── New runProcessPipeline: batch-aware + status validation ─────
+  async function runProcessPipeline(storeKey) {
+    var store = STORES.find(function(s){ return s.key === storeKey; });
+    if (!store) return;
+
+    var batchSel = document.getElementById('proc-batch-' + storeKey);
+    var batchId  = batchSel ? batchSel.value : '';
+    if (!batchId) { toast('اختر دورة (Batch) أولاً', 'error'); return; }
+
+    var lat = (document.getElementById('proc-lat-' + storeKey).value || '').trim();
+    var lng = (document.getElementById('proc-lng-' + storeKey).value || '').trim();
+    if (!lat || !lng) { toast('أدخل نقطة البداية أولاً', 'error'); return; }
+
+    var btn      = document.getElementById('proc-btn-'     + storeKey);
+    var prog     = document.getElementById('proc-prog-'    + storeKey);
+    var fill     = document.getElementById('proc-fill-'    + storeKey);
+    var status   = document.getElementById('proc-status-'  + storeKey);
+    var resDiv   = document.getElementById('proc-results-' + storeKey);
+    var warnEl   = document.getElementById('proc-warn-'       + storeKey);
+    var warnList = document.getElementById('proc-warn-list-'  + storeKey);
+
+    // Step 1 — fetch orders & validate all are Preparing
+    btn.disabled       = true;
+    status.textContent = '🔍 جاري التحقق من أوردرات الدورة...';
+    status.style.color = '#18bfef';
+    if (warnEl) warnEl.style.display = 'none';
+
+    try {
+      var ordersRes  = await api('getStoreOrders', { sheet: store.sheet });
+      var allOrders  = ordersRes.orders || [];
+      var batchOrders = allOrders.filter(function(o){ return o.batchId === batchId; });
+
+      if (!batchOrders.length) {
+        toast('لا توجد أوردرات في هذه الدورة', 'error');
+        status.textContent = '⚠️ الدورة فارغة أو لا تحتوي أوردرات';
+        status.style.color = '#ffa500';
+        btn.disabled = false;
+        return;
+      }
+
+      // Check all are Preparing
+      var nonPrep = batchOrders.filter(function(o){ return o.status !== 'Preparing'; });
+      if (nonPrep.length > 0) {
+        if (warnList) warnList.innerHTML = nonPrep.map(function(o){
+          return '<div style="margin-bottom:.3rem">🔸 طلب <strong style="color:#fff">'
+            + (o.id || '—') + '</strong>'
+            + (o.name ? ' — ' + o.name : '')
+            + ' — الحالة: <strong style="color:#f59e0b">' + o.status + '</strong>'
+            + '</div>';
+        }).join('');
+        if (warnEl) warnEl.style.display = 'block';
+        status.textContent = '⚠️ ' + nonPrep.length + ' أوردر بحالة مختلفة — يرجى مراجعتها أولاً';
+        status.style.color = '#ffa500';
+        btn.disabled = false;
+        return;
+      }
+
+      // Step 2 — All Preparing: run pipeline
+      if (prog) prog.style.display = 'block';
+      if (resDiv) resDiv.style.display = 'none';
+
+      var steps = [
+        [12,'📋 تجميع أوردرات الدورة...'],
+        [28,'🔍 جلب بيانات العملاء...'],
+        [45,'✏️ تمليء الـ Workspace...'],
+        [60,'⚡ ترتيب المسار...'],
+        [75,'🔀 فرز تلقائي...'],
+        [88,'🔗 توليد روابط Maps...'],
+        [95,'✅ تحديث الحالة...'],
+      ];
+      var si = 0;
+      var tick = setInterval(function(){
+        if (si < steps.length){
+          if(fill) fill.style.width = steps[si][0]+'%';
+          status.textContent = steps[si][1];
+          status.style.color = '#f59e0b';
+          si++;
+        }
+      }, 1000);
+
+      var data = await api('processVendorFull', {
+        sheet    : store.sheet,
+        workspace: store.workspace,
+        lat      : lat,
+        lng      : lng,
+        batchId  : batchId
+      }, 120000);
+
+      clearInterval(tick);
+      if (!data.success) throw new Error(data.message);
+
+      if (fill) fill.style.width = '100%';
+      status.textContent = '✅ ' + data.message + (data.noCoords ? ' ⚠️ ' + data.noCoords + ' بدون موقع' : '');
+      status.style.color = '#28c864';
+
+      window._procResults = window._procResults || {};
+      window._procResults[storeKey] = { text: data.whatsappText || '', store: store };
+
+      var lc = document.getElementById('proc-links-' + storeKey);
+      if (lc) lc.innerHTML = (data.links && data.links.length)
+        ? data.links.map(function(l){
+            return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(255,255,255,.04);border-radius:8px;margin-bottom:6px;border-right:3px solid #18bfef">'
+              + '<div style="background:#18bfef;color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">' + l.route + '</div>'
+              + '<div style="flex:1;font-size:12px"><div style="font-weight:700;color:#fff">مسار ' + l.route + '</div><div style="color:rgba(255,255,255,.35)">' + l.stops + ' موقع</div></div>'
+              + '<a href="' + l.url + '" target="_blank" style="padding:5px 12px;background:#28c864;color:#fff;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none">📍 افتح</a>'
+              + '</div>';
+          }).join('')
+        : '<p style="color:rgba(255,255,255,.3);font-size:12px;text-align:center">لا توجد روابط</p>';
+
+      if (resDiv) resDiv.style.display = 'block';
+      loadStoreOrders(storeKey);
+      loadProcBatchDropdown(storeKey);
+      toast('✅ ' + data.message, 'success');
+
+    } catch(e) {
+      status.textContent = '❌ ' + e.message;
+      status.style.color = '#ff6060';
+      toast('❌ ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      setTimeout(function(){ if(prog){prog.style.display='none'; if(fill)fill.style.width='0%';} }, 2000);
+    }
+  }
 
 async function procCopyWhatsapp(storeKey) {
   var store = STORES.find(function(s) { return s.key === storeKey; });

@@ -40,7 +40,7 @@ function tryRoutingAction(e) {
   else if (action === 'getRouteLinks')        result = { success: true, links: _getRouteLinksData() };
   else if (action === 'getVendorOrders')      result = getVendorOrders(e.parameter.sheet);
   else if (action === 'routeVendorOrders')    result = routeVendorOrders(e.parameter.sheet, parseFloat(e.parameter.lat), parseFloat(e.parameter.lng));
-  else if (action === 'processVendorFull')    result = processVendorFull(e.parameter.sheet, e.parameter.workspace, parseFloat(e.parameter.lat), parseFloat(e.parameter.lng));
+  else if (action === 'processVendorFull')    result = processVendorFull(e.parameter.sheet, e.parameter.workspace, parseFloat(e.parameter.lat), parseFloat(e.parameter.lng), e.parameter.batchId || '');
   else if (action === 'getWorkspaceExport')   result = getWorkspaceExport(e.parameter.workspace);
 
   if (result === null) return null;
@@ -242,8 +242,9 @@ function routeVendorOrders(sheetName, startLat, startLng) {
 //  11. Returns WhatsApp text + Maps links
 // ════════════════════════════════════════════════════════════════════
 
-function processVendorFull(sheetName, workspaceTab, startLat, startLng) {
+function processVendorFull(sheetName, workspaceTab, startLat, startLng, batchIdParam) {
   try {
+    var batchId     = batchIdParam ? String(batchIdParam).trim() : '';
     var ss          = SpreadsheetApp.openById(SPREADSHEET_ID);
     var ordersSheet = ss.getSheetByName(sheetName);
     var dbSheet     = ss.getSheetByName('DataBase');
@@ -253,14 +254,25 @@ function processVendorFull(sheetName, workspaceTab, startLat, startLng) {
     if (!dbSheet)     return { success: false, message: 'شيت DataBase مش موجود' };
     if (!wsSheet)     return { success: false, message: 'شيت ' + workspaceTab + ' مش موجود' };
 
-    // ── 1. Get مؤكد orders ────────────────────────────────────────
+    // ── 1. Get Preparing orders (filtered by batchId if provided) ──
+    // v18.0 orders: 12 cols — BatchID is col 12 (index 11)
     var oLast = ordersSheet.getLastRow();
     if (oLast < 2) return { success: false, message: 'لا توجد طلبات' };
 
-    var allOrders = ordersSheet.getRange(2, 1, oLast - 1, 15).getValues();
+    var allOrders = ordersSheet.getRange(2, 1, oLast - 1, 12).getValues();
     var confirmed = allOrders.filter(function(r) {
- var st = String(r[6]).trim(); return r[0] && (st === 'Preparing' || st === 'جاري التحضير');
+      var st      = String(r[6]).trim();
+      var batchOk = !batchId || String(r[11]).trim() === batchId;
+      return r[0] && st === 'Preparing' && batchOk;
     });
+    if (confirmed.length === 0) {
+      return {
+        success: false,
+        message: batchId
+          ? 'لا توجد أوردرات Preparing في الدورة: ' + batchId
+          : 'لا توجد أوردرات Preparing في ' + sheetName
+      };
+    }
 
     if (confirmed.length === 0)
       return { success: false, message: 'لا توجد طلبات بحالة Preparing في ' + sheetName };
