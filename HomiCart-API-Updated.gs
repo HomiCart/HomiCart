@@ -1477,9 +1477,7 @@ function _getWorkspaceExportText(wsSheet) {
     return wsSheet.getRange(2, 12, last - 1, 1).getValues()
       .map(function(r) { return String(r[0] || '').trim(); })
       .filter(function(t) { return t; })
-      .join('
-
-');
+      .join('\n\n');
   } catch(e) { return ''; }
 }
 
