@@ -1478,15 +1478,17 @@
        RESPONSIVE
     ══════════════════════════════ */
     @media (max-width: 700px) {
-      .stores-grid { grid-template-columns: 1fr; gap: 1.5rem; }
-      .store-card  { height: 340px; }
+      .stores-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+      .store-card  { height: 300px; }
       .menu-gallery { grid-template-columns: repeat(2,1fr); gap: 1rem; }
       .container { padding: 2rem 1rem 3rem; }
-      .store-card-name { font-size: 1.3rem; }
+      .store-card-name { font-size: 1.1rem; }
     }
     @media (max-width: 400px) {
+      .stores-grid { grid-template-columns: repeat(2, 1fr); gap: .7rem; }
+      .store-card  { height: 260px; }
       .menu-gallery { grid-template-columns: 1fr; }
-      .store-card { height: 300px; }
+      .store-card-name { font-size: 1rem; }
     }
   </style>
 </head>
