@@ -51,7 +51,7 @@
       border-bottom: 1px solid rgba(24,191,239,.20);
       padding: 14px 28px;
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-start;
       align-items: center;
       box-shadow: 0 4px 24px rgba(0,0,0,.40);
     }
@@ -1474,6 +1474,56 @@
       color: rgba(255,255,255,.25) !important;
     }
 
+    /* ── Speech Bubble badge ── */
+    .speech-bubble {
+      position: relative;
+      display: inline-block;
+      padding: .75rem 2.2rem;
+      background: linear-gradient(
+        155deg,
+        rgba(24,191,239,.24) 0%,
+        rgba(13,155,203,.14) 55%,
+        rgba(6,11,18,.35) 100%
+      );
+      border: 1.8px solid rgba(24,191,239,.58);
+      border-radius: 24px;
+      color: #18bfef;
+      font-family: 'Alexandria', sans-serif;
+      font-size: .95rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+      white-space: nowrap;
+      text-shadow: 0 0 14px rgba(24,191,239,.5), 0 1px 3px rgba(0,0,0,.7);
+      box-shadow:
+        0 0 28px rgba(24,191,239,.18),
+        0 5px 18px rgba(0,0,0,.35),
+        inset 0 1px 0 rgba(24,191,239,.28);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      margin-bottom: 1.2rem;
+    }
+    .speech-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 8px solid transparent;
+      border-top-color: rgba(24,191,239,.58);
+      border-bottom: 0;
+    }
+    .speech-bubble::before {
+      content: '';
+      position: absolute;
+      bottom: -11px;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: rgba(13,100,160,.25);
+      border-bottom: 0;
+      z-index: 1;
+    }
+
     /* ══════════════════════════════
        RESPONSIVE
     ══════════════════════════════ */
@@ -1499,9 +1549,6 @@
 
 <!-- Header -->
 <header>
-  <a href="homepage.html" class="header-logo">
-    <i class="fas fa-shopping-bag"></i> HomiCart
-  </a>
   <div style="display:flex; align-items:center; gap:.7rem;">
     <button class="back-btn" id="backBtn" onclick="goBack()">
       <i class="fas fa-arrow-right"></i> رجوع
@@ -1517,10 +1564,11 @@
   <!-- ═══ STORES PAGE ═══ -->
   <div id="storePage" class="page active">
     <div class="page-header">
-      <span class="eyebrow">المتاجر المتاحة</span>
-      <h2>اختر متجرك</h2>
+      <div style="text-align:center; margin-bottom:.5rem">
+        <span class="speech-bubble">نظام الطلب الجماعي — اشتري أذكي وادفع أقل</span>
+      </div>
+      <h2>اختار من المتاجر المشتركة معنا</h2>
       <div class="teal-rule"></div>
-      <p>اختر من المحلات المشتركة معانا واطلب اللي بتحبه بسهولة</p>
     </div>
     <div class="stores-grid" id="storesContainer"></div>
   </div>
