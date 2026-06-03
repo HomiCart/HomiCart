@@ -12,22 +12,6 @@
 	<noscript><link rel="stylesheet" href="Templates/html5up-massively/assets/css/noscript.css" /></noscript>
 	<style>
 
-		/* ─── Remove white border from template ─────────────────────────── */
-		*, *::before, *::after { box-sizing: border-box; }
-		html, body {
-			margin: 0;
-			padding: 0;
-			border: 0;
-			outline: 0;
-			background-color: #1e252d;
-		}
-		#wrapper {
-			margin: 0;
-			padding: 0;
-			border: 0;
-			outline: 0;
-		}
-
 		/* ─── Global Arabic / RTL ─────────────────────────── */
 		body { direction: rtl; text-align: right; font-family: 'Cairo', sans-serif; }
 
@@ -46,77 +30,33 @@
 		}
 
 		/* ═══════════════════════════════════════════════════
-		   HERO — SINGLE PHOTO BACKGROUND
+		   HERO — SINGLE PHOTO BACKGROUND (CLEAN, NO GRADIENTS/OVERLAYS)
+		   Uses the new background image directly with a subtle dark overlay for text readability
 		═══════════════════════════════════════════════════ */
 		#intro {
 			direction: rtl;
 			position: relative;
 			overflow: hidden;
+			/* Background image from the new path */
+			background-image: url('frontend/assets/images/hero-bg.jpg');
+			background-size: cover;
+			background-position: center 30%;
+			background-repeat: no-repeat;
+			/* ensure sufficient contrast for text */
+			background-color: #0a1a2a; /* fallback color while image loads */
 		}
 
-		/* Photo container */
-		.hero-bg {
-			position: absolute;
-			inset: 0;
-			z-index: 0;
-			overflow: hidden;
-		}
-
-		/* Inner layer — full image, anchored to top, no cropping */
-		.hero-bg-inner {
-			position: absolute;
-			top: 0;
-			left: 0;
-			width: 100%;
-		}
-		.hero-bg-inner img {
-			display: block;
-			width: 100%;
-			height: auto;
-			filter:
-				brightness(0.52)
-				saturate(1.35)
-				contrast(1.12)
-				hue-rotate(4deg);
-			transform-origin: top center;
-			animation: hero-zoom 20s ease-in-out infinite alternate;
-		}
-
-		@keyframes hero-zoom {
-			0%   { transform: scale(1.0); }
-			100% { transform: scale(1.08); }
-		}
-
-		/* ── Master overlay — multi-layer depth effect ── */
+		/* Simple overlay to ensure white text is readable — subtle and clean, NO radial/linear gradients */
 		.hero-overlay {
 			position: absolute;
 			inset: 0;
 			z-index: 1;
-			background:
-				/* deep vignette centred behind the text block */
-				radial-gradient(
-					ellipse 70% 60% at 50% 62%,
-					rgba(6,11,18,.72) 0%,
-					transparent       68%
-				),
-				/* soft top-to-strong-bottom depth */
-				linear-gradient(
-					to bottom,
-					rgba(6,11,18,.25)  0%,
-					rgba(6,11,18,.18) 38%,
-					rgba(6,11,18,.52) 72%,
-					rgba(6,11,18,.82) 100%
-				),
-				/* subtle teal brand wash */
-				linear-gradient(
-					135deg,
-					rgba(24,191,239,.06) 0%,
-					rgba(24,191,239,.02) 100%
-				);
+			background: rgba(0, 0, 0, 0.55); /* single clean dark overlay, easy to read text */
+			/* no extra gradients, pure solid overlay as requested */
 		}
 
 		/* ── Hero text ── */
-		#intro > *:not(.hero-bg):not(.hero-overlay) {
+		#intro > *:not(.hero-overlay):not(.hero-bg) {
 			position: relative;
 			z-index: 5;
 		}
@@ -126,14 +66,16 @@
 			line-height: 1.55;
 			max-width: 860px;
 			font-weight: 800;
-			text-shadow: 0 2px 24px rgba(0,0,0,.60);
+			text-shadow: 0 2px 18px rgba(0,0,0,0.5);
+			color: #ffffff;
 		}
 
 		#intro > p {
 			font-size: 1.15rem;
 			line-height: 1.85;
 			max-width: 620px;
-			text-shadow: 0 1px 10px rgba(0,0,0,.45);
+			text-shadow: 0 1px 10px rgba(0,0,0,0.45);
+			color: #fefefe;
 		}
 
 		#intro .actions {
@@ -172,7 +114,7 @@
 			animation: none;
 		}
 
-@keyframes ctaGlow {
+		@keyframes ctaGlow {
 			0%,100% { box-shadow: 0 4px 20px rgba(24,191,239,.35); }
 			50%     { box-shadow: 0 4px 32px rgba(24,191,239,.65), 0 0 0 6px rgba(24,191,239,.12); }
 		}
@@ -495,23 +437,17 @@
 
 	<!-- ═══════════════════════════════════════════════
 	     HERO / INTRO
+	     Background image applied directly to #intro, simple overlay for readability
 	═══════════════════════════════════════════════ -->
 	<div id="intro">
-
-		<!-- Full-width photo background -->
-		<div class="hero-bg" aria-hidden="true">
-			<div class="hero-bg-inner"><img src="frontend/assets/images/hero-bg.jpg" alt=""></div>
-		</div>
-
-		<!-- Multi-layer cinematic overlay -->
-		<div class="hero-overlay" aria-hidden="true"></div>
+		<!-- clean semi-transparent overlay to maintain text contrast without extra gradients / multiple layers -->
+		<div class="hero-overlay"></div>
 
 		<!-- ── Text content ── -->
 		<h1>اطلب كل اللي بتحبه من أي محل في أي إمارة ، وهيوصلك لحد باب بيتك بسهولة وبتكلفة أقل</h1>
 
 		<p>
-			الطلب الجماعي يخلي كل حاجة أوفر وأسهل.<br />
-			نظام بسيط يخليك تشتري اللي محتاجه بخصومات أعلى وتوصيل أقل
+			الطلب الجماعي يخلي كل حاجة اوفر واسهل ويخليك تشتري احتياجاتك بخصومات اعلى وتدفع توصيل اقل
 		</p>
 
 		<ul class="actions">
@@ -677,7 +613,7 @@
 
 <script>
 	/* ── Accordion ── */
-	var explanationOpen = false;
+	var explanationOpen = true; // start open since panel is visible by default, but safe toggle
 
 	function toggleExplanation() {
 		var panel = document.getElementById('explanationPanel');
