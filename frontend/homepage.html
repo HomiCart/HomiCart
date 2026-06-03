@@ -149,6 +149,80 @@
 			display: block;
 			overflow: visible;
 		}
+		/* ══ Floating sticky CTA button ══ */
+		.floating-cta {
+			position: fixed;
+			bottom: 2rem;
+			left: 50%;
+			transform: translateX(-50%) translateY(0);
+			z-index: 9998;
+
+			/* Design */
+			display: inline-flex;
+			align-items: center;
+			gap: .55rem;
+			background: linear-gradient(135deg, #18bfef 0%, #0d9bcb 100%);
+			color: #fff !important;
+			font-family: 'Alexandria', sans-serif !important;
+			font-size: 1.1rem;
+			font-weight: 800;
+			padding: .9rem 2.6rem;
+			border-radius: 50px;
+			text-decoration: none;
+			letter-spacing: .02em;
+
+			/* Glow + shadow */
+			box-shadow:
+				0 8px 32px rgba(24,191,239,.50),
+				0 4px 16px rgba(0,0,0,.35),
+				0 0 0 0 rgba(24,191,239,.25);
+
+			/* Show/hide transition */
+			opacity: 1;
+			transition: opacity .4s ease, transform .4s ease, box-shadow .3s ease;
+
+			/* Pulse animation */
+			animation: floatPulse 3s ease-in-out infinite;
+		}
+		.floating-cta.cta-hidden {
+			opacity: 0;
+			pointer-events: none;
+			transform: translateX(-50%) translateY(20px);
+			animation: none;
+		}
+		.floating-cta:hover {
+			transform: translateX(-50%) translateY(-4px) scale(1.04);
+			box-shadow:
+				0 14px 44px rgba(24,191,239,.65),
+				0 6px 20px rgba(0,0,0,.4);
+			animation: none;
+		}
+		.floating-cta i { font-size: 1rem; }
+
+		@keyframes floatPulse {
+			0%,100% {
+				box-shadow:
+					0 8px 32px rgba(24,191,239,.50),
+					0 4px 16px rgba(0,0,0,.35),
+					0 0 0 0px rgba(24,191,239,.20);
+			}
+			50% {
+				box-shadow:
+					0 8px 40px rgba(24,191,239,.70),
+					0 4px 16px rgba(0,0,0,.35),
+					0 0 0 10px rgba(24,191,239,.08);
+			}
+		}
+
+		/* Mobile: slightly smaller */
+		@media (max-width: 480px) {
+			.floating-cta {
+				font-size: .97rem;
+				padding: .82rem 2rem;
+				bottom: 1.4rem;
+			}
+		}
+
 		/* ── Speech Bubble badge ── */
 		.speech-bubble {
 			position: relative;
@@ -722,6 +796,12 @@
 
 </div><!-- #wrapper -->
 
+<!-- ══ Floating sticky CTA ══ -->
+<a href="../frontend/app-v3-local.html" id="floatingCta" class="floating-cta">
+	<i class="fas fa-shopping-cart"></i>
+	<span>اطلب الآن</span>
+</a>
+
 <!-- Scripts -->
 <script src="../Templates/html5up-massively/assets/js/jquery.min.js"></script>
 <script src="../Templates/html5up-massively/assets/js/jquery.scrollex.min.js"></script>
@@ -755,6 +835,28 @@
 			if (!explanationOpen) toggleExplanation();
 		}, 700);
 	}
+
+	/* ── Floating CTA: hide while hero is in view, show on scroll ── */
+	(function floatingCtaBehavior() {
+		var cta  = document.getElementById('floatingCta');
+		var hero = document.getElementById('intro');
+		if (!cta || !hero) return;
+
+		function update() {
+			// Hide button while hero bottom is still visible on screen
+			var heroBottom = hero.getBoundingClientRect().bottom;
+			if (heroBottom > 80) {
+				cta.classList.add('cta-hidden');
+			} else {
+				cta.classList.remove('cta-hidden');
+			}
+		}
+
+		// Start hidden
+		cta.classList.add('cta-hidden');
+		window.addEventListener('scroll', update, { passive: true });
+		update();
+	})();
 
 	/* ── Force mobile styles via JS — bypasses Safari CSS cache completely ──
 	   Inline styles override everything, even cached stylesheets.          */
