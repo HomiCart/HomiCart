@@ -759,6 +759,22 @@
 		}, 700);
 	}
 
+	/* ── Force mobile styles via JS — bypasses Safari CSS cache completely ──
+	   Inline styles override everything, even cached stylesheets.          */
+	(function forceMobileStyles() {
+		if (window.innerWidth > 736) return; // desktop/large tablet — skip
+		var btns = document.querySelectorAll('#intro .hero-btn-primary');
+		btns.forEach(function(btn) {
+			btn.style.setProperty('font-size', '1.35rem', 'important');
+			btn.style.setProperty('width',     '65%',    'important');
+			btn.style.setProperty('padding',   '1rem 1.8rem', 'important');
+		});
+		var h1 = document.querySelector('#intro h1');
+		if (h1) h1.style.setProperty('font-size', '2rem', 'important');
+		var p = document.querySelector('#intro > p');
+		if (p)  p.style.setProperty('font-size', '1.25rem', 'important');
+	})();
+
 	/* ── Fix hero height on all devices (especially iPhone Safari) ──
 	   Sets EXACT pixel height = visible screen so the next section
 	   is completely hidden on first load, regardless of browser chrome. */
