@@ -43,9 +43,11 @@
 			background-repeat: no-repeat;
 			background-color: #0a1a2a;
 
-			/* ── Full viewport height on ALL devices ── */
-			min-height: 100vh;           /* fallback */
-			min-height: 100dvh;          /* dynamic: hides/shows browser chrome on mobile */
+			/* ── Full viewport height — all devices including iPhone Safari ── */
+			min-height: 100vh;                    /* base fallback */
+			min-height: -webkit-fill-available;   /* older iOS Safari */
+			min-height: 100svh;                   /* small viewport = safe area */
+			min-height: 100dvh;                   /* dynamic viewport (latest) */
 
 			/* Centre content vertically */
 			display: flex !important;
@@ -698,6 +700,22 @@
 			if (!explanationOpen) toggleExplanation();
 		}, 700);
 	}
+
+	/* ── Fix iPhone Safari viewport height ──────────────────────────
+	   iOS Safari's 100vh includes the URL bar area causing content
+	   below the fold to be visible. This sets the actual visible height.  */
+	(function fixHeroHeight() {
+		var hero = document.getElementById('intro');
+		if (!hero) return;
+		function setH() {
+			hero.style.minHeight = window.innerHeight + 'px';
+		}
+		setH();
+		window.addEventListener('resize',       setH, { passive: true });
+		window.addEventListener('orientationchange', function() {
+			setTimeout(setH, 300); // wait for orientation to settle
+		}, { passive: true });
+	})();
 
 </script>
 
