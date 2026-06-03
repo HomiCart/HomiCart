@@ -1854,13 +1854,15 @@
 </div>
 
 <script>
+  const RAW = 'https://raw.githubusercontent.com/HomiCart/HomiCart/main/';
+
   const stores = [
     {
       id: 'alkrkn',
       name: 'الركن المصري',
       icon: '🥩',
       folder: 'Al Rokn AL masry',
-      photo: '../Photos/Meat/Screenshot%202026-05-26%20164420.png',
+      bgImage: RAW + 'frontend/assets/Menu/Al%20Rokn%20AL%20masry/WhatsApp%20Image%202026-05-15%20at%2011.35.26%20AM.jpeg',
       tag: 'لحوم طازجة'
     },
     {
@@ -1868,7 +1870,7 @@
       name: 'الفيومي',
       icon: '🍗',
       folder: 'Al Fayoumy',
-      photo: '../Photos/Chiken/pexels-alleksana-6107729.jpg',
+      bgImage: RAW + 'frontend/assets/Menu/Al%20Fayoumy/WhatsApp%20Image%202026-04-17%20at%203.25.36%20PM%20(1).jpeg',
       tag: 'دواجن طازجة'
     }
   ];
@@ -2049,7 +2051,7 @@
     // Step 1 — Draw cards immediately (no waiting) so the UI is instant
     const realHtml = stores.map(s => `
       <div class="store-card" id="card-${s.id}" onclick="showCustomerPage('${s.folder}', '${s.name}', '${s.tag}')">
-        <div class="store-card-bg" id="card-bg-${s.id}"></div>
+        <div class="store-card-bg" id="card-bg-${s.id}" ${s.bgImage ? `style="background-image:url('${s.bgImage}')"` : ''}></div>
         <div class="store-card-overlay"></div>
         <div class="store-badge"><i class="fas fa-tag"></i>${s.tag}</div>
         <div class="store-card-content">
@@ -2087,18 +2089,6 @@
       });
     });
 
-    // Step 2 — Load card background images from GitHub in the background (non-blocking)
-    stores.forEach(async s => {
-      try {
-        const cfg = MENU_CONFIG[s.folder];
-        const ghFolder = cfg?.githubFolder || '';
-        if (!ghFolder) return;
-        const imgs = await fetchImages(ghFolder);
-        if (!imgs.length) return;
-        const bgEl = document.getElementById('card-bg-' + s.id);
-        if (bgEl) bgEl.style.backgroundImage = `url('${imgs[0].url}')`;
-      } catch(e) { /* keep card visible without background image */ }
-    });
   }
 
   /* ── Select store → fetch menu + discount images → show two cards ── */
