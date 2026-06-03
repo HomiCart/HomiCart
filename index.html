@@ -3,6 +3,10 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+	<!-- Prevent Safari iOS from caching stale CSS -->
+	<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+	<meta http-equiv="Pragma" content="no-cache" />
+	<meta http-equiv="Expires" content="0" />
 	<title>HomiCart - نظام الطلب الجماعي الموحد</title>
 	<link rel="stylesheet" href="Templates/html5up-massively/assets/css/fontawesome-all.min.css" />
 	<link rel="stylesheet" href="Templates/html5up-massively/assets/css/main.css" />
@@ -13,6 +17,8 @@
 	<style>
 
 		/* ─── Global Arabic / RTL ─────────────────────────── */
+		/* Prevent iOS Safari from auto-adjusting font sizes */
+		html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 		body { direction: rtl; text-align: right; font-family: 'Cairo', sans-serif; }
 
 		/* Main / display font — headings, logo, badges, buttons */
