@@ -118,47 +118,48 @@
 		#intro .hero-btn-primary { font-size: 1.08rem; }
 
 		/* ── Cloud badge above hero title ── */
-		.hero-cloud-badge {
-			display: inline-block;
+		.hero-cloud-wrap {
 			position: relative;
-			background: rgba(24,191,239,.10);
-			border: 1.5px solid rgba(24,191,239,.40);
-			border-radius: 40px 40px 40px 40px;
-			padding: .6rem 1.8rem;
-			margin-bottom: 1.4rem;
-			font-family: 'Alexandria', sans-serif;
-			font-size: 1rem;
-			font-weight: 700;
-			color: #18bfef;
-			letter-spacing: .03em;
-			box-shadow:
-				0 0 18px rgba(24,191,239,.18),
-				inset 0 0 12px rgba(24,191,239,.06);
-			backdrop-filter: blur(6px);
-			-webkit-backdrop-filter: blur(6px);
-			/* cloud bumps via box-shadow */
-			text-shadow: 0 0 12px rgba(24,191,239,.35);
+			display: inline-block;
+			margin-bottom: 2.2rem;
+			max-width: min(400px, 94vw);
 		}
-		/* little cloud bubbles */
-		.hero-cloud-badge::before,
-		.hero-cloud-badge::after {
-			content: '';
+		.cloud-svg {
+			width: 100%;
+			height: auto;
+			display: block;
+			overflow: visible;
+		}
+		.cloud-text-inner {
 			position: absolute;
-			background: rgba(24,191,239,.10);
-			border: 1.5px solid rgba(24,191,239,.35);
+			top: 52%; left: 50%;
+			transform: translate(-50%, -50%);
+			color: #18bfef;
+			font-family: 'Alexandria', sans-serif;
+			font-size: clamp(.72rem, 2.2vw, .98rem);
+			font-weight: 800;
+			white-space: nowrap;
+			letter-spacing: .02em;
+			text-shadow: 0 0 14px rgba(24,191,239,.5), 0 2px 4px rgba(0,0,0,.6);
+			pointer-events: none;
+		}
+		/* thought-bubble circles below the cloud */
+		.cloud-dots {
+			display: flex;
+			justify-content: center;
+			align-items: flex-end;
+			gap: 5px;
+			margin-top: -4px;
+		}
+		.cloud-dots span {
 			border-radius: 50%;
-			bottom: -10px;
+			background: rgba(24,191,239,.12);
+			border: 1.5px solid rgba(24,191,239,.45);
+			box-shadow: 0 0 8px rgba(24,191,239,.25);
+			display: block;
 		}
-		.hero-cloud-badge::before {
-			width: 22px; height: 22px;
-			right: 22%;
-			bottom: -11px;
-		}
-		.hero-cloud-badge::after {
-			width: 14px; height: 14px;
-			right: 14%;
-			bottom: -18px;
-		}
+		.cloud-dots span:nth-child(1) { width:13px; height:13px; }
+		.cloud-dots span:nth-child(2) { width: 9px; height: 9px; margin-bottom: -3px; }
 
 		@keyframes ctaGlow {
 			0%,100% { box-shadow: 0 4px 20px rgba(24,191,239,.35); }
@@ -490,8 +491,69 @@
 		<div class="hero-overlay"></div>
 
 		<!-- ── Text content ── -->
-		<div style="text-align:center;margin-bottom:.2rem">
-			<span class="hero-cloud-badge">☁ نظام الطلب الجماعي — اشتري أذكي وادفع أقل</span>
+		<div style="text-align:center">
+		  <div class="hero-cloud-wrap">
+			<!-- Real cloud shape via SVG path + 3D gradient + glow -->
+			<svg class="cloud-svg" viewBox="0 0 300 130" xmlns="http://www.w3.org/2000/svg">
+			  <defs>
+				<!-- 3D radial gradient: bright top-left, deep bottom-right -->
+				<radialGradient id="cg3d" cx="35%" cy="28%" r="68%">
+				  <stop offset="0%"   stop-color="#18bfef" stop-opacity=".30"/>
+				  <stop offset="55%"  stop-color="#0d9bcb" stop-opacity=".14"/>
+				  <stop offset="100%" stop-color="#060b12" stop-opacity=".45"/>
+				</radialGradient>
+				<!-- outer glow filter -->
+				<filter id="cglow3d" x="-25%" y="-25%" width="150%" height="150%">
+				  <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="blur"/>
+				  <feFlood flood-color="#18bfef" flood-opacity=".28" result="col"/>
+				  <feComposite in="col" in2="blur" operator="in" result="glow"/>
+				  <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+				</filter>
+			  </defs>
+
+			  <!-- shadow beneath for depth -->
+			  <path d="M 34,108 C 9,108 4,87 4,72 C 4,52 18,42 38,43
+						C 34,15 61,6 83,19 C 86,1 111,-4 130,10
+						C 134,-6 160,-9 178,7 C 182,-5 210,-1 220,17
+						C 246,13 268,33 265,60 C 263,82 251,92 237,92
+						C 233,108 217,116 198,112 C 180,126 152,128 127,124
+						C 101,130 66,125 45,113 C 37,110 34,110 34,108 Z"
+				fill="rgba(24,191,239,.10)" transform="translate(1,5)" opacity=".7"/>
+
+			  <!-- main cloud body -->
+			  <path d="M 34,108 C 9,108 4,87 4,72 C 4,52 18,42 38,43
+						C 34,15 61,6 83,19 C 86,1 111,-4 130,10
+						C 134,-6 160,-9 178,7 C 182,-5 210,-1 220,17
+						C 246,13 268,33 265,60 C 263,82 251,92 237,92
+						C 233,108 217,116 198,112 C 180,126 152,128 127,124
+						C 101,130 66,125 45,113 C 37,110 34,110 34,108 Z"
+				fill="url(#cg3d)"
+				stroke="rgba(24,191,239,.62)" stroke-width="1.8"
+				filter="url(#cglow3d)"/>
+
+			  <!-- 3D highlight streak top-left (gives volume) -->
+			  <path d="M 44,72 Q 38,52 44,36 Q 56,20 76,15"
+				fill="none" stroke="rgba(180,240,255,.22)"
+				stroke-width="11" stroke-linecap="round"/>
+
+			  <!-- inner rim light -->
+			  <path d="M 34,108 C 9,108 4,87 4,72 C 4,52 18,42 38,43
+						C 34,15 61,6 83,19 C 86,1 111,-4 130,10
+						C 134,-6 160,-9 178,7 C 182,-5 210,-1 220,17
+						C 246,13 268,33 265,60"
+				fill="none" stroke="rgba(24,191,239,.18)"
+				stroke-width="4" stroke-linecap="round"/>
+			</svg>
+
+			<!-- text floating in cloud centre -->
+			<div class="cloud-text-inner">نظام الطلب الجماعي — اشتري أذكي وادفع أقل</div>
+
+			<!-- thought-bubble circles below -->
+			<div class="cloud-dots">
+			  <span></span>
+			  <span></span>
+			</div>
+		  </div>
 		</div>
 		<h1>اطلب كل اللي بتحبه من أي إمارة ، وهيوصلك لحد باب بيتك بسهولة وبتكلفة أقل</h1>
 
