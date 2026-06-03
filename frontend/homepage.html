@@ -753,19 +753,30 @@
 		}, 700);
 	}
 
-	/* ── Fix iPhone Safari viewport height ──────────────────────────
-	   iOS Safari's 100vh includes the URL bar area causing content
-	   below the fold to be visible. This sets the actual visible height.  */
+	/* ── Fix hero height on all devices (especially iPhone Safari) ──
+	   Sets EXACT pixel height = visible screen so the next section
+	   is completely hidden on first load, regardless of browser chrome. */
 	(function fixHeroHeight() {
 		var hero = document.getElementById('intro');
 		if (!hero) return;
+
 		function setH() {
-			hero.style.minHeight = window.innerHeight + 'px';
+			var h = window.innerHeight;
+			hero.style.height        = h + 'px';
+			hero.style.minHeight     = h + 'px';
+			hero.style.maxHeight     = h + 'px';
+			hero.style.overflow      = 'hidden';
+			hero.style.boxSizing     = 'border-box';
 		}
+
+		// Run immediately (before paint)
 		setH();
-		window.addEventListener('resize',       setH, { passive: true });
+		// Re-run after full load (fonts/images may shift layout)
+		window.addEventListener('load',  setH);
+		// Re-run on resize / orientation change
+		window.addEventListener('resize', setH, { passive: true });
 		window.addEventListener('orientationchange', function() {
-			setTimeout(setH, 300); // wait for orientation to settle
+			setTimeout(setH, 350);
 		}, { passive: true });
 	})();
 
