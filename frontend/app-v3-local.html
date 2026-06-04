@@ -1474,6 +1474,38 @@
       color: rgba(255,255,255,.25) !important;
     }
 
+    /* ── Teaser card (special coming soon) ── */
+    .cs-teaser .cs-bg {
+      background:
+        radial-gradient(ellipse at 30% 40%, rgba(24,191,239,.18) 0%, transparent 65%),
+        radial-gradient(ellipse at 75% 70%, rgba(255,180,0,.12) 0%, transparent 60%),
+        linear-gradient(135deg, #0a1628 0%, #081320 50%, #0d1f10 100%);
+      animation: csBgShift 5s ease-in-out infinite alternate;
+    }
+    .cs-name-teaser {
+      color: rgba(255,255,255,.85) !important;
+      font-size: 1.15rem;
+    }
+    .cs-teaser-text {
+      font-family: 'Cairo', sans-serif;
+      font-size: .82rem;
+      font-weight: 700;
+      color: #18bfef;
+      margin-bottom: .6rem;
+      text-shadow: 0 0 10px rgba(24,191,239,.4);
+      letter-spacing: .02em;
+    }
+    .btn-cs-teaser {
+      background: rgba(24,191,239,.15) !important;
+      border-color: rgba(24,191,239,.55) !important;
+      color: #18bfef !important;
+      animation: csGlow 2.2s ease-in-out infinite alternate;
+    }
+    @keyframes csGlow {
+      from { box-shadow: 0 0 6px rgba(24,191,239,.2); }
+      to   { box-shadow: 0 0 18px rgba(24,191,239,.55); }
+    }
+
     /* ── Speech Bubble badge ── */
     .speech-bubble {
       position: relative;
@@ -1865,19 +1897,12 @@
       folder: 'Al Rokn AL masry',
       bgImage: RAW + 'frontend/assets/Menu/Al%20Rokn%20AL%20masry/WhatsApp%20Image%202026-05-15%20at%2011.35.26%20AM.jpeg',
       tag: 'لحوم طازجة'
-    },
-    {
-      id: 'alfayoumi',
-      name: 'الفيومي',
-      icon: '🍗',
-      folder: 'Al Fayoumy',
-      bgImage: RAW + 'frontend/assets/Menu/Al%20Fayoumy/WhatsApp%20Image%202026-04-17%20at%203.25.36%20PM%20(1).jpeg',
-      tag: 'دواجن طازجة'
     }
   ];
 
   // ── Placeholder cards — replace name/tag/icon when a new shop joins ──
   const comingSoonStores = [
+    { name: 'دواجن طازجة', icon: '🍗', tag: 'قريباً', teaser: 'انتظرو مفاجئتنا ! 🎉' },
     { name: 'متجر جديد', icon: '🛒', tag: 'قريباً' },
     { name: 'متجر جديد', icon: '🛍️', tag: 'قريباً' },
     { name: 'متجر جديد', icon: '🥦', tag: 'قريباً' },
@@ -2064,18 +2089,21 @@
     `).join('');
 
     const csHtml = comingSoonStores.map(s => `
-      <div class="store-card coming-soon">
+      <div class="store-card coming-soon ${s.teaser ? 'cs-teaser' : ''}">
         <div class="cs-bg"></div>
         <div class="cs-pulse"></div>
-        <i class="fas fa-clock cs-lock-icon"></i>
+        <i class="${s.teaser ? 'fas fa-gift' : 'fas fa-clock'} cs-lock-icon"></i>
         <div class="store-card-overlay" style="background:linear-gradient(to bottom,transparent 0%,rgba(6,11,18,.55) 60%,rgba(6,11,18,.92) 100%)"></div>
         <div class="store-badge"><i class="fas fa-hourglass-half"></i> قريباً</div>
         <div class="store-card-content">
           <span class="store-card-icon">${s.icon}</span>
-          <div class="store-card-name cs-name-muted">${s.name}</div>
-          <div class="store-card-meta cs-meta-muted"><i class="fas fa-map-marker-alt" style="color:rgba(24,191,239,.3)"></i> قيد الإعداد</div>
-          <button class="btn-cs">
-            <i class="fas fa-clock"></i> Coming Soon
+          <div class="store-card-name ${s.teaser ? 'cs-name-teaser' : 'cs-name-muted'}">${s.name}</div>
+          ${s.teaser
+            ? `<div class="cs-teaser-text">${s.teaser}</div>`
+            : `<div class="store-card-meta cs-meta-muted"><i class="fas fa-map-marker-alt" style="color:rgba(24,191,239,.3)"></i> قيد الإعداد</div>`
+          }
+          <button class="btn-cs ${s.teaser ? 'btn-cs-teaser' : ''}">
+            <i class="${s.teaser ? 'fas fa-bell' : 'fas fa-clock'}"></i> ${s.teaser ? 'ترقبونا !' : 'Coming Soon'}
           </button>
         </div>
       </div>
