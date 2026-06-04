@@ -499,7 +499,26 @@ function renderStoresSidebar() {
         <input type="checkbox" id="nav-vis-${s.key}" checked onchange="toggleStoreVisibility('${s.key}', this.checked)">
         <span class="nvt-slider"></span>
       </label>
+      <button onclick="event.stopPropagation();confirmDeleteStore('${s.key}','${s.name}')"
+        title="حذف المتجر"
+        style="background:none;border:none;color:rgba(255,80,80,.45);font-size:.72rem;cursor:pointer;padding:0 0 0 .3rem;line-height:1;transition:color .2s"
+        onmouseover="this.style.color='#ff5555'" onmouseout="this.style.color='rgba(255,80,80,.45)'">
+        <i class="fas fa-trash-alt"></i>
+      </button>
     </div>`).join('');
+}
+
+async function confirmDeleteStore(key, name) {
+  if (!confirm(`حذف متجر "${name}"؟\n\nسيُحذف من القائمة ولن يظهر للعملاء.\n(لن تتأثر بيانات الطلبات في Google Sheets)`)) return;
+  try {
+    const res = await api('deleteStore', { store: key }, 10000);
+    if (!res?.success) throw new Error(res?.message || 'فشل');
+    toast(`✓ تم حذف ${name}`, 'success');
+    await loadStoresList();
+    switchPage('overview');
+  } catch(e) {
+    alert('❌ خطأ في الحذف: ' + e.message);
+  }
 }
 
 function renderStorePages() {
@@ -534,22 +553,29 @@ async function submitAddStore() {
   const color     = document.getElementById('as-color').value;
 
   if (!name) { alert('اسم المتجر مطلوب'); return; }
-  if (!key)  { alert('المعرّف الإنجليزي مطلوب'); return; }
+  if (!key)  { alert('المعرّف الإنجليزي مطلوب (انجليزي بدون مسافات)'); return; }
+
+  const btn = document.getElementById('as-submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
 
   try {
     const res = await api('saveStore', {
       key, name, color, folder: folder || key, tag, icon,
       githubFolder: folder || ('frontend/assets/Menu/' + key),
       itemLabel
-    }, 12000);
-    if (!res?.success) throw new Error(res?.message || 'فشل');
-    toast(`✓ تمت إضافة ${name}`, 'success');
+    }, 15000);
+    if (!res?.success) throw new Error(res?.message || 'فشل الحفظ');
+    toast(`✓ تمت إضافة ${name} بنجاح`, 'success');
     closeAddStoreModal();
-    await loadStoresList();       // re-render sidebar + pages
-    await loadVisibility();       // re-load visibility toggles
-    switchPage('store-' + key);   // navigate to new store page
+    await loadStoresList();
+    await loadVisibility();
+    switchPage('store-' + key);
   } catch(e) {
-    toast('❌ ' + e.message, 'error');
+    alert('❌ خطأ: ' + e.message + '\n\nتأكدي من:\n• إعادة نشر Apps Script (New Deployment)\n• الاتصال بالإنترنت');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-plus"></i> إضافة المتجر';
   }
 }
 
@@ -1560,7 +1586,7 @@ function procPrint(storeKey) {
 </div>
 
 <!-- ══ ADD STORE MODAL ══ -->
-<div id="addStoreModal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center">
+<div id="addStoreModal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);align-items:center;justify-content:center">
   <div style="background:#0d1520;border:1px solid rgba(24,191,239,.3);border-radius:18px;padding:2rem;width:min(480px,92vw);max-height:85vh;overflow-y:auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem">
       <div style="font-family:'Alexandria',sans-serif;font-size:1.1rem;font-weight:800;color:#fff"><i class="fas fa-store" style="color:#18bfef;margin-left:.5rem"></i>إضافة متجر جديد</div>
@@ -1610,7 +1636,7 @@ function procPrint(storeKey) {
     </div>
 
     <div style="display:flex;gap:.7rem;margin-top:1.4rem">
-      <button onclick="submitAddStore()" style="flex:1;background:linear-gradient(135deg,#18bfef,#0d9bcb);border:none;color:#fff;font-family:'Alexandria',sans-serif;font-size:.95rem;font-weight:800;padding:.85rem;border-radius:10px;cursor:pointer">
+      <button id="as-submit-btn" onclick="submitAddStore()" style="flex:1;background:linear-gradient(135deg,#18bfef,#0d9bcb);border:none;color:#fff;font-family:'Alexandria',sans-serif;font-size:.95rem;font-weight:800;padding:.85rem;border-radius:10px;cursor:pointer">
         <i class="fas fa-plus"></i> إضافة المتجر
       </button>
       <button onclick="closeAddStoreModal()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.6);font-family:'Cairo',sans-serif;font-size:.88rem;padding:.85rem 1.2rem;border-radius:10px;cursor:pointer">إلغاء</button>

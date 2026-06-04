@@ -1649,11 +1649,12 @@ function saveStore(p) {
 }
 
 function deleteStore(p) {
-  if (!p.key) return { success: false, message: 'Missing key' };
+  var k = p.key || p.store;
+  if (!k) return { success: false, message: 'Missing key' };
   var props  = PropertiesService.getScriptProperties();
   var raw    = props.getProperty('STORES_LIST');
   var stores = raw ? JSON.parse(raw) : [];
-  stores = stores.filter(function(s){ return s.key !== p.key; });
+  stores = stores.filter(function(s){ return s.key !== k; });
   props.setProperty('STORES_LIST', JSON.stringify(stores));
   return { success: true };
 }
