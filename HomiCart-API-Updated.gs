@@ -96,6 +96,7 @@ function doGet(e) {
     else if (action === 'saveStore')       { result = saveStore(p); }
     else if (action === 'deleteStore')     { result = deleteStore(p); }
     else if (action === 'setGitHubToken')  { result = setGitHubToken(p.token); }
+    else if (action === 'hasGitHubToken')  { result = hasGitHubToken(); }
     else { result = { success: false, message: 'Unknown action: ' + action }; }
   } catch(err) {
     result = { success: false, message: 'Server error: ' + err.toString() };
@@ -1786,4 +1787,9 @@ function _deleteGitHubFolder(folderPath, token, repo, storeName) {
     });
     return 'deleted:' + deleted + (errors ? ' errors:' + errors : '');
   } catch(e) { return 'exception: ' + e.toString(); }
+}
+
+function hasGitHubToken() {
+  var t = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
+  return { success: true, hasToken: !!(t && t.length > 0) };
 }

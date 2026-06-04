@@ -609,7 +609,7 @@ async function saveGitHubToken() {
   try {
     const res = await api('setGitHubToken', { token }, 10000);
     if (!res?.success) throw new Error(res?.message || 'فشل');
-    toast('✓ تم حفظ GitHub Token', 'success');
+    toast('✓ تم حفظ GitHub Token — لن يُطلب منك مرة أخرى', 'success');
     document.getElementById('ghTokenInput').value = '';
     document.getElementById('ghTokenSection').style.display = 'none';
   } catch(e) { alert('❌ ' + e.message); }
@@ -1159,8 +1159,11 @@ setTimeout(hideOverlay, 6000);
   try {
     await loadStoresList();
     await Promise.all([ loadOverview(), loadVisibility() ]);
-    // Show GitHub token setup banner
-    document.getElementById('ghTokenSection').style.display = 'block';
+    // Show GitHub token banner only if no token saved yet
+    try {
+      const tr = await api('hasGitHubToken', {}, 8000);
+      if (!tr?.hasToken) document.getElementById('ghTokenSection').style.display = 'block';
+    } catch(e) { /* hide banner on error */ }
     document.getElementById('lastRefresh').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
   } catch(e) {
     console.warn('[Admin] init error:', e.message);
