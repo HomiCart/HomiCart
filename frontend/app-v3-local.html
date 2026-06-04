@@ -1940,16 +1940,8 @@
     };
   }
 
-  // Fetch dynamic stores list in background — re-renders if different
-  _callScript('getStoresList', {}, 8000).then(res => {
-    if (!res?.success || !Array.isArray(res.stores) || !res.stores.length) return;
-    stores = res.stores.map(_apiStoreToAppStore);
-    _syncMenuConfig(res.stores);
-    // Re-render only if we're still on the store selection page
-    if (document.getElementById('storePage')?.classList.contains('active')) {
-      renderStores();
-    }
-  }).catch(() => {});
+  // NOTE: dynamic stores are fetched after page load (in boot section below)
+  // to avoid APPS_SCRIPT_URL not being defined yet
 
   // ── Placeholder cards — replace name/tag/icon when a new shop joins ──
   const comingSoonStores = [
@@ -3634,8 +3626,16 @@
   // null = new order, string = editing existing orderId
   window._editingOrderId = null;
 
-  // Boot — load window then show stores
-  loadOrderWindow().finally(() => renderStores());
+  // Boot — fetch dynamic stores, then load window, then render
+  _callScript('getStoresList', {}, 8000)
+    .then(res => {
+      if (res?.success && Array.isArray(res.stores) && res.stores.length) {
+        stores = res.stores.map(_apiStoreToAppStore);
+        _syncMenuConfig(res.stores);
+      }
+    })
+    .catch(() => {})
+    .finally(() => loadOrderWindow().finally(() => renderStores()));
 </script>
 
 <!-- ═══ ORDER COUNTDOWN TIMER (fixed, all pages) ═══ -->

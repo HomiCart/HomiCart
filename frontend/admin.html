@@ -355,6 +355,20 @@ select option { background:#0d1a28; color:#fff; }
         </div>
       </div>
 
+      <!-- GitHub Token Setup -->
+      <div id="ghTokenSection" style="display:none;background:rgba(255,165,0,.07);border:1px solid rgba(255,165,0,.25);border-radius:14px;padding:1rem 1.4rem;margin-bottom:1.5rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
+          <div>
+            <div style="font-size:.85rem;font-weight:700;color:#ffa500"><i class="fas fa-key"></i> GitHub Token — مطلوب لإنشاء فولدرات المتاجر الجديدة</div>
+            <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:.2rem">أنشئ Personal Access Token من GitHub → Settings → Developer settings</div>
+          </div>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <input id="ghTokenInput" type="password" placeholder="ghp_xxxxxxxxxxxx" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,165,0,.3);border-radius:8px;padding:.5rem .8rem;color:#fff;font-family:monospace;font-size:.8rem;outline:none;width:200px">
+            <button onclick="saveGitHubToken()" style="background:#ffa500;border:none;color:#000;font-weight:700;font-size:.8rem;padding:.5rem .9rem;border-radius:8px;cursor:pointer">حفظ</button>
+          </div>
+        </div>
+      </div>
+
       <div class="section-head">
         <div class="section-title"><i class="fas fa-store"></i> الطلبات حسب المتجر</div>
       </div>
@@ -536,7 +550,7 @@ function openAddStoreModal() {
 }
 function closeAddStoreModal() {
   document.getElementById('addStoreModal').style.display = 'none';
-  ['as-name','as-key','as-tag','as-folder','as-itemlabel'].forEach(id => {
+  ['as-name','as-key','as-tag','as-itemlabel'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('as-icon').value = '🛒';
@@ -548,7 +562,6 @@ async function submitAddStore() {
   const key       = document.getElementById('as-key').value.trim().replace(/\s+/g,'');
   const tag       = document.getElementById('as-tag').value.trim();
   const icon      = document.getElementById('as-icon').value.trim() || '🛒';
-  const folder    = document.getElementById('as-folder').value.trim();
   const itemLabel = document.getElementById('as-itemlabel').value.trim() || 'منتج';
   const color     = document.getElementById('as-color').value;
 
@@ -557,16 +570,19 @@ async function submitAddStore() {
 
   const btn = document.getElementById('as-submit-btn');
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإنشاء...';
 
   try {
-    const res = await api('saveStore', {
-      key, name, color, folder: folder || key, tag, icon,
-      githubFolder: folder || ('frontend/assets/Menu/' + key),
-      itemLabel
-    }, 15000);
+    const res = await api('saveStore', { key, name, color, tag, icon, itemLabel }, 20000);
     if (!res?.success) throw new Error(res?.message || 'فشل الحفظ');
+
+    let msg = `✓ تمت إضافة ${name}\n`;
+    msg += res.sheetResult  === 'created'   ? '✓ شيت Google Sheets تم إنشاؤه\n' : '';
+    msg += res.githubResult === 'no_token'  ? '⚠️ GitHub Token غير مضبوط — الفولدرات لم تُنشأ\n' : '';
+    msg += (res.githubResult || '').includes('ok') ? '✓ فولدرات GitHub تم إنشاؤها\n' : '';
+
     toast(`✓ تمت إضافة ${name} بنجاح`, 'success');
+    if (res.githubResult === 'no_token') toast('⚠️ فولدرات GitHub: أضف GitHub Token من إعدادات الأدمن', 'info');
     closeAddStoreModal();
     await loadStoresList();
     await loadVisibility();
@@ -577,6 +593,18 @@ async function submitAddStore() {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-plus"></i> إضافة المتجر';
   }
+}
+
+async function saveGitHubToken() {
+  const token = document.getElementById('ghTokenInput').value.trim();
+  if (!token) { alert('أدخل الـ Token'); return; }
+  try {
+    const res = await api('setGitHubToken', { token }, 10000);
+    if (!res?.success) throw new Error(res?.message || 'فشل');
+    toast('✓ تم حفظ GitHub Token', 'success');
+    document.getElementById('ghTokenInput').value = '';
+    document.getElementById('ghTokenSection').style.display = 'none';
+  } catch(e) { alert('❌ ' + e.message); }
 }
 
 // ════════════════════════════════════════════════════════
@@ -1123,6 +1151,8 @@ setTimeout(hideOverlay, 6000);
   try {
     await loadStoresList();
     await Promise.all([ loadOverview(), loadVisibility() ]);
+    // Show GitHub token setup banner
+    document.getElementById('ghTokenSection').style.display = 'block';
     document.getElementById('lastRefresh').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
   } catch(e) {
     console.warn('[Admin] init error:', e.message);
@@ -1616,11 +1646,12 @@ function procPrint(storeKey) {
           <input id="as-icon" type="text" value="🛒" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem .8rem;color:#fff;font-size:1.3rem;outline:none;text-align:center;box-sizing:border-box">
         </div>
       </div>
-      <!-- GitHub folder -->
-      <div>
-        <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">مسار الصور على GitHub</label>
-        <input id="as-folder" type="text" placeholder="frontend/assets/Menu/MyStore" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem 1rem;color:#fff;font-family:monospace;font-size:.85rem;outline:none;box-sizing:border-box">
-        <div style="font-size:.7rem;color:rgba(255,255,255,.3);margin-top:.25rem">سيُستخدم لتحميل صور المنيو تلقائياً</div>
+      <!-- Auto info -->
+      <div style="background:rgba(24,191,239,.07);border:1px solid rgba(24,191,239,.2);border-radius:9px;padding:.7rem 1rem;font-size:.76rem;color:rgba(255,255,255,.55);line-height:1.8">
+        <i class="fas fa-magic" style="color:#18bfef"></i> <b style="color:rgba(255,255,255,.75)">يتم أوتوماتيك بعد الإضافة:</b><br>
+        • شيت جديد في Google Sheets باسم المعرّف<br>
+        • فولدر <code style="color:#18bfef">frontend/assets/Menu/{key}/</code> على GitHub<br>
+        • فولدر <code style="color:#18bfef">discounts/</code> بداخله تلقائياً
       </div>
       <!-- Item label & Color row -->
       <div style="display:flex;gap:.7rem">

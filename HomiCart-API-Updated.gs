@@ -92,9 +92,10 @@ function doGet(e) {
     else if (action === 'getStoreVisibility')  { result = getStoreVisibility(); }
     else if (action === 'setStoreVisibility')  { result = setStoreVisibility(p); }
     // ── Dynamic Stores List ───────────────────────────────
-    else if (action === 'getStoresList')  { result = getStoresList(); }
-    else if (action === 'saveStore')      { result = saveStore(p); }
-    else if (action === 'deleteStore')    { result = deleteStore(p); }
+    else if (action === 'getStoresList')   { result = getStoresList(); }
+    else if (action === 'saveStore')       { result = saveStore(p); }
+    else if (action === 'deleteStore')     { result = deleteStore(p); }
+    else if (action === 'setGitHubToken')  { result = setGitHubToken(p.token); }
     else { result = { success: false, message: 'Unknown action: ' + action }; }
   } catch(err) {
     result = { success: false, message: 'Server error: ' + err.toString() };
@@ -1631,21 +1632,79 @@ function saveStore(p) {
   var raw    = props.getProperty('STORES_LIST');
   var stores = raw ? JSON.parse(raw) : [];
   var idx    = stores.findIndex(function(s){ return s.key === p.key; });
+  var isNew  = (idx < 0);
   var store  = {
     key:          p.key,
     name:         p.name,
     color:        p.color        || '#18bfef',
-    folder:       p.folder       || p.key,
+    folder:       p.key,
     tag:          p.tag          || '',
     icon:         p.icon         || '🛒',
-    githubFolder: p.githubFolder || ('frontend/assets/Menu/' + p.key),
+    githubFolder: 'frontend/assets/Menu/' + p.key,
     itemLabel:    p.itemLabel    || 'منتج',
-    bgFile:       p.bgFile       || ''
+    bgFile:       ''
   };
   if (idx >= 0) { stores[idx] = store; }
   else          { stores.push(store); }
   props.setProperty('STORES_LIST', JSON.stringify(stores));
-  return { success: true, store: store };
+
+  var sheetResult  = 'skipped';
+  var githubResult = 'skipped';
+
+  // ── 1. Create Google Sheet tab (only for new stores) ──
+  if (isNew) {
+    try {
+      var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+      if (!ss.getSheetByName(p.key)) {
+        var ns = ss.insertSheet(p.key);
+        ns.getRange(1,1,1,12).setValues([[
+          'OrderID','CustomerID','Items','Name','Phone',
+          'OrderDate','Status','UpdatedAt','Notes','Location','Vendor','BatchID'
+        ]]);
+        ns.getRange(1,1,1,12).setFontWeight('bold').setBackground('#1a6fa8').setFontColor('#ffffff');
+        ns.setFrozenRows(1);
+        sheetResult = 'created';
+      } else {
+        sheetResult = 'exists';
+      }
+    } catch(e) { sheetResult = 'error: ' + e.toString(); }
+
+    // ── 2. Create GitHub folders via API ──
+    var ghToken = props.getProperty('GITHUB_TOKEN');
+    var ghRepo  = props.getProperty('GITHUB_REPO') || 'HomiCart/HomiCart';
+    if (ghToken) {
+      var basePath = 'frontend/assets/Menu/' + p.key;
+      var r1 = _createGitHubFile(basePath + '/.gitkeep',   ghToken, ghRepo, 'Add ' + p.key + ' menu folder');
+      var r2 = _createGitHubFile(basePath + '/discounts/.gitkeep', ghToken, ghRepo, 'Add ' + p.key + ' discounts folder');
+      githubResult = 'menu:' + r1 + ' discounts:' + r2;
+    } else {
+      githubResult = 'no_token';
+    }
+  }
+
+  return { success: true, store: store, sheetResult: sheetResult, githubResult: githubResult };
+}
+
+function _createGitHubFile(filePath, token, repo, message) {
+  try {
+    var url = 'https://api.github.com/repos/' + repo + '/contents/'
+            + filePath.split('/').map(encodeURIComponent).join('/');
+    var resp = UrlFetchApp.fetch(url, {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json',
+                 'Accept': 'application/vnd.github.v3+json' },
+      payload: JSON.stringify({ message: message, content: '' }),
+      muteHttpExceptions: true
+    });
+    var code = resp.getResponseCode();
+    return (code === 201) ? 'ok' : ('http_' + code);
+  } catch(e) { return 'err'; }
+}
+
+// Admin: store GitHub token (run once in Apps Script editor)
+function setGitHubToken(token) {
+  PropertiesService.getScriptProperties().setProperty('GITHUB_TOKEN', token);
+  return { success: true };
 }
 
 function deleteStore(p) {
