@@ -1902,7 +1902,8 @@
 <script>
   const RAW = 'https://raw.githubusercontent.com/HomiCart/HomiCart/main/';
 
-  const stores = [
+  // Fallback stores (shown instantly while API loads)
+  let stores = [
     {
       id: 'alkrkn',
       key: 'AlRoknAlMasry',
@@ -1922,6 +1923,33 @@
       tag: 'دواجن طازجة'
     }
   ];
+
+  // Convert API store object to app store format
+  function _apiStoreToAppStore(s) {
+    const folder = encodeURIComponent(s.githubFolder || ('frontend/assets/Menu/' + s.key))
+                    .replace(/%2F/g, '/');
+    const bgFile = s.bgFile ? encodeURIComponent(s.bgFile) : '';
+    return {
+      id:      s.key.toLowerCase().replace(/[^a-z0-9]/g,''),
+      key:     s.key,
+      name:    s.name,
+      icon:    s.icon || '🛒',
+      folder:  s.folder || s.key,
+      bgImage: bgFile ? RAW + folder + '/' + bgFile : '',
+      tag:     s.tag || ''
+    };
+  }
+
+  // Fetch dynamic stores list in background — re-renders if different
+  _callScript('getStoresList', {}, 8000).then(res => {
+    if (!res?.success || !Array.isArray(res.stores) || !res.stores.length) return;
+    stores = res.stores.map(_apiStoreToAppStore);
+    _syncMenuConfig(res.stores);
+    // Re-render only if we're still on the store selection page
+    if (document.getElementById('storePage')?.classList.contains('active')) {
+      renderStores();
+    }
+  }).catch(() => {});
 
   // ── Placeholder cards — replace name/tag/icon when a new shop joins ──
   const comingSoonStores = [
@@ -1957,6 +1985,7 @@
   const GITHUB_REPO   = 'HomiCart/HomiCart';
   const GITHUB_BRANCH = 'main';
 
+  // Base config — extended dynamically when API stores load
   const MENU_CONFIG = {
     'Al Rokn AL masry': {
       name            : 'الركن المصري',
@@ -1971,6 +2000,20 @@
       itemLabel       : 'دجاج',
     },
   };
+
+  // Populate MENU_CONFIG from dynamic store data
+  function _syncMenuConfig(apiStores) {
+    apiStores.forEach(s => {
+      if (!s.githubFolder) return;
+      const folderKey = s.folder || s.key;
+      MENU_CONFIG[folderKey] = {
+        name           : s.name,
+        githubFolder   : s.githubFolder,
+        githubDiscounts: s.githubFolder + '/discounts',
+        itemLabel      : s.itemLabel || 'منتج',
+      };
+    });
+  }
 
   // ═══════════════════════════════════════════════════════════════
   //  fetchImages — reads live folder contents from the server API

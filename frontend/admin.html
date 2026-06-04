@@ -300,23 +300,13 @@ select option { background:#0d1a28; color:#fff; }
         <i class="fas fa-chart-pie"></i><span>نظرة عامة</span>
       </div>
 
-      <div class="nav-section-label" style="margin-top:.5rem">المتاجر</div>
-      <div class="nav-item" onclick="switchPage('store-AlRoknAlMasry')">
-        <span class="store-dot" style="background:#ef4444"></span>
-        <span style="flex:1">الركن المصري</span>
-        <label class="nav-vis-toggle" title="إظهار / إخفاء" onclick="event.stopPropagation()">
-          <input type="checkbox" id="nav-vis-AlRoknAlMasry" checked onchange="toggleStoreVisibility('AlRoknAlMasry', this.checked)">
-          <span class="nvt-slider"></span>
-        </label>
+      <div class="nav-section-label" style="margin-top:.5rem;display:flex;align-items:center;justify-content:space-between;padding-left:.8rem">
+        <span>المتاجر</span>
+        <button onclick="openAddStoreModal()" title="إضافة متجر" style="background:rgba(24,191,239,.18);border:none;color:#18bfef;border-radius:50%;width:20px;height:20px;font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fas fa-plus"></i>
+        </button>
       </div>
-      <div class="nav-item" onclick="switchPage('store-AlFayoumi')">
-        <span class="store-dot" style="background:#f59e0b"></span>
-        <span style="flex:1">الفيومي</span>
-        <label class="nav-vis-toggle" title="إظهار / إخفاء" onclick="event.stopPropagation()">
-          <input type="checkbox" id="nav-vis-AlFayoumi" checked onchange="toggleStoreVisibility('AlFayoumi', this.checked)">
-          <span class="nvt-slider"></span>
-        </label>
-      </div>
+      <div id="storesNav"></div>
     </nav>
   </aside>
 
@@ -377,8 +367,7 @@ select option { background:#0d1a28; color:#fff; }
     </div>
 
     <!-- ══ STORE PAGES (generated dynamically) ══ -->
-    <div id="page-store-AlRoknAlMasry" class="page"></div>
-    <div id="page-store-AlFayoumi"     class="page"></div>
+    <div id="storePagesContainer"></div>
 
   </div><!-- /main -->
 </div><!-- /admin-wrap -->
@@ -389,9 +378,10 @@ select option { background:#0d1a28; color:#fff; }
 // ════════════════════════════════════════════════════════
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRW2K-GbHfawvZMpxk5ExfyYg5EIhFpUgTy-nHaMjtNR1ZiWn-9BuZpRSWACTEGLqNlA/exec';
 
-const STORES = [
-  { key:'AlRoknAlMasry', name:'الركن المصري', color:'#ef4444', folder:'Al Rokn AL masry', sheet:'AlRoknAlMasry', workspace:'Workspace'  },
-  { key:'AlFayoumi',     name:'الفيومي',      color:'#f59e0b', folder:'Al Fayoumy',       sheet:'AlFayoumi', workspace:'FWorkspace' },
+// Dynamic — populated from API on init
+let STORES = [
+  { key:'AlRoknAlMasry', name:'الركن المصري', color:'#ef4444', folder:'Al Rokn AL masry' },
+  { key:'AlFayoumi',     name:'الفيومي',      color:'#f59e0b', folder:'Al Fayoumy'       },
 ];
 
 // ════════════════════════════════════════════════════════
@@ -481,6 +471,85 @@ async function loadOverview() {
       ❌ ${e.message}<br>
       <small style="opacity:.6">اضغط "تحديث" للمحاولة مجدداً</small>
     </div>`;
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  DYNAMIC STORES LIST
+// ════════════════════════════════════════════════════════
+async function loadStoresList() {
+  try {
+    const res = await api('getStoresList', {}, 12000);
+    if (res?.success && Array.isArray(res.stores) && res.stores.length) {
+      STORES = res.stores;
+    }
+  } catch(e) { /* use default STORES fallback */ }
+  renderStoresSidebar();
+  renderStorePages();
+}
+
+function renderStoresSidebar() {
+  const nav = document.getElementById('storesNav');
+  if (!nav) return;
+  nav.innerHTML = STORES.map(s => `
+    <div class="nav-item" onclick="switchPage('store-${s.key}')">
+      <span class="store-dot" style="background:${s.color}"></span>
+      <span style="flex:1">${s.name}</span>
+      <label class="nav-vis-toggle" title="إظهار / إخفاء" onclick="event.stopPropagation()">
+        <input type="checkbox" id="nav-vis-${s.key}" checked onchange="toggleStoreVisibility('${s.key}', this.checked)">
+        <span class="nvt-slider"></span>
+      </label>
+    </div>`).join('');
+}
+
+function renderStorePages() {
+  const container = document.getElementById('storePagesContainer');
+  if (!container) return;
+  container.innerHTML = STORES.map(s =>
+    `<div id="page-store-${s.key}" class="page"></div>`
+  ).join('');
+}
+
+// ── Add Store Modal ──
+function openAddStoreModal() {
+  document.getElementById('addStoreModal').style.display = 'flex';
+  document.getElementById('as-name').focus();
+}
+function closeAddStoreModal() {
+  document.getElementById('addStoreModal').style.display = 'none';
+  ['as-name','as-key','as-tag','as-folder','as-itemlabel'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('as-icon').value = '🛒';
+  document.getElementById('as-color').value = '#18bfef';
+}
+
+async function submitAddStore() {
+  const name      = document.getElementById('as-name').value.trim();
+  const key       = document.getElementById('as-key').value.trim().replace(/\s+/g,'');
+  const tag       = document.getElementById('as-tag').value.trim();
+  const icon      = document.getElementById('as-icon').value.trim() || '🛒';
+  const folder    = document.getElementById('as-folder').value.trim();
+  const itemLabel = document.getElementById('as-itemlabel').value.trim() || 'منتج';
+  const color     = document.getElementById('as-color').value;
+
+  if (!name) { alert('اسم المتجر مطلوب'); return; }
+  if (!key)  { alert('المعرّف الإنجليزي مطلوب'); return; }
+
+  try {
+    const res = await api('saveStore', {
+      key, name, color, folder: folder || key, tag, icon,
+      githubFolder: folder || ('frontend/assets/Menu/' + key),
+      itemLabel
+    }, 12000);
+    if (!res?.success) throw new Error(res?.message || 'فشل');
+    toast(`✓ تمت إضافة ${name}`, 'success');
+    closeAddStoreModal();
+    await loadStoresList();       // re-render sidebar + pages
+    await loadVisibility();       // re-load visibility toggles
+    switchPage('store-' + key);   // navigate to new store page
+  } catch(e) {
+    toast('❌ ' + e.message, 'error');
   }
 }
 
@@ -1026,6 +1095,7 @@ setTimeout(hideOverlay, 6000);
 
 (async function init() {
   try {
+    await loadStoresList();
     await Promise.all([ loadOverview(), loadVisibility() ]);
     document.getElementById('lastRefresh').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
   } catch(e) {
@@ -1485,6 +1555,65 @@ function procPrint(storeKey) {
         style="flex:1;background:transparent;border:1.5px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);font-family:'Cairo',sans-serif;border-radius:9px;padding:.75rem;cursor:pointer;font-size:.9rem">
         إلغاء
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ADD STORE MODAL ══ -->
+<div id="addStoreModal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center">
+  <div style="background:#0d1520;border:1px solid rgba(24,191,239,.3);border-radius:18px;padding:2rem;width:min(480px,92vw);max-height:85vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem">
+      <div style="font-family:'Alexandria',sans-serif;font-size:1.1rem;font-weight:800;color:#fff"><i class="fas fa-store" style="color:#18bfef;margin-left:.5rem"></i>إضافة متجر جديد</div>
+      <button onclick="closeAddStoreModal()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:1.2rem;cursor:pointer"><i class="fas fa-times"></i></button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.9rem">
+      <!-- Name -->
+      <div>
+        <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">اسم المتجر بالعربي *</label>
+        <input id="as-name" type="text" placeholder="مثال: الركن المصري" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem 1rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.95rem;outline:none;box-sizing:border-box">
+      </div>
+      <!-- Key -->
+      <div>
+        <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">المعرّف الإنجليزي (يطابق اسم الشيت في Google Sheets) *</label>
+        <input id="as-key" type="text" placeholder="مثال: AlRoknAlMasry" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem 1rem;color:#fff;font-family:monospace;font-size:.9rem;outline:none;box-sizing:border-box">
+        <div style="font-size:.7rem;color:rgba(255,255,255,.3);margin-top:.25rem">⚠️ انجليزي بدون مسافات — لازم يطابق اسم الـ Tab في Google Sheets</div>
+      </div>
+      <!-- Tag & Icon row -->
+      <div style="display:flex;gap:.7rem">
+        <div style="flex:1">
+          <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">التصنيف</label>
+          <input id="as-tag" type="text" placeholder="مثال: لحوم طازجة" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem .8rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.88rem;outline:none;box-sizing:border-box">
+        </div>
+        <div style="width:90px">
+          <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">أيقونة</label>
+          <input id="as-icon" type="text" value="🛒" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem .8rem;color:#fff;font-size:1.3rem;outline:none;text-align:center;box-sizing:border-box">
+        </div>
+      </div>
+      <!-- GitHub folder -->
+      <div>
+        <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">مسار الصور على GitHub</label>
+        <input id="as-folder" type="text" placeholder="frontend/assets/Menu/MyStore" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem 1rem;color:#fff;font-family:monospace;font-size:.85rem;outline:none;box-sizing:border-box">
+        <div style="font-size:.7rem;color:rgba(255,255,255,.3);margin-top:.25rem">سيُستخدم لتحميل صور المنيو تلقائياً</div>
+      </div>
+      <!-- Item label & Color row -->
+      <div style="display:flex;gap:.7rem">
+        <div style="flex:1">
+          <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">نوع المنتج (للتصنيف)</label>
+          <input id="as-itemlabel" type="text" placeholder="مثال: لحم / دجاج / خضار" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem .8rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.88rem;outline:none;box-sizing:border-box">
+        </div>
+        <div style="width:90px">
+          <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">لون</label>
+          <input id="as-color" type="color" value="#18bfef" style="width:100%;height:42px;border:none;border-radius:9px;cursor:pointer;background:none;padding:0">
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:.7rem;margin-top:1.4rem">
+      <button onclick="submitAddStore()" style="flex:1;background:linear-gradient(135deg,#18bfef,#0d9bcb);border:none;color:#fff;font-family:'Alexandria',sans-serif;font-size:.95rem;font-weight:800;padding:.85rem;border-radius:10px;cursor:pointer">
+        <i class="fas fa-plus"></i> إضافة المتجر
+      </button>
+      <button onclick="closeAddStoreModal()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.6);font-family:'Cairo',sans-serif;font-size:.88rem;padding:.85rem 1.2rem;border-radius:10px;cursor:pointer">إلغاء</button>
     </div>
   </div>
 </div>

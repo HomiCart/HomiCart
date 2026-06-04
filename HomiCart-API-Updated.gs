@@ -91,6 +91,10 @@ function doGet(e) {
     // ── Store Visibility ──────────────────────────────────
     else if (action === 'getStoreVisibility')  { result = getStoreVisibility(); }
     else if (action === 'setStoreVisibility')  { result = setStoreVisibility(p); }
+    // ── Dynamic Stores List ───────────────────────────────
+    else if (action === 'getStoresList')  { result = getStoresList(); }
+    else if (action === 'saveStore')      { result = saveStore(p); }
+    else if (action === 'deleteStore')    { result = deleteStore(p); }
     else { result = { success: false, message: 'Unknown action: ' + action }; }
   } catch(err) {
     result = { success: false, message: 'Server error: ' + err.toString() };
@@ -1595,4 +1599,61 @@ function setStoreVisibility(p) {
   config[p.store] = (p.visible === 'true' || p.visible === true);
   props.setProperty('STORE_VISIBILITY', JSON.stringify(config));
   return { success: true, store: p.store, visible: config[p.store] };
+}
+
+// ============================================================
+//  Dynamic Stores List — stored in ScriptProperties
+// ============================================================
+function getStoresList() {
+  var props = PropertiesService.getScriptProperties();
+  var raw   = props.getProperty('STORES_LIST');
+  if (!raw) {
+    // Seed with existing stores on first call
+    var defaults = [
+      { key:'AlRoknAlMasry', name:'الركن المصري', color:'#ef4444',
+        folder:'Al Rokn AL masry', tag:'لحوم طازجة', icon:'🥩',
+        githubFolder:'frontend/assets/Menu/Al Rokn AL masry', itemLabel:'لحم',
+        bgFile:'WhatsApp Image 2026-05-15 at 11.35.26 AM.jpeg' },
+      { key:'AlFayoumi', name:'الفيومي', color:'#f59e0b',
+        folder:'Al Fayoumy', tag:'دواجن طازجة', icon:'🍗',
+        githubFolder:'frontend/assets/Menu/Al Fayoumy', itemLabel:'دجاج',
+        bgFile:'WhatsApp Image 2026-04-17 at 3.25.36 PM (1).jpeg' }
+    ];
+    props.setProperty('STORES_LIST', JSON.stringify(defaults));
+    return { success: true, stores: defaults };
+  }
+  return { success: true, stores: JSON.parse(raw) };
+}
+
+function saveStore(p) {
+  if (!p.key || !p.name) return { success: false, message: 'key و name مطلوبان' };
+  var props  = PropertiesService.getScriptProperties();
+  var raw    = props.getProperty('STORES_LIST');
+  var stores = raw ? JSON.parse(raw) : [];
+  var idx    = stores.findIndex(function(s){ return s.key === p.key; });
+  var store  = {
+    key:          p.key,
+    name:         p.name,
+    color:        p.color        || '#18bfef',
+    folder:       p.folder       || p.key,
+    tag:          p.tag          || '',
+    icon:         p.icon         || '🛒',
+    githubFolder: p.githubFolder || ('frontend/assets/Menu/' + p.key),
+    itemLabel:    p.itemLabel    || 'منتج',
+    bgFile:       p.bgFile       || ''
+  };
+  if (idx >= 0) { stores[idx] = store; }
+  else          { stores.push(store); }
+  props.setProperty('STORES_LIST', JSON.stringify(stores));
+  return { success: true, store: store };
+}
+
+function deleteStore(p) {
+  if (!p.key) return { success: false, message: 'Missing key' };
+  var props  = PropertiesService.getScriptProperties();
+  var raw    = props.getProperty('STORES_LIST');
+  var stores = raw ? JSON.parse(raw) : [];
+  stores = stores.filter(function(s){ return s.key !== p.key; });
+  props.setProperty('STORES_LIST', JSON.stringify(stores));
+  return { success: true };
 }
