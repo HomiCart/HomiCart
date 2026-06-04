@@ -1262,7 +1262,16 @@
     .order-countdown.urgent  { border-color: rgba(255,80,80,.7);  box-shadow: 0 6px 28px rgba(0,0,0,.5), 0 0 14px rgba(255,80,80,.25); }
     .order-countdown.warning { border-color: rgba(255,165,0,.65); box-shadow: 0 6px 28px rgba(0,0,0,.5), 0 0 14px rgba(255,165,0,.18); }
     .cd-inner {
+      display: flex; flex-direction: column; gap: .35rem;
+    }
+    .cd-top {
       display: flex; align-items: center; gap: .6rem;
+    }
+    .cd-date-row {
+      display: flex; align-items: center; justify-content: center;
+      border-top: 1px solid rgba(24,191,239,.12);
+      padding-top: .3rem;
+      direction: rtl;
     }
     .cd-left { display: flex; align-items: center; gap: .45rem; }
     .cd-icon {
@@ -1280,8 +1289,9 @@
       white-space: nowrap;
     }
     .cd-date {
-      font-family: 'Cairo', sans-serif; font-size: .62rem;
-      color: rgba(255,255,255,.4); white-space: nowrap;
+      font-family: 'Cairo', sans-serif; font-size: .65rem;
+      color: rgba(255,255,255,.55); white-space: nowrap;
+      letter-spacing: .01em;
     }
     .cd-digits { display: flex; align-items: center; gap: .28rem; }
     .cd-unit { display: flex; flex-direction: column; align-items: center; gap: .1rem; }
@@ -3452,13 +3462,12 @@
     const el = document.getElementById('orderCountdown');
     if (!el) return;
 
-    // Format end date for display
-    const dateStr = _cdEndTime.toLocaleDateString('ar-EG', {
-      day: 'numeric', month: 'long', year: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    });
+    // Format end date for display — e.g. "الأحد، ٨ يونيو | ٢:٣٠ م"
+    const dayName = _cdEndTime.toLocaleDateString('ar-EG', { weekday: 'long' });
+    const datePart = _cdEndTime.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' });
+    const timePart = _cdEndTime.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
     const dateEl = document.getElementById('cdDate');
-    if (dateEl) dateEl.textContent = dateStr;
+    if (dateEl) dateEl.textContent = `${dayName}، ${datePart} | ${timePart}`;
 
     function tick() {
       const now  = new Date();
@@ -3568,28 +3577,31 @@
 <!-- ═══ ORDER COUNTDOWN TIMER (fixed, all pages) ═══ -->
 <div id="orderCountdown" class="order-countdown hidden">
   <div class="cd-inner">
-    <div class="cd-left">
-      <i class="fas fa-clock cd-icon"></i>
-      <div class="cd-labels">
-        <span class="cd-title">وقت اغلاق تلقة الطلبات</span>
-        <span class="cd-date" id="cdDate"></span>
+    <div class="cd-top">
+      <div class="cd-left">
+        <i class="fas fa-clock cd-icon"></i>
+        <span class="cd-title">موعد الغلق</span>
+      </div>
+      <div class="cd-digits">
+        <div class="cd-unit">
+          <div class="cd-flip" id="cdHours">00</div>
+          <span class="cd-unit-label">ساعة</span>
+        </div>
+        <span class="cd-colon">:</span>
+        <div class="cd-unit">
+          <div class="cd-flip" id="cdMins">00</div>
+          <span class="cd-unit-label">دقيقة</span>
+        </div>
+        <span class="cd-colon">:</span>
+        <div class="cd-unit">
+          <div class="cd-flip" id="cdSecs">00</div>
+          <span class="cd-unit-label">ثانية</span>
+        </div>
       </div>
     </div>
-    <div class="cd-digits">
-      <div class="cd-unit">
-        <div class="cd-flip" id="cdHours">00</div>
-        <span class="cd-unit-label">ساعة</span>
-      </div>
-      <span class="cd-colon">:</span>
-      <div class="cd-unit">
-        <div class="cd-flip" id="cdMins">00</div>
-        <span class="cd-unit-label">دقيقة</span>
-      </div>
-      <span class="cd-colon">:</span>
-      <div class="cd-unit">
-        <div class="cd-flip" id="cdSecs">00</div>
-        <span class="cd-unit-label">ثانية</span>
-      </div>
+    <div class="cd-date-row">
+      <i class="fas fa-calendar-alt" style="font-size:.6rem;color:rgba(24,191,239,.5);margin-left:.3rem"></i>
+      <span class="cd-date" id="cdDate"></span>
     </div>
   </div>
 </div>
