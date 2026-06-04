@@ -523,11 +523,18 @@ function renderStoresSidebar() {
 }
 
 async function confirmDeleteStore(key, name) {
-  if (!confirm(`حذف متجر "${name}"؟\n\nسيُحذف من القائمة ولن يظهر للعملاء.\n(لن تتأثر بيانات الطلبات في Google Sheets)`)) return;
+  if (!confirm(`حذف متجر "${name}"؟\n\nسيتم:\n• حذفه من القائمة\n• حذف شيت Google Sheets\n• حذف فولدر الصور من GitHub\n\nهذا الإجراء لا يمكن التراجع عنه!`)) return;
+  const btn = document.querySelector(`[onclick*="confirmDeleteStore('${key}'"]`);
+  if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
   try {
-    const res = await api('deleteStore', { store: key }, 10000);
+    const res = await api('deleteStore', { store: key }, 30000);
     if (!res?.success) throw new Error(res?.message || 'فشل');
-    toast(`✓ تم حذف ${name}`, 'success');
+    let msg = `✓ تم حذف ${name}`;
+    if (res.sheetResult === 'deleted')  msg += ' | ✓ شيت محذوف';
+    if (res.sheetResult === 'not_found') msg += ' | شيت غير موجود';
+    if ((res.githubResult||'').startsWith('deleted')) msg += ' | ✓ فولدرات GitHub محذوفة';
+    if (res.githubResult === 'no_token') msg += ' | ⚠️ GitHub Token غير مضبوط';
+    toast(msg, 'success');
     await loadStoresList();
     switchPage('overview');
   } catch(e) {

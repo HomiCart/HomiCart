@@ -1711,10 +1711,79 @@ function setGitHubToken(token) {
 function deleteStore(p) {
   var k = p.key || p.store;
   if (!k) return { success: false, message: 'Missing key' };
+
   var props  = PropertiesService.getScriptProperties();
   var raw    = props.getProperty('STORES_LIST');
   var stores = raw ? JSON.parse(raw) : [];
+
+  // Find store info before removing
+  var storeInfo = stores.filter(function(s){ return s.key === k; })[0];
   stores = stores.filter(function(s){ return s.key !== k; });
   props.setProperty('STORES_LIST', JSON.stringify(stores));
-  return { success: true };
+
+  var sheetResult  = 'skipped';
+  var githubResult = 'skipped';
+
+  // ── 1. Delete Google Sheet tab ──
+  try {
+    var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(k);
+    if (sheet) { ss.deleteSheet(sheet); sheetResult = 'deleted'; }
+    else        { sheetResult = 'not_found'; }
+  } catch(e)  { sheetResult = 'error: ' + e.toString(); }
+
+  // ── 2. Delete GitHub folder ──
+  var ghToken = props.getProperty('GITHUB_TOKEN');
+  var ghRepo  = props.getProperty('GITHUB_REPO') || 'HomiCart/HomiCart';
+  if (ghToken) {
+    var folderPath = (storeInfo && storeInfo.githubFolder)
+                   || ('frontend/assets/Menu/' + k);
+    githubResult = _deleteGitHubFolder(folderPath, ghToken, ghRepo, k);
+  } else {
+    githubResult = 'no_token';
+  }
+
+  return { success: true, sheetResult: sheetResult, githubResult: githubResult };
+}
+
+function _deleteGitHubFolder(folderPath, token, repo, storeName) {
+  try {
+    var headers = { 'Authorization': 'Bearer ' + token,
+                    'Accept': 'application/vnd.github.v3+json' };
+
+    var branchResp = UrlFetchApp.fetch(
+      'https://api.github.com/repos/' + repo + '/branches/main',
+      { headers: headers, muteHttpExceptions: true }
+    );
+    if (branchResp.getResponseCode() !== 200) return 'branch_error';
+    var treeSha = JSON.parse(branchResp.getContentText()).commit.commit.tree.sha;
+
+    var treeResp = UrlFetchApp.fetch(
+      'https://api.github.com/repos/' + repo + '/git/trees/' + treeSha + '?recursive=1',
+      { headers: headers, muteHttpExceptions: true }
+    );
+    if (treeResp.getResponseCode() !== 200) return 'tree_error';
+    var allFiles = JSON.parse(treeResp.getContentText()).tree;
+
+    var filesToDelete = allFiles.filter(function(item) {
+      return item.type === 'blob' && item.path.indexOf(folderPath + '/') === 0;
+    });
+    if (filesToDelete.length === 0) return 'no_files';
+
+    var deleted = 0, errors = 0;
+    filesToDelete.forEach(function(file) {
+      try {
+        var fileUrl = 'https://api.github.com/repos/' + repo + '/contents/'
+                    + file.path.split('/').map(encodeURIComponent).join('/');
+        var delResp = UrlFetchApp.fetch(fileUrl, {
+          method: 'DELETE',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
+          payload: JSON.stringify({ message: 'Remove ' + storeName + ' store', sha: file.sha }),
+          muteHttpExceptions: true
+        });
+        delResp.getResponseCode() === 200 ? deleted++ : errors++;
+      } catch(e) { errors++; }
+    });
+    return 'deleted:' + deleted + (errors ? ' errors:' + errors : '');
+  } catch(e) { return 'exception: ' + e.toString(); }
 }
