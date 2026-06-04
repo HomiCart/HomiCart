@@ -1911,7 +1911,8 @@
       icon: '🥩',
       folder: 'Al Rokn AL masry',
       bgImage: RAW + 'frontend/assets/Menu/Al%20Rokn%20AL%20masry/WhatsApp%20Image%202026-05-15%20at%2011.35.26%20AM.jpeg',
-      tag: 'لحوم طازجة'
+      tag: 'لحوم طازجة',
+      city: 'عجمان، الإمارات'
     },
     {
       id: 'alfayoumi',
@@ -1920,7 +1921,8 @@
       icon: '🍗',
       folder: 'Al Fayoumy',
       bgImage: RAW + 'frontend/assets/Menu/Al%20Fayoumy/WhatsApp%20Image%202026-04-17%20at%203.25.36%20PM%20%281%29.jpeg',
-      tag: 'دواجن طازجة'
+      tag: 'دواجن طازجة',
+      city: 'عجمان، الإمارات'
     }
   ];
 
@@ -1936,7 +1938,8 @@
       icon:    s.icon || '🛒',
       folder:  s.folder || s.key,
       bgImage: bgFile ? RAW + folder + '/' + bgFile : '',
-      tag:     s.tag || ''
+      tag:     s.tag || '',
+      city:    s.city || 'الإمارات'
     };
   }
 
@@ -2140,7 +2143,7 @@
         <div class="store-card-content">
           <span class="store-card-icon">${s.icon}</span>
           <div class="store-card-name">${s.name}</div>
-          <div class="store-card-meta"><i class="fas fa-map-marker-alt"></i> عجمان، الإمارات</div>
+          <div class="store-card-meta"><i class="fas fa-map-marker-alt"></i> ${s.city || 'الإمارات'}</div>
         </div>
       </div>
     `).join('');

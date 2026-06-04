@@ -1612,11 +1612,11 @@ function getStoresList() {
     // Seed with existing stores on first call
     var defaults = [
       { key:'AlRoknAlMasry', name:'الركن المصري', color:'#ef4444',
-        folder:'Al Rokn AL masry', tag:'لحوم طازجة', icon:'🥩',
+        folder:'Al Rokn AL masry', tag:'لحوم طازجة', icon:'🥩', city:'عجمان، الإمارات',
         githubFolder:'frontend/assets/Menu/Al Rokn AL masry', itemLabel:'لحم',
         bgFile:'WhatsApp Image 2026-05-15 at 11.35.26 AM.jpeg' },
       { key:'AlFayoumi', name:'الفيومي', color:'#f59e0b',
-        folder:'Al Fayoumy', tag:'دواجن طازجة', icon:'🍗',
+        folder:'Al Fayoumy', tag:'دواجن طازجة', icon:'🍗', city:'عجمان، الإمارات',
         githubFolder:'frontend/assets/Menu/Al Fayoumy', itemLabel:'دجاج',
         bgFile:'WhatsApp Image 2026-04-17 at 3.25.36 PM (1).jpeg' }
     ];
@@ -1640,6 +1640,7 @@ function saveStore(p) {
     folder:       p.key,
     tag:          p.tag          || '',
     icon:         p.icon         || '🛒',
+    city:         p.city         || 'الإمارات',
     githubFolder: 'frontend/assets/Menu/' + p.key,
     itemLabel:    p.itemLabel    || 'منتج',
     bgFile:       ''

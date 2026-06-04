@@ -550,7 +550,7 @@ function openAddStoreModal() {
 }
 function closeAddStoreModal() {
   document.getElementById('addStoreModal').style.display = 'none';
-  ['as-name','as-key','as-tag','as-itemlabel'].forEach(id => {
+  ['as-name','as-key','as-tag','as-city','as-itemlabel'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('as-icon').value = '🛒';
@@ -562,6 +562,7 @@ async function submitAddStore() {
   const key       = document.getElementById('as-key').value.trim().replace(/\s+/g,'');
   const tag       = document.getElementById('as-tag').value.trim();
   const icon      = document.getElementById('as-icon').value.trim() || '🛒';
+  const city      = document.getElementById('as-city').value.trim() || 'الإمارات';
   const itemLabel = document.getElementById('as-itemlabel').value.trim() || 'منتج';
   const color     = document.getElementById('as-color').value;
 
@@ -573,7 +574,7 @@ async function submitAddStore() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإنشاء...';
 
   try {
-    const res = await api('saveStore', { key, name, color, tag, icon, itemLabel }, 20000);
+    const res = await api('saveStore', { key, name, color, tag, icon, city, itemLabel }, 20000);
     if (!res?.success) throw new Error(res?.message || 'فشل الحفظ');
 
     let msg = `✓ تمت إضافة ${name}\n`;
@@ -1645,6 +1646,11 @@ function procPrint(storeKey) {
           <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">أيقونة</label>
           <input id="as-icon" type="text" value="🛒" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem .8rem;color:#fff;font-size:1.3rem;outline:none;text-align:center;box-sizing:border-box">
         </div>
+      </div>
+      <!-- City -->
+      <div>
+        <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">الموقع / المدينة</label>
+        <input id="as-city" type="text" placeholder="مثال: عجمان، الإمارات" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem 1rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.9rem;outline:none;box-sizing:border-box">
       </div>
       <!-- Auto info -->
       <div style="background:rgba(24,191,239,.07);border:1px solid rgba(24,191,239,.2);border-radius:9px;padding:.7rem 1rem;font-size:.76rem;color:rgba(255,255,255,.55);line-height:1.8">
