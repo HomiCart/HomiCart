@@ -88,6 +88,9 @@ function doGet(e) {
     else if (action === 'reactivateBatch') { result = reactivateBatch(p); }
     else if (action === 'extendBatch')        { result = extendBatch(p); }
     else if (action === 'getPreviousBatches') { result = getPreviousBatches(p); }
+    // ── Store Visibility ──────────────────────────────────
+    else if (action === 'getStoreVisibility')  { result = getStoreVisibility(); }
+    else if (action === 'setStoreVisibility')  { result = setStoreVisibility(p); }
     else { result = { success: false, message: 'Unknown action: ' + action }; }
   } catch(err) {
     result = { success: false, message: 'Server error: ' + err.toString() };
@@ -1572,4 +1575,24 @@ function _getPipelineRouteLinks() {
         };
       });
   } catch(e) { return []; }
+}
+
+// ============================================================
+//  Store Visibility — uses Script Properties for cross-device sync
+// ============================================================
+function getStoreVisibility() {
+  var props = PropertiesService.getScriptProperties();
+  var raw   = props.getProperty('STORE_VISIBILITY');
+  var config = raw ? JSON.parse(raw) : {};
+  return { success: true, visibility: config };
+}
+
+function setStoreVisibility(p) {
+  if (!p.store) return { success: false, message: 'Missing store key' };
+  var props  = PropertiesService.getScriptProperties();
+  var raw    = props.getProperty('STORE_VISIBILITY');
+  var config = raw ? JSON.parse(raw) : {};
+  config[p.store] = (p.visible === 'true' || p.visible === true);
+  props.setProperty('STORE_VISIBILITY', JSON.stringify(config));
+  return { success: true, store: p.store, visible: config[p.store] };
 }

@@ -216,6 +216,37 @@ select option { background:#0d1a28; color:#fff; }
 .empty-state { text-align:center; padding:3rem 1rem; color:rgba(255,255,255,.3); }
 .empty-state i { font-size:2.5rem; margin-bottom:.8rem; display:block; }
 
+/* ── Store Visibility Toggle ── */
+.vis-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:.6rem .2rem; border-bottom:1px solid rgba(255,255,255,.06);
+}
+.vis-row:last-child { border-bottom:none; }
+.vis-store-info { display:flex; align-items:center; gap:.7rem; }
+.vis-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.vis-name { font-family:'Alexandria',sans-serif; font-size:.92rem; font-weight:700; color:#fff; }
+.vis-status { font-family:'Cairo',sans-serif; font-size:.72rem; margin-top:.15rem; }
+.vis-status.on  { color:#34d399; }
+.vis-status.off { color:rgba(255,255,255,.35); }
+/* Toggle switch */
+.toggle-wrap { display:flex; align-items:center; gap:.6rem; }
+.toggle-label { font-size:.78rem; color:rgba(255,255,255,.45); min-width:2.5rem; text-align:center; }
+.toggle { position:relative; width:46px; height:26px; cursor:pointer; }
+.toggle input { opacity:0; width:0; height:0; }
+.toggle-slider {
+  position:absolute; inset:0; background:rgba(255,255,255,.12);
+  border-radius:50px; transition:.3s;
+  border:1.5px solid rgba(255,255,255,.15);
+}
+.toggle-slider::before {
+  content:''; position:absolute; width:18px; height:18px;
+  left:3px; top:50%; transform:translateY(-50%);
+  background:#fff; border-radius:50%; transition:.3s;
+  box-shadow:0 1px 4px rgba(0,0,0,.4);
+}
+.toggle input:checked + .toggle-slider { background:#18bfef; border-color:#18bfef; box-shadow:0 0 10px rgba(24,191,239,.4); }
+.toggle input:checked + .toggle-slider::before { left:calc(100% - 21px); }
+
 /* ── Responsive ── */
 @media(max-width:700px) {
   .sidebar { width:60px; }
@@ -309,6 +340,15 @@ select option { background:#0d1a28; color:#fff; }
         <div class="store-bars" id="storeBars">
           <div class="empty-state" style="color:rgba(255,255,255,.35)">اضغط <b style="color:#18bfef">تحديث</b> لتحميل البيانات</div>
         </div>
+      </div>
+
+      <!-- ══ STORE VISIBILITY MANAGER ══ -->
+      <div class="section-head" style="margin-top:2rem">
+        <div class="section-title"><i class="fas fa-eye"></i> ظهور المتاجر للعملاء</div>
+        <div style="font-size:.78rem;color:rgba(255,255,255,.35);margin-top:.25rem">تحكم في أي متاجر تظهر في صفحة الطلبات</div>
+      </div>
+      <div id="visibilityCard" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:1.2rem 1.6rem;display:flex;flex-direction:column;gap:.85rem">
+        <div class="empty-state" style="color:rgba(255,255,255,.3)"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
       </div>
     </div>
 
@@ -417,6 +457,61 @@ async function loadOverview() {
       ❌ ${e.message}<br>
       <small style="opacity:.6">اضغط "تحديث" للمحاولة مجدداً</small>
     </div>`;
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  STORE VISIBILITY MANAGER
+// ════════════════════════════════════════════════════════
+async function loadVisibility() {
+  const card = document.getElementById('visibilityCard');
+  if (!card) return;
+  try {
+    const res = await api('getStoreVisibility', {}, 10000);
+    const vis = res?.visibility || {};
+    card.innerHTML = STORES.map(s => {
+      const isOn = vis[s.key] !== false; // default = visible
+      return `
+      <div class="vis-row" id="vis-row-${s.key}">
+        <div class="vis-store-info">
+          <span class="vis-dot" style="background:${s.color}"></span>
+          <div>
+            <div class="vis-name">${s.name}</div>
+            <div class="vis-status ${isOn ? 'on' : 'off'}" id="vis-status-${s.key}">
+              ${isOn ? '✓ ظاهر للعملاء' : '✗ مخفي عن العملاء'}
+            </div>
+          </div>
+        </div>
+        <div class="toggle-wrap">
+          <span class="toggle-label" id="vis-lbl-${s.key}">${isOn ? 'مفعّل' : 'مخفي'}</span>
+          <label class="toggle" title="${isOn ? 'إخفاء المتجر' : 'إظهار المتجر'}">
+            <input type="checkbox" ${isOn ? 'checked' : ''} onchange="toggleStoreVisibility('${s.key}', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    card.innerHTML = `<div style="color:#ff8060;font-size:.82rem;padding:.5rem">❌ تعذر التحميل — ${e.message}</div>`;
+  }
+}
+
+async function toggleStoreVisibility(storeKey, visible) {
+  const statusEl = document.getElementById('vis-status-' + storeKey);
+  const lblEl    = document.getElementById('vis-lbl-'    + storeKey);
+  if (statusEl) { statusEl.className = 'vis-status'; statusEl.textContent = '⏳ جاري الحفظ...'; }
+  try {
+    const res = await api('setStoreVisibility', { store: storeKey, visible: visible ? 'true' : 'false' }, 12000);
+    if (!res?.success) throw new Error(res?.message || 'فشل');
+    if (statusEl) {
+      statusEl.className = 'vis-status ' + (visible ? 'on' : 'off');
+      statusEl.textContent = visible ? '✓ ظاهر للعملاء' : '✗ مخفي عن العملاء';
+    }
+    if (lblEl) lblEl.textContent = visible ? 'مفعّل' : 'مخفي';
+    toast(visible ? `✓ ${STORES.find(s=>s.key===storeKey)?.name} — ظاهر الآن` : `${STORES.find(s=>s.key===storeKey)?.name} — تم الإخفاء`, visible ? 'success' : 'info');
+  } catch(e) {
+    if (statusEl) { statusEl.className = 'vis-status'; statusEl.textContent = '❌ ' + e.message; }
+    toast('❌ فشل الحفظ: ' + e.message, 'error');
   }
 }
 
@@ -911,7 +1006,7 @@ function _toDatetimeLocal(str) {
 async function refreshAll() {
   const btn = document.querySelector('.btn-refresh');
   btn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> جاري التحديث...';
-  await loadOverview();
+  await Promise.all([ loadOverview(), loadVisibility() ]);
   // Refresh active store if on store page
   const activePage = document.querySelector('.page.active');
   if (activePage && activePage.id.startsWith('page-store-')) {
@@ -934,7 +1029,7 @@ setTimeout(hideOverlay, 6000);
 
 (async function init() {
   try {
-    await loadOverview();
+    await Promise.all([ loadOverview(), loadVisibility() ]);
     document.getElementById('lastRefresh').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
   } catch(e) {
     console.warn('[Admin] init error:', e.message);

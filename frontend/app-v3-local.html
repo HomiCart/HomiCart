@@ -1905,6 +1905,7 @@
   const stores = [
     {
       id: 'alkrkn',
+      key: 'AlRoknAlMasry',         // matches admin STORES key
       name: 'الركن المصري',
       icon: '🥩',
       folder: 'Al Rokn AL masry',
@@ -2086,9 +2087,19 @@
   }
 
   /* ── Render stores ── */
-  function renderStores() {
+  async function renderStores() {
+    // Fetch visibility config from backend (default all visible on failure)
+    let visibility = {};
+    try {
+      const res = await _callScript('getStoreVisibility', {}, 8000);
+      if (res?.success) visibility = res.visibility || {};
+    } catch(_) { /* show all stores if API fails */ }
+
+    // Filter stores based on admin visibility config (default: visible)
+    const visibleStores = stores.filter(s => visibility[s.id] !== false && visibility[s.key] !== false);
+
     // Step 1 — Draw cards immediately (no waiting) so the UI is instant
-    const realHtml = stores.map(s => `
+    const realHtml = visibleStores.map(s => `
       <div class="store-card" id="card-${s.id}" onclick="showCustomerPage('${s.folder}', '${s.name}', '${s.tag}')">
         <div class="store-card-bg" id="card-bg-${s.id}" ${s.bgImage ? `style="background-image:url('${s.bgImage}')"` : ''}></div>
         <div class="store-card-overlay"></div>
