@@ -887,6 +887,9 @@ function onBatchSelect(storeKey) {
 
   if (!infoEl) return;
   if (val === '__new__' || val === '__loading__') {
+    // Reset status badge to current active batch status
+    const statusEl = document.getElementById('batchStatus-' + storeKey);
+    if (statusEl && val === '__new__') statusEl.innerHTML = '<span style="color:#18bfef">● دورة جديدة</span>';
     infoEl.innerHTML = val === '__new__'
       ? '<i class="fas fa-info-circle" style="color:#18bfef;margin-left:.3rem"></i> سيتم إنشاء BatchID جديد — الدورة القديمة تُغلق تلقائياً'
       : '';
@@ -896,13 +899,35 @@ function onBatchSelect(storeKey) {
   const batches = _batchData[storeKey] || [];
   const b = batches.find(x => x.batchId === val);
   if (!b) return;
+
+  // Update status badge based on selected batch
+  const statusEl = document.getElementById('batchStatus-' + storeKey);
+  if (statusEl) {
+    if (b.isActive) {
+      statusEl.innerHTML = '<span style="color:#28c864">● نشطة</span>';
+    } else {
+      statusEl.innerHTML = '<span style="color:rgba(255,255,255,.4)">● مغلقة</span>';
+    }
+  }
+
+  // Show/hide reactivate button
+  if (btn) {
+    if (!b.isActive) {
+      btn.innerHTML = '<i class="fas fa-redo"></i> إعادة تفعيل';
+      btn.style.background = 'rgba(255,165,0,.2)';
+      btn.style.border = '1px solid rgba(255,165,0,.4)';
+      btn.style.color = '#ffa500';
+      btn.style.display = '';
+    }
+  }
+
   infoEl.innerHTML =
     `<span style="font-family:monospace;color:#18bfef;font-size:.75rem">${b.batchId}</span>` +
     ` &nbsp;|&nbsp; ${(b.firstOrder||'').substring(0,16)} ← → ${(b.lastOrder||'').substring(0,16)}` +
     ` &nbsp;|&nbsp; <span style="color:#18bfef">${b.new} جديد</span>` +
     ` / <span style="color:#ffa500">${b.preparing} تحضير</span>` +
     ` / <span style="color:#28c864">${b.delivered} توصيل</span>` +
-    (b.isActive ? ' &nbsp;<span style="color:#28c864">★ نشطة حالياً</span>' : ' &nbsp;<span style="color:#ffa500">⟳ إعادة تفعيل</span>');
+    (b.isActive ? ' &nbsp;<span style="color:#28c864">★ نشطة حالياً</span>' : ' &nbsp;<span style="color:#ffa500">⟳ مغلقة</span>');
 }
 
 async function applyBatchSelection(storeKey) {
