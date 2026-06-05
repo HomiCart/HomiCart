@@ -2023,11 +2023,13 @@
     },
   };
 
-  // Populate MENU_CONFIG from dynamic store data
+  // Populate MENU_CONFIG and SHEET_NAMES from dynamic store data
   function _syncMenuConfig(apiStores) {
     apiStores.forEach(s => {
-      if (!s.githubFolder) return;
       const folderKey = s.folder || s.key;
+      // Update SHEET_NAMES so orderNow sends the correct sheet to Apps Script
+      SHEET_NAMES[folderKey] = s.key;
+      if (!s.githubFolder) return;
       MENU_CONFIG[folderKey] = {
         name           : s.name,
         githubFolder   : s.githubFolder,
@@ -3077,7 +3079,7 @@
   function orderNow(storeKey) {
     const cfg = MENU_CONFIG[storeKey];
     if (!cfg) return;
-    window._opStore = { storeKey, cfg, sheetName: SHEET_NAMES[storeKey] };
+    window._opStore = { storeKey, cfg, sheetName: SHEET_NAMES[storeKey] || storeKey };
     _opSaved = false; _opTempId = null;
 
     // Build thumbnail HTML from already-loaded images

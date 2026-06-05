@@ -194,7 +194,7 @@ function closeOrderWindow() {
     const ts      = _timestamp('Asia/Dubai');
     let   updated = 0;
 
-    [SHEET_ORDERS, SHEET_FAYOUMI].forEach(name => {
+    _getAllStoreKeys().forEach(name => {
       const sheet = ss.getSheetByName(name);
       if (!sheet) return;
       const last = sheet.getLastRow();
@@ -1024,17 +1024,28 @@ function getBatchOrders(p) {
 //  ADMIN FUNCTIONS
 // ============================================================
 
+function _getAllStoreKeys() {
+  // Returns all store sheet names from dynamic list; falls back to defaults
+  var raw = PropertiesService.getScriptProperties().getProperty('STORES_LIST');
+  if (raw) {
+    try {
+      var list = JSON.parse(raw);
+      if (Array.isArray(list) && list.length) return list.map(function(s){ return s.key; });
+    } catch(e) {}
+  }
+  return [SHEET_ORDERS, SHEET_FAYOUMI];
+}
+
 function getAdminStats() {
   try {
     const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
     const stats = { total:0, new:0, preparing:0, delivered:0, cancelled:0, perStore:{} };
-    [SHEET_ORDERS, SHEET_FAYOUMI].forEach(name => {
+    _getAllStoreKeys().forEach(name => {
       const sheet = ss.getSheetByName(name);
       stats.perStore[name] = 0;
       if (!sheet) return;
       const last = sheet.getLastRow();
       if (last < 2) return;
-      // Read entire status column at once — much faster than cell-by-cell
       const values = sheet.getRange(2, ORD_STATUS, last - 1, 1).getValues();
       stats.perStore[name] = values.length;
       values.forEach(row => {
@@ -1316,8 +1327,9 @@ function _buildLocationUrl(lat, lng, fallback) {
 }
 
 function _validSheet(name) {
-  if (!name) return null;
-  return (name === SHEET_ORDERS || name === SHEET_FAYOUMI) ? name : null;
+  // Accept any non-empty sheet name — new stores added dynamically must work
+  if (!name || typeof name !== 'string' || name.trim() === '') return null;
+  return name.trim();
 }
 
 function _upsertSetting(sheet, key, value) {
