@@ -1653,7 +1653,14 @@ function getStoresList() {
     props.setProperty('STORES_LIST', JSON.stringify(defaults));
     return { success: true, stores: defaults };
   }
-  return { success: true, stores: JSON.parse(raw) };
+  var stores = JSON.parse(raw);
+  // Ensure every store has sheet and workspace fields
+  stores = stores.map(function(s) {
+    if (!s.sheet)     s.sheet     = s.key;
+    if (!s.workspace) s.workspace = s.key + 'Workspace';
+    return s;
+  });
+  return { success: true, stores: stores };
 }
 
 function saveStore(p) {
@@ -1673,7 +1680,9 @@ function saveStore(p) {
     city:         p.city         || 'الإمارات',
     githubFolder: 'frontend/assets/Menu/' + p.key,
     itemLabel:    p.itemLabel    || 'منتج',
-    bgFile:       ''
+    bgFile:       '',
+    sheet:        p.key,
+    workspace:    p.key + 'Workspace'
   };
   if (idx >= 0) { stores[idx] = store; }
   else          { stores.push(store); }
@@ -1697,6 +1706,14 @@ function saveStore(p) {
         sheetResult = 'created';
       } else {
         sheetResult = 'exists';
+      }
+      // Create workspace tab for processing pipeline
+      var wsName = p.key + 'Workspace';
+      if (!ss.getSheetByName(wsName)) {
+        var ws = ss.insertSheet(wsName);
+        ws.getRange(1,1,1,12).setValues([['Index','','OrderID','CustomerID','RouteNo','Name','Phone','Area','Address','Location','Latitude','Longitude']]);
+        ws.getRange(1,1,1,12).setFontWeight('bold').setBackground('#1a3a5c').setFontColor('#ffffff');
+        ws.setFrozenRows(1);
       }
     } catch(e) { sheetResult = 'error: ' + e.toString(); }
 

@@ -245,14 +245,23 @@ function routeVendorOrders(sheetName, startLat, startLng) {
 function processVendorFull(sheetName, workspaceTab, startLat, startLng, batchIdParam) {
   try {
     var batchId     = batchIdParam ? String(batchIdParam).trim() : '';
+    // Fallback: sheet = sheetName (store key), workspace = sheetName + 'Workspace'
+    if (!sheetName || sheetName === 'undefined')   sheetName    = '';
+    if (!workspaceTab || workspaceTab === 'undefined') workspaceTab = sheetName + 'Workspace';
     var ss          = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var ordersSheet = ss.getSheetByName(sheetName);
+    var ordersSheet = sheetName ? ss.getSheetByName(sheetName) : null;
     var dbSheet     = ss.getSheetByName('DataBase');
     var wsSheet     = ss.getSheetByName(workspaceTab);
 
     if (!ordersSheet) return { success: false, message: 'شيت ' + sheetName + ' مش موجود' };
     if (!dbSheet)     return { success: false, message: 'شيت DataBase مش موجود' };
-    if (!wsSheet)     return { success: false, message: 'شيت ' + workspaceTab + ' مش موجود' };
+    // Auto-create workspace tab if missing
+    if (!wsSheet) {
+      wsSheet = ss.insertSheet(workspaceTab);
+      wsSheet.getRange(1,1,1,12).setValues([['Index','','OrderID','CustomerID','RouteNo','Name','Phone','Area','Address','Location','Latitude','Longitude']]);
+      wsSheet.getRange(1,1,1,12).setFontWeight('bold').setBackground('#1a3a5c').setFontColor('#ffffff');
+      wsSheet.setFrozenRows(1);
+    }
 
     // ── 1. Get Preparing orders (filtered by batchId if provided) ──
     // v18.0 orders: 12 cols — BatchID is col 12 (index 11)

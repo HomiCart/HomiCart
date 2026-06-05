@@ -1528,6 +1528,9 @@ function procGetLocation(storeKey) {
   async function runProcessPipeline(storeKey) {
     var store = STORES.find(function(s){ return s.key === storeKey; });
     if (!store) return;
+    // Ensure sheet and workspace are always defined
+    if (!store.sheet)     store.sheet     = store.key;
+    if (!store.workspace) store.workspace = store.key + 'Workspace';
 
     var batchSel = document.getElementById('proc-batch-' + storeKey);
     var batchId  = batchSel ? batchSel.value : '';
@@ -1669,6 +1672,7 @@ function procGetLocation(storeKey) {
 
 async function procCopyWhatsapp(storeKey) {
   var store = STORES.find(function(s) { return s.key === storeKey; });
+  if (store && !store.workspace) store.workspace = store.key + 'Workspace';
   var text = (_procResults[storeKey] || {}).text || '';
   if (!text && store) {
     try { var r = await api('getWorkspaceExport', { workspace: store.workspace }); text = r.text || ''; } catch(e) {}
