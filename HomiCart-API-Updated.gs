@@ -97,6 +97,9 @@ function doGet(e) {
     else if (action === 'deleteStore')     { result = deleteStore(p); }
     else if (action === 'setGitHubToken')  { result = setGitHubToken(p.token); }
     else if (action === 'hasGitHubToken')  { result = hasGitHubToken(); }
+    // ── Store Note ("إزاي اطلب العرض") ────────────────────
+    else if (action === 'getStoreNote')   { result = getStoreNote(p); }
+    else if (action === 'setStoreNote')   { result = setStoreNote(p); }
     else { result = { success: false, message: 'Unknown action: ' + action }; }
   } catch(err) {
     result = { success: false, message: 'Server error: ' + err.toString() };
@@ -1792,4 +1795,22 @@ function _deleteGitHubFolder(folderPath, token, repo, storeName) {
 function hasGitHubToken() {
   var t = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
   return { success: true, hasToken: !!(t && t.length > 0) };
+}
+
+// ============================================================
+//  Store Note — "إزاي اطلب العرض" per store
+// ============================================================
+function getStoreNote(p) {
+  var store = p.store || p.key;
+  if (!store) return { success: false, message: 'Missing store' };
+  var note = PropertiesService.getScriptProperties().getProperty('STORE_NOTE_' + store) || '';
+  return { success: true, note: note };
+}
+
+function setStoreNote(p) {
+  var store = p.store || p.key;
+  if (!store) return { success: false, message: 'Missing store' };
+  var text = p.note !== undefined ? p.note : (p.text || '');
+  PropertiesService.getScriptProperties().setProperty('STORE_NOTE_' + store, text);
+  return { success: true };
 }

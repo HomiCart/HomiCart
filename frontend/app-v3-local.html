@@ -920,6 +920,33 @@
     .btn-start-order { width: 100%; max-width: 100%; }
 
     /* ══════════════════════════════
+       How-to-order note card
+    ══════════════════════════════ */
+    .how-to-order {
+      margin-top: 1.5rem;
+      background: rgba(24,191,239,.06);
+      border: 1px solid rgba(24,191,239,.18);
+      border-radius: 16px;
+      padding: 1.2rem 1.5rem;
+      display: none;
+    }
+    .how-to-order.visible { display: block; animation: fadeUp .4s ease both; }
+    .how-to-order-title {
+      font-family: 'Alexandria', sans-serif;
+      font-size: .95rem; font-weight: 800;
+      color: #18bfef;
+      margin-bottom: .65rem;
+      display: flex; align-items: center; gap: .45rem;
+    }
+    .how-to-order-text {
+      font-family: 'Cairo', sans-serif;
+      font-size: .9rem;
+      color: rgba(255,255,255,.82);
+      line-height: 1.95;
+      white-space: pre-line;
+    }
+
+    /* ══════════════════════════════
        ORDERING INLINE LAYOUT
        Menu thumbnails + order form side by side
     ══════════════════════════════ */
@@ -2294,7 +2321,13 @@
     window._discountImages = discountImages;
 
     document.getElementById('menuContainer').innerHTML = `
-      <div class="cards-row">${menuCard}${discountCard}</div>`;
+      <div class="cards-row">${menuCard}${discountCard}</div>
+      <div class="how-to-order" id="howToOrder">
+        <div class="how-to-order-title">
+          <i class="fas fa-lightbulb"></i> إزاي اطلب العرض؟
+        </div>
+        <div class="how-to-order-text" id="howToOrderText"></div>
+      </div>`;
 
     // Staggered entrance animation for both cards
     requestAnimationFrame(() => {
@@ -2302,6 +2335,17 @@
         setTimeout(() => card.classList.add('visible'), 60 + i * 140);
       });
     });
+
+    // Load store note in background
+    const apiKey = SHEET_NAMES[folder] || folder;
+    _callScript('getStoreNote', { store: apiKey }, 6000).then(res => {
+      if (res?.success && res.note && res.note.trim()) {
+        const el = document.getElementById('howToOrderText');
+        const box = document.getElementById('howToOrder');
+        if (el) el.textContent = res.note.trim();
+        if (box) box.classList.add('visible');
+      }
+    }).catch(() => {});
   }
 
   /* ══════════════════════════════════════════════════════════
