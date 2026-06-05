@@ -1268,44 +1268,43 @@
     .btn-cancel-order:hover { background: rgba(255,70,70,.22); border-color: #ff5050; color: #ff4040; }
     .order-card-actions { display: flex; gap: .6rem; justify-content: flex-end; margin-top: .3rem; flex-wrap: wrap; }
     /* ══ ORDER COUNTDOWN TIMER — floating corner widget ══ */
-    /* ── Countdown: full-width bottom bar ── */
     .order-countdown {
       position: fixed;
-      bottom: 0; left: 0; right: 0;
-      width: 100%;
+      bottom: 1.6rem;
+      left: 1rem;
       z-index: 9999;
-      background: linear-gradient(135deg, rgba(6,16,28,.98) 0%, rgba(10,22,36,.98) 100%);
-      border-top: 1.5px solid rgba(24,191,239,.40);
-      border-radius: 0;
-      padding: .55rem 1.1rem;
-      display: flex;
+      width: auto;
+      background: linear-gradient(135deg, rgba(6,16,28,.97) 0%, rgba(10,22,36,.97) 100%);
+      border: 1.5px solid rgba(24,191,239,.40);
+      border-radius: 18px;
+      padding: .55rem .9rem;
+      display: inline-flex;
       align-items: center;
-      justify-content: space-between;
-      direction: rtl;
       transition: transform .4s ease, opacity .4s ease, border-color .5s;
-      box-shadow: 0 -4px 20px rgba(0,0,0,.45), 0 0 12px rgba(24,191,239,.08);
+      box-shadow: 0 6px 28px rgba(0,0,0,.50), 0 0 14px rgba(24,191,239,.10);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
     }
-    .order-countdown.hidden { transform: translateY(100%); opacity: 0; pointer-events: none; }
-    .order-countdown.urgent  { border-color: rgba(255,80,80,.7);  box-shadow: 0 -4px 20px rgba(0,0,0,.5), 0 0 12px rgba(255,80,80,.25); }
-    .order-countdown.warning { border-color: rgba(255,165,0,.65); box-shadow: 0 -4px 20px rgba(0,0,0,.5), 0 0 12px rgba(255,165,0,.18); }
-    /* Push page content up so bar never covers it */
-    body.has-countdown { padding-bottom: 68px; }
+    .order-countdown.hidden { transform: translateY(calc(100% + 2.5rem)); opacity: 0; pointer-events: none; }
+    .order-countdown.urgent  { border-color: rgba(255,80,80,.7);  box-shadow: 0 6px 28px rgba(0,0,0,.5), 0 0 14px rgba(255,80,80,.25); }
+    .order-countdown.warning { border-color: rgba(255,165,0,.65); box-shadow: 0 6px 28px rgba(0,0,0,.5), 0 0 14px rgba(255,165,0,.18); }
+    /* Extra bottom space so the floating widget never covers buttons */
+    body.has-countdown { padding-bottom: 7rem; }
     .cd-inner {
-      display: flex; align-items: center; gap: .7rem; flex: 1;
-      justify-content: space-between;
+      display: flex; flex-direction: column; gap: .35rem;
     }
     .cd-top {
-      display: flex; align-items: center; gap: .55rem;
+      display: flex; align-items: center; gap: .6rem;
     }
     .cd-date-row {
-      display: flex; align-items: center; gap: .3rem;
+      display: flex; align-items: center; justify-content: center;
+      border-top: 1px solid rgba(24,191,239,.12);
+      padding-top: .3rem;
       direction: rtl;
     }
-    .cd-left { display: flex; align-items: center; gap: .4rem; }
+    .cd-left { display: flex; align-items: center; gap: .45rem; }
     .cd-icon {
-      font-size: 1rem; color: #18bfef;
+      font-size: 1.05rem; color: #18bfef;
       animation: cdPulse 2s ease-in-out infinite;
     }
     .order-countdown.warning .cd-icon { color: #ffa500; }
@@ -1314,34 +1313,35 @@
     @keyframes cdPulseUrgent { 0%,100%{opacity:1} 50%{opacity:.3} }
     .cd-labels { display: flex; flex-direction: column; }
     .cd-title {
-      font-family: 'Alexandria', sans-serif; font-size: .68rem;
-      font-weight: 700; color: rgba(255,255,255,.75); letter-spacing: .02em;
+      font-family: 'Alexandria', sans-serif; font-size: .72rem;
+      font-weight: 700; color: rgba(255,255,255,.85); letter-spacing: .02em;
       white-space: nowrap;
     }
     .cd-date {
-      font-family: 'Cairo', sans-serif; font-size: .78rem;
-      font-weight: 600; color: rgba(255,255,255,.55); white-space: nowrap;
+      font-family: 'Cairo', sans-serif; font-size: 1rem;
+      font-weight: 700; color: #fff; white-space: nowrap;
+      letter-spacing: .01em;
     }
-    .cd-digits { display: flex; align-items: center; gap: .25rem; }
-    .cd-unit { display: flex; flex-direction: column; align-items: center; gap: .08rem; }
+    .cd-digits { display: flex; align-items: center; gap: .28rem; }
+    .cd-unit { display: flex; flex-direction: column; align-items: center; gap: .1rem; }
     .cd-flip {
       background: rgba(24,191,239,.12);
       border: 1px solid rgba(24,191,239,.22);
-      border-radius: 7px; padding: .18rem .44rem;
-      font-family: 'Alexandria', sans-serif; font-size: 1.05rem; font-weight: 800;
-      color: #18bfef; min-width: 1.8rem; text-align: center;
+      border-radius: 7px; padding: .2rem .48rem;
+      font-family: 'Alexandria', sans-serif; font-size: 1.1rem; font-weight: 800;
+      color: #18bfef; min-width: 1.9rem; text-align: center;
       transition: transform .15s ease, background .5s;
     }
     .order-countdown.warning .cd-flip { color: #ffa500; background: rgba(255,165,0,.12); border-color: rgba(255,165,0,.3); }
     .order-countdown.urgent  .cd-flip { color: #ff6060; background: rgba(255,80,80,.12); border-color: rgba(255,80,80,.3); }
     .cd-flip.flip { transform: scaleY(0); }
     .cd-unit-label {
-      font-family: 'Cairo', sans-serif; font-size: .5rem;
+      font-family: 'Cairo', sans-serif; font-size: .52rem;
       color: rgba(255,255,255,.35);
     }
     .cd-colon {
-      font-size: 1rem; font-weight: 700; color: rgba(24,191,239,.5);
-      margin-bottom: .7rem; align-self: center;
+      font-size: 1.05rem; font-weight: 700; color: rgba(24,191,239,.5);
+      margin-bottom: .75rem; align-self: center;
     }
 
     .btn-op-cancel {
