@@ -10,6 +10,7 @@ const SHEET_FAYOUMI = 'AlFayoumi';
 const SHEET_SETTINGS = 'Settings';
 
 // DataBase column constants
+// Structure: ID|Name|Phone|WhatsApp|Area|Address|Location|CreatedAt|UpdatedAt|IsActive|Notes|Round|RoundStatus|LocationVerified|Latitude|Longitude|GoogleMapsLink
 const COL_ID       = 1;
 const COL_NAME     = 2;
 const COL_PHONE    = 3;
@@ -19,8 +20,8 @@ const COL_ADDRESS  = 6;
 const COL_LOCATION = 7;
 const COL_CREATED  = 8;
 const COL_UPDATED  = 9;
-const COL_LAT      = 10;
-const COL_LNG      = 11;
+const COL_LAT      = 15;
+const COL_LNG      = 16;
 
 // Order sheet column constants
 const ORD_ID         = 1;   // OrderID
@@ -234,8 +235,14 @@ function submitOrder(p) {
     // Get or create customer
     const custResult = getCustomer(p.phone.trim());
     let   customerId = '';
+    let   storedLocation = '';
     if (custResult.success && custResult.customer) {
       customerId = custResult.customer.id;
+      const rawLoc = custResult.customer.location || '';
+      storedLocation = /maps\?q=(-?\d+\.?\d*),(-?\d+\.?\d*)/.test(rawLoc) ? rawLoc : '';
+      if (!storedLocation) {
+        storedLocation = _buildLocationUrl(custResult.customer.latitude, custResult.customer.longitude, '');
+      }
     } else {
       const r = createOrUpdateCustomer({
         phone: p.phone, name: p.name || 'Customer',
@@ -247,7 +254,7 @@ function submitOrder(p) {
 
     const orderId    = 'O' + Date.now();
     const ts         = _timestamp(p.userTimezone || 'Asia/Dubai');
-    const locationUrl = _buildLocationUrl(p.latitude, p.longitude, p.location);
+    const locationUrl = _buildLocationUrl(p.latitude, p.longitude, p.location) || storedLocation;
     const newRow     = sheet.getLastRow() + 1;
 
     // Get active BatchID for this store (creates one if missing)
@@ -1321,10 +1328,16 @@ function _phoneMatch(rowPhone, input) {
 }
 
 function _buildLocationUrl(lat, lng, fallback) {
-  if (lat && lng && lat.toString().trim() && lng.toString().trim()) {
-    return `https://www.google.com/maps?q=${lat},${lng}`;
+  const latNum = parseFloat(lat);
+  const lngNum = parseFloat(lng);
+  if (!isNaN(latNum) && !isNaN(lngNum) && isFinite(latNum) && isFinite(lngNum)) {
+    return 'https://www.google.com/maps?q=' + latNum + ',' + lngNum;
   }
-  return (fallback || '').toString().trim();
+  const fb = (fallback || '').toString().trim();
+  // Reject malformed fallback URLs (e.g. ?q=true,)
+  if (fb && /maps\?q=(-?\d+\.?\d*),(-?\d+\.?\d*)/.test(fb)) return fb;
+  if (fb && !fb.includes('maps')) return fb;
+  return '';
 }
 
 function _validSheet(name) {

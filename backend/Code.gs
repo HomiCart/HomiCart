@@ -1107,6 +1107,15 @@ function submitOrder(orderData) {
           customerId = dbSheet.getRange(i,1).getValue();
           const sl = dbSheet.getRange(i,7).getValue();
           if (sl) customerLocation = sl;
+          if (!customerLocation || !/maps\?q=(-?\d+\.?\d*),(-?\d+\.?\d*)/.test(customerLocation)) {
+            const lat = parseFloat(dbSheet.getRange(i,latCol).getValue());
+            const lng = parseFloat(dbSheet.getRange(i,lngCol).getValue());
+            if (!isNaN(lat) && !isNaN(lng) && isFinite(lat) && isFinite(lng)) {
+              customerLocation = 'https://www.google.com/maps?q=' + lat + ',' + lng;
+            } else if (!/maps\?q=(-?\d+\.?\d*),(-?\d+\.?\d*)/.test(customerLocation)) {
+              customerLocation = '';
+            }
+          }
           if (orderData.name && orderData.name.trim() !== '') dbSheet.getRange(i,2).setValue(orderData.name.trim());
           if (orderData.whatsapp && orderData.whatsapp.trim() !== '') dbSheet.getRange(i,4).setValue(orderData.whatsapp.trim());
           if (orderData.area && orderData.area.trim() !== '') dbSheet.getRange(i,5).setValue(orderData.area.trim());
