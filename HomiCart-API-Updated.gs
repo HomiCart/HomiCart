@@ -226,7 +226,8 @@ function submitOrder(p) {
     if (!p.orderText) return { success: false, message: 'Order text required' };
 
     const ss         = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheetName  = _validSheet(p.sheet) || SHEET_ORDERS;
+    // Accept store from p.store OR p.sheet — dynamic stores use key as sheet name
+    const sheetName  = _validSheet(p.store || p.sheet) || SHEET_ORDERS;
     let   sheet      = ss.getSheetByName(sheetName);
     if (!sheet) sheet = _setupOrderSheet(ss, sheetName);
 

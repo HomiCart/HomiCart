@@ -3266,7 +3266,8 @@
           longitude   : customer.longitude ? String(customer.longitude) : '',
           location    : customer.latitude  ? `https://www.google.com/maps?q=${customer.latitude},${customer.longitude}` : '',
           orderText   : items,
-          sheet       : store.sheetName,
+          store       : store.sheetName,   // ← primary: used by _validSheet
+          sheet       : store.sheetName,   // ← fallback for older code
           vendor      : store.cfg?.name || store.storeKey,
           userTimezone: 'Asia/Dubai',
         }, 30000);
