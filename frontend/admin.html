@@ -1306,10 +1306,23 @@ async function confirmExtend() {
   try {
     const res = await api('extendBatch', { store: _extendStore, newEnd, batchId });
     if (res.success) {
+      // Also update the store order window end time to match the new batch end
+      // so the "وقت الإغلاق" field always shows the latest saved time
+      try {
+        const winStart = document.getElementById('win-start-' + _extendStore)?.value;
+        if (winStart) {
+          await api('setStoreOrderWindow', {
+            store: _extendStore,
+            start: winStart.replace('T',' ') + ':00',
+            end:   newEnd
+          });
+        }
+      } catch(_) { /* non-critical — batch already extended */ }
+
       closeExtendModal();
       const rev = res.revertedOrders > 0 ? ` — ${res.revertedOrders} طلب رجع لـ "جديد"` : '';
       toast('✓ تم التمديد حتى ' + newEnd + rev, 'success');
-      loadStoreWindow(_extendStore);
+      loadStoreWindow(_extendStore);   // ← refreshes the closing time input
       loadBatchStatus(_extendStore);
       loadStoreOrders(_extendStore);
     } else { toast('خطأ: ' + res.message, 'error'); }
