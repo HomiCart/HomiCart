@@ -3117,6 +3117,13 @@
           <div class="ordering-thumbs">
             ${menuSection}${discSection}${noImgs}
           </div>
+          <!-- How to order note -->
+          <div class="how-to-order" id="howToOrder" style="margin-top:1rem;border-radius:12px;padding:1rem 1.1rem">
+            <div class="how-to-order-title" style="font-size:.85rem">
+              <i class="fas fa-lightbulb"></i> إزاي اطلب العرض؟
+            </div>
+            <div class="how-to-order-text" id="howToOrderText" style="font-size:.82rem"></div>
+          </div>
         </div>
 
         <!-- RIGHT: order form -->
@@ -3152,6 +3159,17 @@
     const backBtn = document.getElementById('backBtn');
     if (backBtn) backBtn.innerHTML = '<i class="fas fa-arrow-right"></i> رجوع للمنيو';
     setTimeout(() => document.getElementById('opItemsInput')?.focus(), 350);
+
+    // Load "إزاي اطلب العرض" note in background
+    const _noteStore = SHEET_NAMES[storeKey] || storeKey;
+    _callScript('getStoreNote', { store: _noteStore }, 6000).then(res => {
+      if (res?.success && res.note && res.note.trim()) {
+        const el  = document.getElementById('howToOrderText');
+        const box = document.getElementById('howToOrder');
+        if (el)  el.textContent = res.note.trim();
+        if (box) box.classList.add('visible');
+      }
+    }).catch(() => {});
   }
 
   /* ── Cancel order mode → restore normal menu view ────────────── */
