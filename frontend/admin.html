@@ -470,13 +470,19 @@ async function loadOverview() {
     document.getElementById('st-preparing').textContent = s.preparing ?? 0;
     document.getElementById('st-delivered').textContent = s.delivered ?? 0;
     document.getElementById('st-cancelled').textContent = s.cancelled ?? 0;
-    const max    = Math.max(1, ...Object.values(s.perStore || {}));
-    const colors = { AlRoknAlMasry:'#ef4444', AlFayoumi:'#f59e0b' };
-    const names  = { AlRoknAlMasry:'الركن المصري', AlFayoumi:'الفيومي' };
-    sb.innerHTML = Object.entries(s.perStore || {}).map(([k,v]) =>
+    // Build color/name maps dynamically from current STORES list
+    const colorMap = {}, nameMap = {};
+    STORES.forEach(st => { colorMap[st.key] = st.color; nameMap[st.key] = st.name; });
+
+    // Only show bars for stores that still exist in STORES list
+    const activeEntries = Object.entries(s.perStore || {})
+      .filter(([k]) => STORES.some(st => st.key === k));
+    const max = Math.max(1, ...activeEntries.map(([,v]) => v));
+
+    sb.innerHTML = activeEntries.map(([k,v]) =>
         `<div class="store-bar-row">
-           <div class="store-bar-label">${names[k]||k}</div>
-           <div class="store-bar-track"><div class="store-bar-fill" style="width:${Math.round(v/max*100)}%;background:${colors[k]||'#18bfef'}"></div></div>
+           <div class="store-bar-label">${nameMap[k] || k}</div>
+           <div class="store-bar-track"><div class="store-bar-fill" style="width:${Math.round(v/max*100)}%;background:${colorMap[k]||'#18bfef'}"></div></div>
            <div class="store-bar-count">${v}</div>
          </div>`).join('')
       || '<div class="empty-state">لا توجد طلبات</div>';
