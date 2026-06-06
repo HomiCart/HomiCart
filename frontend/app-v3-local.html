@@ -3121,14 +3121,9 @@
 
   // ── Current-order helpers ──────────────────────────────
   function _editCurrentOrder(orderId, items) {
-    window._editingOrderId = orderId;
-    _opSaved = false;
     _showStep('stepCurrentOrder', false);
-    goToOrderPage();
-    setTimeout(() => {
-      const ta = document.getElementById('opItemsInput');
-      if (ta && items) ta.value = items;
-    }, 400);
+    // loadOrderForEdit sets _editingOrderId, opens order panel, and pre-fills textarea
+    loadOrderForEdit(orderId, items);
   }
 
   function _confirmNewOrder() {
