@@ -3120,10 +3120,36 @@
   }
 
   // ── Current-order helpers ──────────────────────────────
-  function _editCurrentOrder(orderId, items) {
+  async function _editCurrentOrder(orderId, items) {
+    const store = window._pendingStore;
+    if (!store) return;
+
+    if (!isOrderWindowOpen()) {
+      alert(getWindowClosedMsg() + '\n\nلا يمكن تقديم طلبات في الوقت الحالي.');
+      return;
+    }
+
+    // Set edit state BEFORE navigating — do NOT use goToOrderPage (it resets _editingOrderId)
+    window._editingOrderId = orderId;
+    _opSaved = false;
     _showStep('stepCurrentOrder', false);
-    // loadOrderForEdit sets _editingOrderId, opens order panel, and pre-fills textarea
-    loadOrderForEdit(orderId, items);
+
+    await selectStore(store.folder, store.name, store.tag);
+
+    setTimeout(() => {
+      orderNow(store.folder);
+      // Pre-fill textarea after the order panel renders
+      setTimeout(() => {
+        const ta  = document.getElementById('opItemsInput');
+        const btn = document.getElementById('opSaveBtn');
+        const lbl = document.getElementById('opSaveTxt');
+        const err = document.getElementById('opError');
+        if (ta)  { ta.value = items; ta.focus(); }
+        if (lbl)   lbl.textContent = 'حفظ التعديلات';
+        if (btn)   btn.disabled = false;
+        if (err) { err.textContent = `✏️ تعديل الطلب: ${orderId}`; err.style.color = '#18bfef'; }
+      }, 400);
+    }, 200);
   }
 
   function _confirmNewOrder() {
