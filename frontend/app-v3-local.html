@@ -3070,7 +3070,8 @@
               : `لديك ${newOrders.length} طلبات مسجلة حالياً`;
 
           // Render order cards
-          document.getElementById('curOrdersList').innerHTML = newOrders.map(o => {
+          const listEl = document.getElementById('curOrdersList');
+          listEl.innerHTML = newOrders.map(o => {
             const dateStr = o.date ? String(o.date).substring(0, 16) : '—';
             return `
               <div class="cur-order-card" id="cur-card-${o.id}">
@@ -3081,18 +3082,29 @@
                 </div>
                 <div class="cur-order-items">${(o.items || '—').replace(/\n/g,'<br>')}</div>
                 <div class="cur-order-actions" style="margin-top:.6rem">
-                  <button class="btn-cur-edit" onclick="_editCurrentOrder('${o.id}',\`${(o.items||'').replace(/`/g,"'")}\`)">
+                  <button class="btn-cur-edit" data-order-id="${o.id}">
                     <i class="fas fa-pen"></i>&nbsp;تعديل
                   </button>
                   <div class="cur-order-row2" style="margin-top:.5rem">
                     <button class="btn-cur-cancel" id="cancel-btn-${o.id}"
-                      onclick="_cancelCurrentOrder('${o.id}','${storeSheet}','cancel-btn-${o.id}','cur-card-${o.id}')">
+                      data-order-id="${o.id}" data-sheet="${storeSheet}"
+                      data-btn-id="cancel-btn-${o.id}" data-card-id="cur-card-${o.id}">
                       <i class="fas fa-times-circle"></i>&nbsp;إلغاء الطلب
                     </button>
                   </div>
                 </div>
               </div>`;
           }).join('');
+
+          // Attach events via data attributes (avoids newline/quote issues in onclick)
+          newOrders.forEach(o => {
+            const card    = document.getElementById('cur-card-' + o.id);
+            if (!card) return;
+            const editBtn = card.querySelector('.btn-cur-edit');
+            const canBtn  = card.querySelector('.btn-cur-cancel');
+            if (editBtn) editBtn.addEventListener('click', () => _editCurrentOrder(o.id, o.items || ''));
+            if (canBtn)  canBtn.addEventListener('click',  () => _cancelCurrentOrder(o.id, storeSheet, 'cancel-btn-' + o.id, 'cur-card-' + o.id));
+          });
 
           // Reset "طلب جديد" button visibility
           document.getElementById('btnCurNew').style.display = '';
