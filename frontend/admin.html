@@ -369,6 +369,24 @@ select option { background:#0d1a28; color:#fff; }
         </div>
       </div>
 
+      <!-- ══ MULTI-VENDOR DELIVERY CARD ══ -->
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,165,0,.2);border-radius:14px;padding:1.4rem;margin-bottom:1.5rem;border-top:3px solid #f59e0b">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem">
+          <div>
+            <div style="font-family:'Alexandria',sans-serif;font-size:1rem;font-weight:800;color:#fff;display:flex;align-items:center;gap:.5rem">
+              <span>🚚</span> تجميع التوصيل — أكثر من تاجر
+            </div>
+            <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin-top:.3rem">
+              اجمع أوردرات تجار مختلفين في مسار توصيل واحد — كل عميل يأخذ رقم توصيل موحد
+            </div>
+          </div>
+          <button onclick="openMultiVendorModal()"
+            style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none;color:#fff;font-family:'Alexandria',sans-serif;font-size:.9rem;font-weight:800;padding:.7rem 1.4rem;border-radius:10px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:.5rem">
+            <i class="fas fa-route"></i> بدء التجميع
+          </button>
+        </div>
+      </div>
+
       <div class="section-head">
         <div class="section-title"><i class="fas fa-store"></i> الطلبات حسب المتجر</div>
       </div>
@@ -1705,6 +1723,184 @@ function procPrint(storeKey) {
     + '<script>window.print();<\/script></body></html>');
   w.document.close();
 }
+
+// ════════════════════════════════════════════════════════
+//  MULTI-VENDOR DELIVERY
+// ════════════════════════════════════════════════════════
+var _mvResults = null; // cache last result
+
+function openMultiVendorModal() {
+  // Build vendor checkboxes from current STORES list
+  var list = document.getElementById('mvVendorList');
+  list.innerHTML = STORES.map(function(s) {
+    return '<label style="display:flex;align-items:center;gap:.7rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:.65rem 1rem;cursor:pointer">'
+      + '<input type="checkbox" data-key="' + s.key + '" style="width:18px;height:18px;accent-color:#f59e0b;cursor:pointer">'
+      + '<span class="store-dot" style="background:' + s.color + '"></span>'
+      + '<span style="font-size:.92rem;color:#fff;font-weight:600">' + s.name + '</span>'
+      + '</label>';
+  }).join('');
+
+  // Reset UI
+  document.getElementById('mv-prog-wrap').style.display = 'none';
+  document.getElementById('mv-results').style.display   = 'none';
+  document.getElementById('mv-run-btn').disabled        = false;
+  document.getElementById('mv-fill').style.width        = '0%';
+  document.getElementById('mv-status').textContent      = '';
+  _mvResults = null;
+
+  document.getElementById('multiVendorModal').style.display = 'flex';
+}
+
+function closeMultiVendorModal() {
+  document.getElementById('multiVendorModal').style.display = 'none';
+}
+
+function mvGetLocation() {
+  if (!navigator.geolocation) { toast('المتصفح لا يدعم الموقع', 'error'); return; }
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    document.getElementById('mv-lat').value = pos.coords.latitude.toFixed(6);
+    document.getElementById('mv-lng').value = pos.coords.longitude.toFixed(6);
+    toast('✓ تم تحديد موقعك', 'success');
+  }, function() { toast('تعذر تحديد الموقع', 'error'); });
+}
+
+async function runMultiVendorPipeline() {
+  // Get selected vendors
+  var checked = Array.from(document.querySelectorAll('#mvVendorList input[type=checkbox]:checked'))
+    .map(function(cb) { return cb.dataset.key; });
+
+  if (checked.length === 0) { toast('اختر تاجر واحد على الأقل', 'error'); return; }
+
+  var lat = document.getElementById('mv-lat').value.trim();
+  var lng = document.getElementById('mv-lng').value.trim();
+  if (!lat || !lng) { toast('أدخل نقطة البداية', 'error'); return; }
+
+  var btn     = document.getElementById('mv-run-btn');
+  var progWrap= document.getElementById('mv-prog-wrap');
+  var fill    = document.getElementById('mv-fill');
+  var status  = document.getElementById('mv-status');
+  var results = document.getElementById('mv-results');
+
+  btn.disabled = true;
+  progWrap.style.display = 'block';
+  results.style.display  = 'none';
+  fill.style.width = '0%';
+
+  // Animate progress
+  var steps = [
+    [15, '📦 جمع الأوردرات من التجار المختارين...'],
+    [30, '👥 تجميع طلبات نفس العميل...'],
+    [50, '⚡ ترتيب أقصر مسار توصيل...'],
+    [70, '🔢 تعيين أرقام التوصيل...'],
+    [85, '🔗 توليد روابط Maps...'],
+    [93, '✅ حفظ النتائج في الشيتات...'],
+  ];
+  var si = 0;
+  var tick = setInterval(function() {
+    if (si < steps.length) {
+      fill.style.width     = steps[si][0] + '%';
+      status.textContent   = steps[si][1];
+      si++;
+    }
+  }, 1400);
+
+  try {
+    var data = await api('processMultiVendorFull', {
+      vendors: checked.join(','),
+      lat: lat,
+      lng: lng
+    }, 180000);
+
+    clearInterval(tick);
+
+    if (!data.success) throw new Error(data.message);
+
+    fill.style.width   = '100%';
+    status.textContent = '✅ ' + data.message;
+    status.style.color = '#28c864';
+
+    _mvResults = data;
+
+    // Show summary
+    document.getElementById('mv-summary').innerHTML =
+      '✅ ' + data.message + '<br>' +
+      '<span style="font-size:.78rem;color:rgba(255,255,255,.5)">إجمالي الأوردرات: ' + data.totalOrders + ' | العملاء الموحدين: ' + data.totalCustomers + '</span>';
+
+    // Show route links
+    var linksEl = document.getElementById('mv-links');
+    linksEl.innerHTML = (data.links && data.links.length)
+      ? data.links.map(function(l) {
+          return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,255,255,.04);border-radius:7px;border-right:3px solid #f59e0b">'
+            + '<div style="background:#f59e0b;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0">' + l.route + '</div>'
+            + '<div style="flex:1;font-size:12px;color:rgba(255,255,255,.65)">مسار ' + l.route + ' — ' + l.stops + ' موقع</div>'
+            + '<a href="' + l.url + '" target="_blank" style="padding:4px 10px;background:#28c864;color:#fff;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none">📍 افتح</a>'
+            + '</div>';
+        }).join('')
+      : '<div style="font-size:12px;color:rgba(255,255,255,.3)">لا توجد روابط مسار</div>';
+
+    // Per-vendor copy/print buttons
+    var vendorBtnsEl = document.getElementById('mv-vendor-btns');
+    vendorBtnsEl.innerHTML = checked.map(function(key) {
+      var store = STORES.find(function(s) { return s.key === key; }) || { name: key, color: '#18bfef' };
+      return '<button onclick="mvCopyText(\'' + key + '\')" '
+        + 'style="flex:1;min-width:130px;padding:8px;background:rgba(255,255,255,.06);color:#fff;border:1px solid ' + store.color + '44;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700">'
+        + '📋 ' + store.name
+        + '</button>';
+    }).join('');
+
+    results.style.display = 'block';
+    toast('✅ ' + data.message, 'success');
+
+  } catch(e) {
+    clearInterval(tick);
+    fill.style.width   = '0%';
+    status.textContent = '❌ ' + e.message;
+    status.style.color = '#ff6060';
+    toast('❌ ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function mvCopyText(key) {
+  if (!_mvResults) { toast('شغّل التجميع أولاً', 'error'); return; }
+  var text = key === 'combined'
+    ? (_mvResults.combinedText || '')
+    : ((_mvResults.vendorTexts || {})[key] || '');
+
+  if (!text) { toast('لا يوجد نص للنسخ', 'error'); return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('✅ تم النسخ! الصق في واتساب.', 'success');
+  } catch(e) {
+    var el = document.createElement('textarea');
+    el.value = text; document.body.appendChild(el); el.select();
+    document.execCommand('copy'); document.body.removeChild(el);
+    toast('✅ تم النسخ!', 'success');
+  }
+}
+
+function mvPrint(key) {
+  if (!_mvResults) { toast('شغّل التجميع أولاً', 'error'); return; }
+  var text = key === 'combined'
+    ? (_mvResults.combinedText || '')
+    : ((_mvResults.vendorTexts || {})[key] || '');
+  if (!text) { toast('لا يوجد نص', 'error'); return; }
+
+  var title = key === 'combined' ? 'القائمة المجمعة'
+    : (STORES.find(function(s){return s.key===key;})||{name:key}).name;
+
+  var rows = text.split('---------------------------').map(function(t){return t.trim();}).filter(Boolean);
+  var w = window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>' + title + '</title>'
+    + '<style>body{font-family:Arial;direction:rtl;padding:20px;font-size:13px}'
+    + '.ob{border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:12px;page-break-inside:avoid;white-space:pre-line}'
+    + 'h2{margin-bottom:16px}@media print{body{padding:0}}</style></head><body>'
+    + '<h2>' + title + ' — ' + new Date().toLocaleDateString('ar-AE') + '</h2>'
+    + rows.map(function(r){return '<div class="ob">'+r.replace(/</g,'&lt;')+'</div>';}).join('')
+    + '<script>window.print();<\/script></body></html>');
+  w.document.close();
+}
 </script>
 
 <!-- Extend Batch Modal -->
@@ -1805,6 +2001,93 @@ function procPrint(storeKey) {
           style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.6);font-family:'Cairo',sans-serif;font-size:.88rem;padding:.85rem 1.2rem;border-radius:10px;cursor:pointer">إلغاء</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ══ MULTI-VENDOR DELIVERY MODAL ══ -->
+<div id="multiVendorModal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);align-items:flex-start;justify-content:center;overflow-y:auto;padding:2rem 1rem">
+  <div style="background:#0d1520;border:1px solid rgba(245,158,11,.35);border-radius:18px;padding:2rem;width:min(560px,96vw);margin:auto">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem">
+      <div style="font-family:'Alexandria',sans-serif;font-size:1.1rem;font-weight:800;color:#fff">
+        🚚 تجميع التوصيل — أكثر من تاجر
+      </div>
+      <button onclick="closeMultiVendorModal()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:1.2rem;cursor:pointer"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- Step 1: Select vendors -->
+    <div style="margin-bottom:1.2rem">
+      <div style="font-size:.8rem;color:rgba(255,255,255,.55);font-weight:700;margin-bottom:.6rem">
+        <i class="fas fa-store" style="color:#f59e0b;margin-left:.4rem"></i>
+        اختر التجار اللي هيتوصلوا مع بعض اليوم
+      </div>
+      <div id="mvVendorList" style="display:flex;flex-direction:column;gap:.5rem">
+        <!-- Filled dynamically -->
+      </div>
+    </div>
+
+    <!-- Step 2: Start location -->
+    <div style="margin-bottom:1.2rem">
+      <div style="font-size:.8rem;color:rgba(255,255,255,.55);font-weight:700;margin-bottom:.6rem">
+        <i class="fas fa-map-marker-alt" style="color:#f59e0b;margin-left:.4rem"></i>
+        نقطة البداية (موقعك)
+      </div>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <label style="font-size:.72rem;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Latitude</label>
+          <input type="number" id="mv-lat" step="any" value="24.488321" placeholder="24.488321"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none;box-sizing:border-box">
+        </div>
+        <div style="flex:1;min-width:120px">
+          <label style="font-size:.72rem;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Longitude</label>
+          <input type="number" id="mv-lng" step="any" value="54.36706" placeholder="54.36706"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none;box-sizing:border-box">
+        </div>
+        <button onclick="mvGetLocation()"
+          style="padding:8px 13px;background:#17a2b8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;align-self:flex-end">
+          📱 موقعي
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div id="mv-prog-wrap" style="display:none;margin-bottom:.8rem">
+      <div style="background:rgba(255,255,255,.08);border-radius:50px;height:7px;overflow:hidden;margin-bottom:6px">
+        <div id="mv-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#f59e0b,#18bfef);border-radius:50px;transition:width .6s ease"></div>
+      </div>
+      <div id="mv-status" style="font-size:12px;color:rgba(255,255,255,.5);text-align:center"></div>
+    </div>
+
+    <!-- Run button -->
+    <button id="mv-run-btn" onclick="runMultiVendorPipeline()"
+      style="width:100%;padding:13px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:800;font-family:'Cairo',sans-serif;margin-bottom:.8rem">
+      🚀 تجميع ومعالجة الطلبات
+    </button>
+
+    <!-- Results -->
+    <div id="mv-results" style="display:none">
+      <div style="background:rgba(40,200,100,.08);border:1px solid rgba(40,200,100,.25);border-radius:10px;padding:1rem;margin-bottom:1rem">
+        <div id="mv-summary" style="font-size:.85rem;color:#28c864;font-weight:700;margin-bottom:.5rem"></div>
+        <div id="mv-links" style="display:flex;flex-direction:column;gap:6px;margin-top:.6rem"></div>
+      </div>
+
+      <!-- Copy buttons -->
+      <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin-bottom:.5rem;font-weight:700">📋 نسخ / طباعة القوائم:</div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem">
+        <button onclick="mvCopyText('combined')"
+          style="flex:1;min-width:140px;padding:9px;background:#25d366;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">
+          📋 نسخ القائمة المجمعة
+        </button>
+        <button onclick="mvPrint('combined')"
+          style="flex:1;min-width:140px;padding:9px;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">
+          🖨️ طباعة المجمعة
+        </button>
+      </div>
+      <!-- Per-vendor buttons — filled dynamically -->
+      <div id="mv-vendor-btns" style="display:flex;gap:.5rem;flex-wrap:wrap"></div>
+    </div>
+
   </div>
 </div>
 
