@@ -919,6 +919,92 @@
     .cust-success-msg i { font-size: 1.4rem; }
     .btn-start-order { width: 100%; max-width: 100%; }
 
+    /* ══ Current-order panel ══════════════════════════════ */
+    .cur-order-welcome {
+      font-family: 'Alexandria', sans-serif; font-size: 1rem;
+      font-weight: 700; color: #fff; text-align: center;
+      margin-bottom: .7rem; direction: rtl;
+    }
+    .cur-order-welcome span { color: #18bfef; }
+    .cur-order-card {
+      background: rgba(24,191,239,.06);
+      border: 1.5px solid rgba(24,191,239,.25);
+      border-radius: 14px; padding: 1.1rem 1.3rem;
+      display: flex; flex-direction: column; gap: .55rem;
+      margin-bottom: 1rem; direction: rtl;
+    }
+    .cur-order-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: .4rem;
+    }
+    .cur-order-id {
+      font-family: 'Alexandria', sans-serif; font-size: .72rem;
+      color: rgba(255,255,255,.38); letter-spacing: .03em;
+    }
+    .cur-order-date {
+      font-family: 'Cairo', sans-serif; font-size: .78rem;
+      color: rgba(255,255,255,.4);
+    }
+    .cur-order-badge {
+      font-family: 'Cairo', sans-serif; font-size: .75rem; font-weight: 700;
+      background: rgba(24,191,239,.18); color: #18bfef;
+      border: 1px solid rgba(24,191,239,.35);
+      border-radius: 20px; padding: .18rem .7rem;
+    }
+    .cur-order-items {
+      font-family: 'Cairo', sans-serif; font-size: .9rem;
+      color: rgba(255,255,255,.85); line-height: 1.65;
+      white-space: pre-line; word-break: break-word;
+      border-top: 1px solid rgba(255,255,255,.07);
+      padding-top: .5rem;
+    }
+    .cur-order-actions {
+      display: flex; flex-direction: column; gap: .65rem; margin-top: .2rem;
+    }
+    .btn-cur-edit {
+      width: 100%;
+      background: linear-gradient(135deg, #18bfef 0%, #0d9bcb 100%);
+      color: #fff; font-family: 'Alexandria', sans-serif;
+      font-size: .97rem; font-weight: 700; border: none;
+      border-radius: 50px; padding: .82rem 1.4rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+      box-shadow: 0 4px 18px rgba(24,191,239,.28);
+      transition: filter .2s;
+    }
+    .btn-cur-edit:hover { filter: brightness(1.1); }
+    .cur-order-row2 { display: flex; gap: .65rem; }
+    .btn-cur-new {
+      flex: 1;
+      background: linear-gradient(135deg, #f5a623 0%, #e08c00 100%);
+      color: #fff; font-family: 'Alexandria', sans-serif;
+      font-size: .9rem; font-weight: 700; border: none;
+      border-radius: 50px; padding: .78rem 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: .45rem;
+      box-shadow: 0 4px 14px rgba(245,166,35,.25);
+      transition: filter .2s;
+    }
+    .btn-cur-new:hover { filter: brightness(1.1); }
+    .btn-cur-cancel {
+      flex: 1;
+      background: transparent;
+      color: rgba(255,100,100,.85); font-family: 'Alexandria', sans-serif;
+      font-size: .9rem; font-weight: 700;
+      border: 1.5px solid rgba(255,80,80,.3); border-radius: 50px;
+      padding: .78rem 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: .45rem;
+      transition: border-color .2s, color .2s;
+    }
+    .btn-cur-cancel:hover { border-color: rgba(255,80,80,.7); color: #ff6060; }
+    .cur-order-new-warn {
+      background: rgba(245,166,35,.10);
+      border: 1.5px solid rgba(245,166,35,.35);
+      border-radius: 12px; padding: .85rem 1.1rem;
+      font-family: 'Cairo', sans-serif; font-size: .84rem;
+      color: rgba(255,220,100,.9); direction: rtl; line-height: 1.6;
+      margin-bottom: .7rem;
+    }
+    .cur-order-new-warn strong { color: #f5a623; }
+
     /* ══════════════════════════════
        How-to-order note card
     ══════════════════════════════ */
@@ -1743,6 +1829,47 @@
         </div>
       </div>
 
+      <!-- ══ EXISTING CUSTOMER: has a current "New" order ══ -->
+      <div id="stepCurrentOrder" style="display:none">
+        <p class="cur-order-welcome">أهلاً <span id="curOrderCustomerName"></span> 👋<br>
+          <span style="font-size:.88rem;font-weight:500;color:rgba(255,255,255,.6)">لديك طلب مسجل حالياً</span>
+        </p>
+        <div class="cur-order-card">
+          <div class="cur-order-meta">
+            <span class="cur-order-id" id="curOrderId"></span>
+            <span class="cur-order-badge">جديد</span>
+            <span class="cur-order-date" id="curOrderDate"></span>
+          </div>
+          <div class="cur-order-items" id="curOrderItems"></div>
+        </div>
+        <div class="cur-order-actions">
+          <button class="btn-cur-edit" id="btnCurEdit">
+            <i class="fas fa-pen"></i>&nbsp;تعديل الطلب الحالي
+          </button>
+          <div class="cur-order-row2">
+            <button class="btn-cur-new" id="btnCurNew">
+              <i class="fas fa-plus-circle"></i>&nbsp;طلب جديد
+            </button>
+            <button class="btn-cur-cancel" id="btnCurCancel">
+              <i class="fas fa-times-circle"></i>&nbsp;إلغاء الطلب
+            </button>
+          </div>
+        </div>
+        <!-- Warning shown only after clicking "طلب جديد" -->
+        <div class="cur-order-new-warn" id="curOrderNewWarn" style="display:none">
+          <strong>⚠ تنبيه:</strong> لديك طلب مسجل ضمن هذه الدورة.<br>
+          أي طلب جديد سيُسجَّل <strong>بشكل مستقل</strong> وقد تُطبَّق عليه <strong>تكلفة توصيل إضافية</strong> منفصلة عن طلبك الحالي.
+          <div style="display:flex;gap:.6rem;margin-top:.8rem;">
+            <button class="btn-cur-edit" style="font-size:.88rem;padding:.65rem 1rem;flex:1" id="btnCurConfirmNew">
+              <i class="fas fa-check"></i>&nbsp;تأكيد، أريد طلباً جديداً
+            </button>
+            <button class="btn-cur-cancel" style="font-size:.88rem;padding:.65rem 1rem;flex:1;border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.6)" onclick="document.getElementById('curOrderNewWarn').style.display='none'">
+              <i class="fas fa-arrow-right"></i>&nbsp;رجوع
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- ══ NEW CUSTOMER: WhatsApp options ══ -->
       <div id="stepWhatsapp" style="display:none">
         <div class="cust-field">
@@ -2462,7 +2589,7 @@
 
   // ── Reset all steps (back to phone-only state) ──────────
   function _resetForm() {
-    ['stepExisting','stepWhatsapp','stepDetails','stepSuccess'].forEach(id => _showStep(id, false));
+    ['stepCurrentOrder','stepExisting','stepWhatsapp','stepDetails','stepSuccess'].forEach(id => _showStep(id, false));
     _showStep('editFormWrap', false);
     _showStep('custWhatsappField', false);
     ['custName','custArea','custAddress','custWhatsapp',
@@ -2882,10 +3009,10 @@
   async function lookupCustomer(phone) {
     const statusEl = document.getElementById('custLookupStatus');
     try {
-      const result = await _callScript('getCustomer', { phone });
+      const result = await _callScript('getCustomerAndLatestOrder', { phone });
 
       if (result.success && result.customer) {
-        // ── EXISTING CUSTOMER: show info card + action buttons ──
+        // ── EXISTING CUSTOMER ──────────────────────────────
         const c = result.customer;
         window._existingCustomerId = c.id;
         window._existingCustomer   = c;
@@ -2898,11 +3025,11 @@
           address   : c.address  || '',
           whatsapp  : c.whatsapp || phone,
           customerId: c.id       || '',
-          latitude  : c.latitude  || '',
-          longitude : c.longitude || '',
+          latitude  : !isNaN(parseFloat(c.latitude))  ? String(parseFloat(c.latitude))  : '',
+          longitude : !isNaN(parseFloat(c.longitude)) ? String(parseFloat(c.longitude)) : '',
         }));
 
-        // Populate info card
+        // Populate info card (for normal flow)
         document.getElementById('eciName').textContent    = c.name     || '-';
         document.getElementById('eciPhone').textContent   = phone;
         document.getElementById('eciWhatsapp').textContent= c.whatsapp || phone;
@@ -2912,21 +3039,97 @@
         statusEl.className = 'cust-lookup-status found';
         statusEl.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp;مرحباً! تم العثور على بياناتك';
 
-        // Show info card + action buttons
-        _showStep('stepExisting', true);
+        // ── Check if customer has an active "New" order ──
+        const lo = result.latestOrder;
+        const storeSheet = window._opStore?.sheetName || '';
+        const hasNewOrder = lo && (lo.status === 'New' || lo.status === 'جديد');
+
+        if (hasNewOrder) {
+          // Show current-order panel
+          window._currentOrderId    = lo.id;
+          window._currentOrderSheet = storeSheet;
+
+          document.getElementById('curOrderCustomerName').textContent = c.name || '';
+          document.getElementById('curOrderId').textContent   = lo.id || '';
+          document.getElementById('curOrderDate').textContent = lo.date ? String(lo.date).substring(0,16) : '—';
+          document.getElementById('curOrderItems').textContent = lo.items || '—';
+
+          // Wire up buttons
+          document.getElementById('btnCurEdit').onclick = () => _editCurrentOrder(lo.id, lo.items || '');
+          document.getElementById('btnCurNew').onclick  = () => {
+            document.getElementById('curOrderNewWarn').style.display = 'block';
+            document.getElementById('btnCurNew').style.display = 'none';
+          };
+          document.getElementById('btnCurCancel').onclick = () => _cancelCurrentOrder(lo.id, storeSheet);
+          document.getElementById('btnCurConfirmNew').onclick = () => _confirmNewOrder();
+
+          _showStep('stepCurrentOrder', true);
+          _showStep('stepExisting', false);
+        } else {
+          // No active "New" order → normal flow
+          _showStep('stepExisting', true);
+          _showStep('stepCurrentOrder', false);
+        }
 
       } else {
         // ── NEW CUSTOMER ───────────────────────────────────
         window._existingCustomerId = null;
         statusEl.textContent = 'رقم جديد — أكمل بياناتك';
 
-        // Show only WhatsApp options (step 2a) — hide the rest
         _showStep('stepWhatsapp', true);
         _showStep('stepWhatsappExisting', false);
         _showStep('stepDetails', false);
       }
     } catch(e) {
       statusEl.textContent = '';
+    }
+  }
+
+  // ── Current-order helpers ────────────────────────────
+  function _editCurrentOrder(orderId, items) {
+    window._editingOrderId = orderId;
+    _opSaved = false;
+    _showStep('stepCurrentOrder', false);
+    goToOrderPage();
+    // Pre-fill the items textarea after order panel opens
+    setTimeout(() => {
+      const ta = document.getElementById('opItemsInput');
+      if (ta && items) ta.value = items;
+    }, 400);
+  }
+
+  function _confirmNewOrder() {
+    window._editingOrderId = null;
+    _opSaved = false;
+    _showStep('stepCurrentOrder', false);
+    document.getElementById('curOrderNewWarn').style.display = 'none';
+    document.getElementById('btnCurNew').style.display = '';
+    goToOrderPage();
+  }
+
+  async function _cancelCurrentOrder(orderId, sheetName) {
+    if (!confirm(`هل أنت متأكد من إلغاء الطلب؟\n\nرقم الطلب: ${orderId}\n\nسيتم حذفه نهائياً من النظام.`)) return;
+    const btn = document.getElementById('btnCurCancel');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإلغاء...';
+    try {
+      const r = await _callScript('cancelOrderByCustomer', { orderId, sheet: sheetName }, 20000);
+      if (r.success) {
+        // Order cancelled → show normal stepExisting so they can start fresh
+        window._currentOrderId = null;
+        _showStep('stepCurrentOrder', false);
+        _showStep('stepExisting', true);
+        document.getElementById('custLookupStatus').innerHTML =
+          '<i class="fas fa-check-circle" style="color:#f5a623"></i>&nbsp;تم إلغاء الطلب — يمكنك بدء طلب جديد';
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-times-circle"></i>&nbsp;إلغاء الطلب';
+        alert('تعذر إلغاء الطلب: ' + (r.message || 'خطأ'));
+      }
+    } catch(e) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-times-circle"></i>&nbsp;إلغاء الطلب';
+      alert('تعذر الاتصال: ' + e.message);
     }
   }
 
