@@ -2356,6 +2356,19 @@
         }
       });
     }).catch(() => {}); // ignore — show all if API unavailable
+
+    // Auto-fetch first menu image as card background for stores without bgImage
+    stores.forEach(async s => {
+      if (s.bgImage) return; // already has a background
+      const config = MENU_CONFIG[s.folder];
+      if (!config?.githubFolder) return;
+      try {
+        const imgs = await fetchImages(config.githubFolder);
+        if (!imgs.length) return;
+        const bgEl = document.getElementById('card-bg-' + s.id);
+        if (bgEl) bgEl.style.backgroundImage = `url('${imgs[0].url}')`;
+      } catch(e) {}
+    });
   }
 
   /* ── Select store → fetch menu + discount images → show two cards ── */
