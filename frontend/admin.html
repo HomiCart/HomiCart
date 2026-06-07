@@ -1881,23 +1881,25 @@ async function mvCopyVendor(key) {
       if (alt) text = alt;
     }
   }
-  // DEBUG: conclusive diagnostic
-  alert('🔍 تشخيص:\nالمفتاح المطلوب: ' + key
-    + '\nالمفاتيح المتاحة: ' + Object.keys(vt).join(' | ')
-    + '\nطول النص الموجود: ' + text.length + ' حرف');
   if (!text) {
     toast('لا يوجد نص لـ ' + key + ' — المتاح: ' + Object.keys(vt).join(', '), 'error');
     return;
   }
+  var vName = (STORES.find(function(s){ return s.key === key; }) || { name: key }).name;
+  var ok = false;
   try {
     await navigator.clipboard.writeText(text);
-    toast('✅ تم نسخ قائمة ' + key, 'success');
+    ok = true;
   } catch(e) {
     var el = document.createElement('textarea');
-    el.value = text; document.body.appendChild(el); el.select();
-    document.execCommand('copy'); document.body.removeChild(el);
-    toast('✅ تم النسخ!', 'success');
+    el.value = text;
+    el.style.position = 'fixed'; el.style.top = '-9999px';
+    document.body.appendChild(el); el.focus(); el.select();
+    try { ok = document.execCommand('copy'); } catch(e2) { ok = false; }
+    document.body.removeChild(el);
   }
+  if (ok) toast('✅ تم نسخ قائمة ' + vName + ' (' + text.length + ' حرف) — الصقها في واتساب', 'success');
+  else    toast('⚠️ تعذّر النسخ التلقائي لـ ' + vName, 'error');
 }
 
 async function mvCopyText(key) {
