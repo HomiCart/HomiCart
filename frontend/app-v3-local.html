@@ -1307,7 +1307,15 @@
       font-weight: 700; color: #fff; margin-bottom: 1rem;
       display: flex; align-items: center; gap: .6rem;
     }
-    .my-orders-list { display: flex; flex-direction: column; gap: .9rem; }
+    .my-orders-list { display: flex; flex-direction: column; gap: 1.2rem; }
+    .my-orders-vendor-group { display: flex; flex-direction: column; gap: .8rem; }
+    .my-orders-vendor-header {
+      font-family: 'Alexandria', sans-serif; font-size: .9rem; font-weight: 700;
+      color: rgba(255,255,255,.75);
+      background: rgba(24,191,239,.07); border: 1px solid rgba(24,191,239,.18);
+      border-radius: 10px; padding: .55rem 1rem;
+      display: flex; align-items: center;
+    }
     .order-card {
       background: rgba(255,255,255,.04);
       border: 1.5px solid rgba(255,255,255,.1);
@@ -2068,7 +2076,7 @@
   const RAW = 'https://raw.githubusercontent.com/HomiCart/HomiCart/main/';
 
   // Fallback stores (shown instantly while API loads)
-  let stores = [
+  let stores = window._appStores = [
     {
       id: 'alkrkn',
       key: 'AlRoknAlMasry',
@@ -3035,9 +3043,10 @@
 
   async function lookupCustomer(phone) {
     const statusEl   = document.getElementById('custLookupStatus');
-    const storeSheet = window._opStore?.sheetName || '';
+    // Use current store's sheet — _pendingStore is set as soon as user enters store page
+    const storeSheet = SHEET_NAMES[window._pendingStore?.folder] || window._opStore?.sheetName || '';
     try {
-      // Fetch customer info + all orders in parallel
+      // Fetch customer info + orders for THIS store only in parallel
       const [custRes, ordersRes] = await Promise.all([
         _callScript('getCustomer',       { phone },                      15000),
         _callScript('getOrdersByPhone',  { phone, sheet: storeSheet },   15000),
@@ -3626,7 +3635,6 @@
   ══════════════════════════════════════════════════════ */
 
   async function showMyOrders() {
-    const store    = window._opStore;
     const customer = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
     if (!customer.phone) { alert('لم يتم التعرف على رقم هاتفك'); return; }
 
@@ -3634,8 +3642,7 @@
       <div class="my-orders-wrap">
         <div class="my-orders-title">
           <i class="fas fa-list-alt" style="color:#18bfef"></i>
-          طلباتي من <span style="color:#18bfef">${store?.cfg?.name || ''}</span>
-          <span style="font-size:.75rem;font-weight:400;color:rgba(255,255,255,.4);margin-right:.4rem">(${store?.sheetName || ''})</span>
+          طلباتي وتعديلاتها
         </div>
         <div class="my-orders-list" id="myOrdersList">
           <div class="no-orders-msg"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
@@ -3647,57 +3654,123 @@
         </div>
       </div>`;
 
+    const list = document.getElementById('myOrdersList');
+    if (!list) return;
+
     try {
-      const result = await _callScript('getOrdersByPhone', {
-        phone : customer.phone,
-        sheet : store?.sheetName || '',
-      }, 20000);
+      // Fetch orders from ALL stores in parallel
+      const allStores = window._appStores || stores || [];
+      const storeEntries = allStores.map(s => ({
+        name      : s.name,
+        sheetName : SHEET_NAMES[s.folder] || s.key || s.folder,
+        folder    : s.folder,
+        storeObj  : s
+      }));
 
-      const list = document.getElementById('myOrdersList');
-      if (!list) return;
+      const results = await Promise.all(
+        storeEntries.map(se =>
+          _callScript('getOrdersByPhone', { phone: customer.phone, sheet: se.sheetName }, 20000)
+            .then(r => ({ store: se, orders: r.orders || [] }))
+            .catch(() => ({ store: se, orders: [] }))
+        )
+      );
 
-      const orders = result.orders || [];
-      if (!orders.length) {
+      // Filter stores that have at least one order
+      const storesWithOrders = results.filter(r => r.orders.length > 0);
+
+      if (!storesWithOrders.length) {
         list.innerHTML = '<div class="no-orders-msg">لا توجد طلبات سابقة</div>';
         return;
       }
 
-      // Sort newest first
-      orders.sort((a, b) => (b.date || '') > (a.date || '') ? 1 : -1);
+      // Render grouped by store
+      list.innerHTML = storesWithOrders.map(({ store: se, orders }) => {
+        // Sort newest first
+        orders.sort((a, b) => (b.date || '') > (a.date || '') ? 1 : -1);
 
-      list.innerHTML = orders.map(o => {
-        const canEdit = o.status === 'New';
-        const statusClass = 'status-' + (o.status || 'New');
-        const dateStr = o.date ? String(o.date).substring(0, 16) : '—';
+        const ordersHtml = orders.map(o => {
+          const canEdit     = o.status === 'New';
+          const statusClass = 'status-' + (o.status || 'New');
+          const dateStr     = o.date ? String(o.date).substring(0, 16) : '—';
+          const itemsSafe   = (o.items || '').replace(/`/g, "'");
+          return `
+            <div class="order-card ${canEdit ? 'editable' : ''}" id="myord-${o.id}">
+              <div class="order-card-top">
+                <span class="order-card-id">${o.id}</span>
+                <span class="order-status-badge ${statusClass}">${_statusAr(o.status)}</span>
+                <span class="order-card-date">${dateStr}</span>
+              </div>
+              <div class="order-card-items">${o.items || '—'}</div>
+              <div class="order-card-actions">
+                ${canEdit ? `
+                  <button class="btn-edit-order" data-orderid="${o.id}" data-sheet="${se.sheetName}" data-folder="${se.folder}">
+                    <i class="fas fa-pen"></i> تعديل
+                  </button>
+                  <button class="btn-cancel-order" data-orderid="${o.id}" data-sheet="${se.sheetName}">
+                    <i class="fas fa-times"></i> إلغاء
+                  </button>
+                ` : `
+                  <span style="font-family:'Cairo',sans-serif;font-size:.78rem;color:rgba(255,255,255,.3)">
+                    ⛔ ${o.status === 'Preparing' || o.status === 'جاري التحضير' ? 'جاري التحضير' : o.status === 'Delivered' ? 'تم التوصيل' : o.status === 'Cancelled' ? 'ملغي' : 'لا يمكن التعديل'}
+                  </span>
+                `}
+              </div>
+            </div>`;
+        }).join('');
+
         return `
-          <div class="order-card ${canEdit ? 'editable' : ''}">
-            <div class="order-card-top">
-              <span class="order-card-id">${o.id}</span>
-              <span class="order-status-badge ${statusClass}">${_statusAr(o.status)}</span>
-              <span class="order-card-date">${dateStr}</span>
+          <div class="my-orders-vendor-group">
+            <div class="my-orders-vendor-header">
+              <i class="fas fa-store" style="color:#18bfef;margin-left:.4rem"></i>
+              ${se.name}
             </div>
-            <div class="order-card-items">${o.items || '—'}</div>
-            <div class="order-card-actions">
-              ${canEdit ? `
-                <button class="btn-edit-order" onclick="loadOrderForEdit('${o.id}', \`${(o.items||'').replace(/`/g,"'")}\`)">
-                  <i class="fas fa-pen"></i> تعديل
-                </button>
-                <button class="btn-cancel-order" onclick="cancelOrderByCustomer('${o.id}', '${store?.sheetName || ''}', this)">
-                  <i class="fas fa-times"></i> إلغاء الطلب
-                </button>
-              ` : `
-                <span style="font-family:'Cairo',sans-serif;font-size:.78rem;color:rgba(255,255,255,.3)">
-                  ⛔ ${o.status === 'Preparing' ? 'جاري التحضير' : o.status === 'Delivered' ? 'تم التوصيل' : o.status === 'Cancelled' ? 'ملغي' : 'لا يمكن التعديل'}
-                </span>
-              `}
-            </div>
+            ${ordersHtml}
           </div>`;
       }).join('');
 
+      // Attach event listeners for edit + cancel buttons
+      storesWithOrders.forEach(({ store: se, orders }) => {
+        orders.forEach(o => {
+          const card = document.getElementById('myord-' + o.id);
+          if (!card) return;
+          const editBtn   = card.querySelector('.btn-edit-order');
+          const cancelBtn = card.querySelector('.btn-cancel-order');
+          if (editBtn) editBtn.addEventListener('click', () => {
+            _editOrderFromMyOrders(o.id, o.items || '', se.folder, se.sheetName, se.name);
+          });
+          if (cancelBtn) cancelBtn.addEventListener('click', () => {
+            cancelOrderByCustomer(o.id, se.sheetName, cancelBtn);
+          });
+        });
+      });
+
     } catch(e) {
-      const list = document.getElementById('myOrdersList');
       if (list) list.innerHTML = `<div class="no-orders-msg" style="color:#ff8080">تعذر تحميل الطلبات: ${e.message}</div>`;
     }
+  }
+
+  // Edit order from "طلباتي" — navigates to the correct store then opens edit panel
+  async function _editOrderFromMyOrders(orderId, items, folder, sheetName, storeName) {
+    const matchedStore = (window._appStores || stores || []).find(s => s.folder === folder);
+    if (!matchedStore) { alert('تعذر فتح متجر ' + storeName); return; }
+
+    window._editingOrderId = orderId;
+    window._pendingStore   = { folder: matchedStore.folder, name: matchedStore.name, tag: matchedStore.tag || '' };
+
+    await selectStore(matchedStore.folder, matchedStore.name, matchedStore.tag || '');
+    setTimeout(() => {
+      orderNow(matchedStore.folder);
+      setTimeout(() => {
+        const ta  = document.getElementById('opItemsInput');
+        const btn = document.getElementById('opSaveBtn');
+        const lbl = document.getElementById('opSaveTxt');
+        const err = document.getElementById('opError');
+        if (ta)  { ta.value = items; ta.focus(); }
+        if (lbl) lbl.textContent = 'حفظ التعديلات';
+        if (btn) btn.disabled = false;
+        if (err) { err.textContent = `✏️ تعديل الطلب: ${orderId}`; err.style.color = '#18bfef'; }
+      }, 400);
+    }, 200);
   }
 
   async function cancelOrderByCustomer(orderId, sheetName, btn) {
@@ -3986,6 +4059,7 @@
     .then(res => {
       if (res?.success && Array.isArray(res.stores) && res.stores.length) {
         stores = res.stores.map(_apiStoreToAppStore);
+        window._appStores = stores; // save globally for showMyOrders
         _syncMenuConfig(res.stores);
       }
     })
