@@ -1838,15 +1838,19 @@ async function runMultiVendorPipeline() {
         }).join('')
       : '<div style="font-size:12px;color:rgba(255,255,255,.3)">لا توجد روابط مسار</div>';
 
-    // Per-vendor copy/print buttons
+    // Per-vendor copy/print buttons — use addEventListener to avoid quoting issues
     var vendorBtnsEl = document.getElementById('mv-vendor-btns');
     vendorBtnsEl.innerHTML = checked.map(function(key) {
       var store = STORES.find(function(s) { return s.key === key; }) || { name: key, color: '#18bfef' };
-      return '<button onclick="mvCopyText(\'' + key + '\')" '
+      return '<button data-vendor-key="' + key + '" '
         + 'style="flex:1;min-width:130px;padding:8px;background:rgba(255,255,255,.06);color:#fff;border:1px solid ' + store.color + '44;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700">'
         + '📋 ' + store.name
         + '</button>';
     }).join('');
+    // Attach click events
+    vendorBtnsEl.querySelectorAll('[data-vendor-key]').forEach(function(btn) {
+      btn.addEventListener('click', function() { mvCopyText(btn.dataset.vendorKey); });
+    });
 
     results.style.display = 'block';
     toast('✅ ' + data.message, 'success');
@@ -1864,11 +1868,26 @@ async function runMultiVendorPipeline() {
 
 async function mvCopyText(key) {
   if (!_mvResults) { toast('شغّل التجميع أولاً', 'error'); return; }
-  var text = key === 'combined'
-    ? (_mvResults.combinedText || '')
-    : ((_mvResults.vendorTexts || {})[key] || '');
 
-  if (!text) { toast('لا يوجد نص للنسخ', 'error'); return; }
+  var text = '';
+  if (key === 'combined') {
+    text = _mvResults.combinedText || '';
+  } else {
+    var vt = _mvResults.vendorTexts || {};
+    text = vt[key] || '';
+    // Fallback: try to find by partial match (in case of key mismatch)
+    if (!text) {
+      var keys = Object.keys(vt);
+      var match = keys.find(function(k) { return k.toLowerCase() === key.toLowerCase(); });
+      if (match) text = vt[match] || '';
+    }
+  }
+
+  if (!text) {
+    var available = Object.keys(_mvResults.vendorTexts || {}).join(', ');
+    toast('لا يوجد نص — المتاح: ' + (available || 'لا شيء'), 'error');
+    return;
+  }
   try {
     await navigator.clipboard.writeText(text);
     toast('✅ تم النسخ! الصق في واتساب.', 'success');
