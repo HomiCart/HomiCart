@@ -1844,19 +1844,16 @@ async function runMultiVendorPipeline() {
     var _vtKeys = Object.keys(window._mvVendorTexts);
     toast('🔑 مفاتيح التجار: ' + (_vtKeys.length ? _vtKeys.join(' | ') : 'فاضي!'), _vtKeys.length ? 'info' : 'error');
 
-    // Per-vendor copy buttons
+    // Per-vendor copy buttons — built as inline-onclick HTML (same proven pattern as combined button)
     var vendorBtnsEl = document.getElementById('mv-vendor-btns');
-    vendorBtnsEl.innerHTML = '';
-    checked.forEach(function(key) {
+    vendorBtnsEl.innerHTML = checked.map(function(key) {
       var store = STORES.find(function(s) { return s.key === key; }) || { name: key, color: '#18bfef' };
-      var btn = document.createElement('button');
-      btn.textContent = '📋 ' + store.name;
-      btn.style.cssText = 'flex:1;min-width:130px;padding:8px;background:rgba(255,255,255,.06);color:#fff;border:1px solid ' + store.color + '44;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700';
-      btn.addEventListener('click', (function(k) {
-        return function() { mvCopyVendor(k); };
-      })(key));
-      vendorBtnsEl.appendChild(btn);
-    });
+      var safeKey = String(key).replace(/'/g, "\\'");
+      return '<button onclick="mvCopyVendor(\'' + safeKey + '\')" '
+        + 'style="flex:1;min-width:130px;padding:8px;background:rgba(255,255,255,.06);color:#fff;border:1px solid '
+        + store.color + '44;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700">'
+        + '📋 ' + store.name + '</button>';
+    }).join('');
 
     results.style.display = 'block';
     toast('✅ ' + data.message, 'success');
@@ -1876,6 +1873,14 @@ async function runMultiVendorPipeline() {
 async function mvCopyVendor(key) {
   var vt   = window._mvVendorTexts || {};
   var text = vt[key] || '';
+  // Fallback: backend may key by sheet-name; match the store's folder/sheetName/name
+  if (!text) {
+    var store = STORES.find(function(s) { return s.key === key; });
+    if (store) {
+      var alt = vt[store.sheetName] || vt[store.folder] || vt[store.name];
+      if (alt) text = alt;
+    }
+  }
   if (!text) {
     toast('لا يوجد نص لـ ' + key + ' — المتاح: ' + Object.keys(vt).join(', '), 'error');
     return;
