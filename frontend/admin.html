@@ -1849,7 +1849,7 @@ async function runMultiVendorPipeline() {
     vendorBtnsEl.innerHTML = checked.map(function(key) {
       var store = STORES.find(function(s) { return s.key === key; }) || { name: key, color: '#18bfef' };
       var safeKey = String(key).replace(/'/g, "\\'");
-      return '<button onclick="alert(\'CLICK OK: ' + safeKey + '\'); mvCopyVendor(\'' + safeKey + '\')" '
+      return '<button onclick="mvCopyVendor(\'' + safeKey + '\')" '
         + 'style="flex:1;min-width:130px;padding:8px;background:rgba(255,255,255,.06);color:#fff;border:1px solid '
         + store.color + '44;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700">'
         + '📋 ' + store.name + '</button>';
@@ -1881,6 +1881,10 @@ async function mvCopyVendor(key) {
       if (alt) text = alt;
     }
   }
+  // DEBUG: conclusive diagnostic
+  alert('🔍 تشخيص:\nالمفتاح المطلوب: ' + key
+    + '\nالمفاتيح المتاحة: ' + Object.keys(vt).join(' | ')
+    + '\nطول النص الموجود: ' + text.length + ' حرف');
   if (!text) {
     toast('لا يوجد نص لـ ' + key + ' — المتاح: ' + Object.keys(vt).join(', '), 'error');
     return;
