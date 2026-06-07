@@ -40,8 +40,9 @@ function tryRoutingAction(e) {
   else if (action === 'getRouteLinks')        result = { success: true, links: _getRouteLinksData() };
   else if (action === 'getVendorOrders')      result = getVendorOrders(e.parameter.sheet);
   else if (action === 'routeVendorOrders')    result = routeVendorOrders(e.parameter.sheet, parseFloat(e.parameter.lat), parseFloat(e.parameter.lng));
-  else if (action === 'processVendorFull')    result = processVendorFull(e.parameter.sheet, e.parameter.workspace, parseFloat(e.parameter.lat), parseFloat(e.parameter.lng), e.parameter.batchId || '');
-  else if (action === 'getWorkspaceExport')   result = getWorkspaceExport(e.parameter.workspace);
+  else if (action === 'processVendorFull')      result = processVendorFull(e.parameter.sheet, e.parameter.workspace, parseFloat(e.parameter.lat), parseFloat(e.parameter.lng), e.parameter.batchId || '');
+  else if (action === 'getWorkspaceExport')     result = getWorkspaceExport(e.parameter.workspace);
+  else if (action === 'processMultiVendorFull') result = processMultiVendorFull(e.parameter.vendors, parseFloat(e.parameter.lat), parseFloat(e.parameter.lng));
 
   if (result === null) return null;
   return _respond(result);
@@ -478,5 +479,211 @@ function getWorkspaceExport(workspaceTab) {
     return { success: true, text: _getWorkspaceExportText(ws) };
   } catch(e) {
     return { success: false, message: e.toString() };
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════════
+//  MULTI-VENDOR DELIVERY PIPELINE
+//  Combines Preparing orders from multiple vendor sheets,
+//  groups by customer, routes once, assigns unified delivery numbers,
+//  saves DeliveryNo (col 13) back to each vendor sheet,
+//  and returns combined + per-vendor WhatsApp text.
+// ════════════════════════════════════════════════════════════════════
+
+function processMultiVendorFull(vendorsParam, startLat, startLng) {
+  try {
+    var vendors = String(vendorsParam || '').split(',').map(function(v){ return v.trim(); }).filter(function(v){ return v; });
+    if (vendors.length === 0) return { success: false, message: 'لم يتم اختيار أي تاجر' };
+
+    var ss      = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var dbSheet = ss.getSheetByName('DataBase');
+    if (!dbSheet) return { success: false, message: 'شيت DataBase مش موجود' };
+
+    // ── 1. Collect all Preparing orders from all vendor sheets ──
+    var allOrders = [];
+    vendors.forEach(function(sheetName) {
+      var sheet = ss.getSheetByName(sheetName);
+      if (!sheet || sheet.getLastRow() < 2) return;
+      var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 12).getValues();
+      data.forEach(function(r, ri) {
+        if (r[0] && String(r[6]).trim() === 'Preparing') {
+          allOrders.push({
+            vendor   : sheetName,
+            rowIndex : ri + 2,
+            orderId  : String(r[0]),
+            clientId : String(r[1]).trim(),
+            items    : String(r[2] || '').trim(),
+            name     : String(r[3] || ''),
+            phone    : String(r[4] || '').replace(/[\s\-\(\)]/g,'').replace(/^\+?971/,'0').replace(/^00971/,'0')
+          });
+        }
+      });
+    });
+
+    if (allOrders.length === 0)
+      return { success: false, message: 'لا توجد أوردرات Preparing في التجار المختارين' };
+
+    // ── 2. Build customer lookup from DataBase (Lat=col15 idx14, Lng=col16 idx15) ──
+    var dbLast = dbSheet.getLastRow();
+    var dbData = dbLast >= 2 ? dbSheet.getRange(2, 1, dbLast - 1, 17).getValues() : [];
+    var byId = {}, byPhone = {};
+    dbData.forEach(function(r) {
+      var id  = String(r[0]).trim();
+      var ph  = String(r[2] || '').replace(/[\s\-\(\)]/g,'').replace(/^\+?971/,'0').replace(/^00971/,'0');
+      var obj = {
+        name    : r[1] || '', phone   : r[2] || '',
+        area    : r[4] || '', address : r[5] || '',
+        location: String(r[6] || ''),
+        lat     : String(r[14] || '').trim(),
+        lng     : String(r[15] || '').trim()
+      };
+      if (id) byId[id]    = obj;
+      if (ph) byPhone[ph] = obj;
+    });
+
+    // ── 3. Group orders by customer → one delivery stop per customer ──
+    var customerMap = {};
+    allOrders.forEach(function(order) {
+      var c   = byId[order.clientId] || byPhone[order.phone] || {};
+      var key = order.clientId || order.phone;
+      if (!customerMap[key]) {
+        var lat = c.lat || '', lng = c.lng || '';
+        if ((!lat || !lng) && c.location) {
+          var m = c.location.match(/[?&]q=(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/i)
+               || c.location.match(/@(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/i);
+          if (m) { lat = m[1]; lng = m[2]; }
+        }
+        customerMap[key] = {
+          clientId  : order.clientId,
+          phone     : c.phone    || order.phone,
+          name      : c.name     || order.name,
+          area      : c.area     || '',
+          address   : c.address  || '',
+          lat       : lat,
+          lng       : lng,
+          deliveryNo: '',
+          orders    : []
+        };
+      }
+      customerMap[key].orders.push(order);
+    });
+
+    var customers = Object.values(customerMap);
+
+    // ── 4. Populate Routes sheet & run nearest-neighbor + 2-OPT ──
+    var routesSheet = ss.getSheetByName('Routes');
+    if (!routesSheet) routesSheet = ss.insertSheet('Routes');
+    routesSheet.clearContents();
+    routesSheet.getRange('H1').setValue(parseFloat(startLat) || 0);
+    routesSheet.getRange('I1').setValue(parseFloat(startLng) || 0);
+
+    var rlSheet = ss.getSheetByName('RouteLinks');
+    if (rlSheet) rlSheet.clearContents();
+
+    var routable = customers.filter(function(c) { return c.lat && c.lng; });
+    if (routable.length === 0)
+      return { success: false, message: 'لا يوجد موقع لأي عميل في DataBase' };
+
+    var routeRows = routable.map(function(c) {
+      return ['https://www.google.com/maps?q=' + c.lat + ',' + c.lng, '', '', c.lat, c.lng, '', ''];
+    });
+    routesSheet.getRange(2, 1, routeRows.length, 7).setValues(routeRows);
+
+    nearestNeighborOrder();
+    GenerateRoutesFromColumnA();
+
+    // ── 5. Read delivery numbers back from Routes col G ──
+    var routeNums = routesSheet.getRange(2, 7, routable.length, 1).getValues();
+    routable.forEach(function(c, i) { c.deliveryNo = routeNums[i][0] || ''; });
+
+    // ── 6. Sort customers by delivery number ──
+    customers.sort(function(a, b) {
+      return (parseInt(a.deliveryNo) || 999) - (parseInt(b.deliveryNo) || 999);
+    });
+
+    // ── 7. Write DeliveryNo (col 13) + status to each vendor sheet ──
+    var now = Utilities.formatDate(new Date(), 'Asia/Dubai', 'yyyy-MM-dd HH:mm:ss');
+    vendors.forEach(function(sheetName) {
+      var sheet = ss.getSheetByName(sheetName);
+      if (!sheet || sheet.getLastRow() < 2) return;
+      var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 12).getValues();
+      var statusArr = [], updatedArr = [], deliveryArr = [];
+      data.forEach(function(r) {
+        if (r[0] && String(r[6]).trim() === 'Preparing') {
+          var key  = String(r[1]).trim() || String(r[4]||'').replace(/[\s\-\(\)]/g,'').replace(/^\+?971/,'0').replace(/^00971/,'0');
+          var cust = customerMap[key];
+          deliveryArr.push([cust ? (cust.deliveryNo || '') : '']);
+          statusArr.push(['جاري التحضير']);
+          updatedArr.push([now]);
+        } else {
+          deliveryArr.push([r[12] || '']);
+          statusArr.push([r[6]]);
+          updatedArr.push([r[7]]);
+        }
+      });
+      sheet.getRange(2, 7,  statusArr.length,  1).setValues(statusArr);
+      sheet.getRange(2, 8,  updatedArr.length,  1).setValues(updatedArr);
+      sheet.getRange(2, 13, deliveryArr.length, 1).setValues(deliveryArr);
+    });
+
+    // ── 8. Generate Combined WhatsApp text ──
+    var combinedText = '';
+    customers.forEach(function(cust) {
+      if (!cust.deliveryNo) return;
+      var mapsUrl = (cust.lat && cust.lng) ? 'https://www.google.com/maps?q=' + cust.lat + ',' + cust.lng : '';
+      combinedText += '🧾 رقم ' + cust.deliveryNo + '\n';
+      combinedText += '📞 ' + cust.phone + '\n';
+      combinedText += '👤 ' + cust.name  + '\n';
+      combinedText += '📍 ' + cust.area  + (cust.area && cust.address ? ' - ' : '') + cust.address + '\n';
+      if (mapsUrl) combinedText += '🗺️ ' + mapsUrl + '\n';
+      combinedText += '🛒 الاوردر 👇\n';
+      var byVendor = {};
+      cust.orders.forEach(function(o) {
+        if (!byVendor[o.vendor]) byVendor[o.vendor] = [];
+        byVendor[o.vendor].push(o.items);
+      });
+      Object.keys(byVendor).forEach(function(v) {
+        combinedText += '[' + v + ']: ' + byVendor[v].join(' | ') + '\n';
+      });
+      combinedText += '---------------------------\n\n';
+    });
+
+    // ── 9. Generate per-vendor WhatsApp texts ──
+    var vendorTexts = {};
+    vendors.forEach(function(sheetName) {
+      var text = '';
+      customers.forEach(function(cust) {
+        if (!cust.deliveryNo) return;
+        var vOrders = cust.orders.filter(function(o) { return o.vendor === sheetName; });
+        if (!vOrders.length) return;
+        var mapsUrl = (cust.lat && cust.lng) ? 'https://www.google.com/maps?q=' + cust.lat + ',' + cust.lng : '';
+        text += '🧾 رقم ' + cust.deliveryNo + '\n';
+        text += '📞 ' + cust.phone + '\n';
+        text += '👤 ' + cust.name  + '\n';
+        text += '📍 ' + cust.area  + (cust.area && cust.address ? ' - ' : '') + cust.address + '\n';
+        if (mapsUrl) text += '🗺️ ' + mapsUrl + '\n';
+        text += '🛒 الاوردر 👇\n';
+        vOrders.forEach(function(o) { text += o.items + '\n'; });
+        text += '---------------------------\n\n';
+      });
+      vendorTexts[sheetName] = text;
+    });
+
+    var routed  = customers.filter(function(c) { return c.deliveryNo; }).length;
+    var noCoord = customers.length - routed;
+
+    return {
+      success       : true,
+      message       : 'تم تجميع ' + routed + ' عميل من ' + vendors.length + ' تاجر' + (noCoord > 0 ? ' — ⚠️ ' + noCoord + ' بدون موقع' : ''),
+      totalOrders   : allOrders.length,
+      totalCustomers: customers.length,
+      combinedText  : combinedText,
+      vendorTexts   : vendorTexts,
+      links         : _getRouteLinksData()
+    };
+
+  } catch(err) {
+    return { success: false, message: 'خطأ: ' + err.toString() };
   }
 }
