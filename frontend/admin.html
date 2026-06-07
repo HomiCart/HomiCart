@@ -1840,6 +1840,9 @@ async function runMultiVendorPipeline() {
 
     // Store vendor texts globally so onclick can access them directly
     window._mvVendorTexts = data.vendorTexts || {};
+    // DEBUG: show what keys came back from API
+    var _vtKeys = Object.keys(window._mvVendorTexts);
+    toast('🔑 مفاتيح التجار: ' + (_vtKeys.length ? _vtKeys.join(' | ') : 'فاضي!'), _vtKeys.length ? 'info' : 'error');
 
     // Per-vendor copy buttons
     var vendorBtnsEl = document.getElementById('mv-vendor-btns');
