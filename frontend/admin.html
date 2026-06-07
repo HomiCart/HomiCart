@@ -1838,18 +1838,21 @@ async function runMultiVendorPipeline() {
         }).join('')
       : '<div style="font-size:12px;color:rgba(255,255,255,.3)">لا توجد روابط مسار</div>';
 
-    // Per-vendor copy/print buttons — use addEventListener to avoid quoting issues
+    // Store vendor texts globally so onclick can access them directly
+    window._mvVendorTexts = data.vendorTexts || {};
+
+    // Per-vendor copy buttons
     var vendorBtnsEl = document.getElementById('mv-vendor-btns');
-    vendorBtnsEl.innerHTML = checked.map(function(key) {
+    vendorBtnsEl.innerHTML = '';
+    checked.forEach(function(key) {
       var store = STORES.find(function(s) { return s.key === key; }) || { name: key, color: '#18bfef' };
-      return '<button data-vendor-key="' + key + '" '
-        + 'style="flex:1;min-width:130px;padding:8px;background:rgba(255,255,255,.06);color:#fff;border:1px solid ' + store.color + '44;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700">'
-        + '📋 ' + store.name
-        + '</button>';
-    }).join('');
-    // Attach click events
-    vendorBtnsEl.querySelectorAll('[data-vendor-key]').forEach(function(btn) {
-      btn.addEventListener('click', function() { mvCopyText(btn.dataset.vendorKey); });
+      var btn = document.createElement('button');
+      btn.textContent = '📋 ' + store.name;
+      btn.style.cssText = 'flex:1;min-width:130px;padding:8px;background:rgba(255,255,255,.06);color:#fff;border:1px solid ' + store.color + '44;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700';
+      btn.addEventListener('click', (function(k) {
+        return function() { mvCopyVendor(k); };
+      })(key));
+      vendorBtnsEl.appendChild(btn);
     });
 
     results.style.display = 'block';
@@ -1866,26 +1869,32 @@ async function runMultiVendorPipeline() {
   }
 }
 
+// Copy per-vendor text (called from dynamically created buttons)
+async function mvCopyVendor(key) {
+  var vt   = window._mvVendorTexts || {};
+  var text = vt[key] || '';
+  if (!text) {
+    toast('لا يوجد نص لـ ' + key + ' — المتاح: ' + Object.keys(vt).join(', '), 'error');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('✅ تم نسخ قائمة ' + key, 'success');
+  } catch(e) {
+    var el = document.createElement('textarea');
+    el.value = text; document.body.appendChild(el); el.select();
+    document.execCommand('copy'); document.body.removeChild(el);
+    toast('✅ تم النسخ!', 'success');
+  }
+}
+
 async function mvCopyText(key) {
   if (!_mvResults) { toast('شغّل التجميع أولاً', 'error'); return; }
 
-  var text = '';
-  if (key === 'combined') {
-    text = _mvResults.combinedText || '';
-  } else {
-    var vt = _mvResults.vendorTexts || {};
-    text = vt[key] || '';
-    // Fallback: try to find by partial match (in case of key mismatch)
-    if (!text) {
-      var keys = Object.keys(vt);
-      var match = keys.find(function(k) { return k.toLowerCase() === key.toLowerCase(); });
-      if (match) text = vt[match] || '';
-    }
-  }
+  var text = _mvResults.combinedText || '';
 
   if (!text) {
-    var available = Object.keys(_mvResults.vendorTexts || {}).join(', ');
-    toast('لا يوجد نص — المتاح: ' + (available || 'لا شيء'), 'error');
+    toast('لا يوجد نص للقائمة المجمعة', 'error');
     return;
   }
   try {
@@ -1903,7 +1912,7 @@ function mvPrint(key) {
   if (!_mvResults) { toast('شغّل التجميع أولاً', 'error'); return; }
   var text = key === 'combined'
     ? (_mvResults.combinedText || '')
-    : ((_mvResults.vendorTexts || {})[key] || '');
+    : ((window._mvVendorTexts || {})[key] || '');
   if (!text) { toast('لا يوجد نص', 'error'); return; }
 
   var title = key === 'combined' ? 'القائمة المجمعة'
