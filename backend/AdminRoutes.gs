@@ -596,11 +596,17 @@ function processMultiVendorFull(vendorsParam, startLat, startLng) {
     routesSheet.getRange(2, 1, routeRows.length, 7).setValues(routeRows);
 
     nearestNeighborOrder();
-    GenerateRoutesFromColumnA();
 
     // ── 5. Read delivery numbers back from Routes col G ──
+    //  IMPORTANT: read BEFORE GenerateRoutesFromColumnA() — that function
+    //  SORTS the Routes sheet by visit order, which would scramble the
+    //  row↔customer mapping. Here the rows are still in customer insertion
+    //  order, so routeNums[i] is the correct visit order for routable[i].
     var routeNums = routesSheet.getRange(2, 7, routable.length, 1).getValues();
     routable.forEach(function(c, i) { c.deliveryNo = routeNums[i][0] || ''; });
+
+    // Now generate the grouped Maps links (this sorts the Routes sheet)
+    GenerateRoutesFromColumnA();
 
     // ── 6. Sort customers by delivery number ──
     customers.sort(function(a, b) {
