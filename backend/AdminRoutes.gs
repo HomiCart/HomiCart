@@ -681,6 +681,9 @@ function processMultiVendorFull(vendorsParam, startLat, startLng) {
       vendorTexts[sheetName] = text;
     });
 
+    // ── 10. Write structured export sheets for admin review ──
+    _writeMultiVendorExportSheets(ss, customers, vendors);
+
     var routed  = customers.filter(function(c) { return c.deliveryNo; }).length;
     var noCoord = customers.length - routed;
 
@@ -697,4 +700,65 @@ function processMultiVendorFull(vendorsParam, startLat, startLng) {
   } catch(err) {
     return { success: false, message: 'خطأ: ' + err.toString() };
   }
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  WRITE EXPORT SHEETS — structured tables for admin to review before
+//  sending to vendors. Creates:
+//   • "تجميع_موحد"        → one row per (customer, vendor) with full info
+//   • "تصدير_<vendor>"    → one tab per vendor, filtered to that vendor
+//  Sheets are cleared & rewritten on every run.
+// ════════════════════════════════════════════════════════════════════
+function _writeMultiVendorExportSheets(ss, customers, vendors) {
+  try {
+    var header = ['رقم التوصيل', 'الاسم', 'الهاتف', 'المنطقة', 'العنوان', 'رابط الموقع', 'التاجر', 'الطلب'];
+
+    // Only routed customers, in delivery-number order
+    var routedCustomers = customers
+      .filter(function(c) { return c.deliveryNo; })
+      .sort(function(a, b) { return (parseInt(a.deliveryNo) || 999) - (parseInt(b.deliveryNo) || 999); });
+
+    // ── Combined sheet: one row per (customer, vendor) ──
+    var combinedRows = [];
+    routedCustomers.forEach(function(c) {
+      var mapsUrl = (c.lat && c.lng) ? 'https://www.google.com/maps?q=' + c.lat + ',' + c.lng : '';
+      var byVendor = {};
+      c.orders.forEach(function(o) {
+        if (!byVendor[o.vendor]) byVendor[o.vendor] = [];
+        byVendor[o.vendor].push(o.items);
+      });
+      Object.keys(byVendor).forEach(function(v) {
+        combinedRows.push([c.deliveryNo, c.name, "'" + c.phone, c.area, c.address, mapsUrl, v, byVendor[v].join(' | ')]);
+      });
+    });
+    _replaceSheet(ss, 'تجميع_موحد', header, combinedRows);
+
+    // ── Per-vendor sheets ──
+    vendors.forEach(function(sheetName) {
+      var rows = [];
+      routedCustomers.forEach(function(c) {
+        var vOrders = c.orders.filter(function(o) { return o.vendor === sheetName; });
+        if (!vOrders.length) return;
+        var mapsUrl = (c.lat && c.lng) ? 'https://www.google.com/maps?q=' + c.lat + ',' + c.lng : '';
+        rows.push([c.deliveryNo, c.name, "'" + c.phone, c.area, c.address, mapsUrl, sheetName,
+                   vOrders.map(function(o){ return o.items; }).join(' | ')]);
+      });
+      // Tab name capped (Sheets limit 100 chars)
+      _replaceSheet(ss, ('تصدير_' + sheetName).substring(0, 95), header, rows);
+    });
+  } catch(e) {
+    console.warn('_writeMultiVendorExportSheets error:', e.toString());
+  }
+}
+
+// Clear (or create) a sheet and write header + rows
+function _replaceSheet(ss, name, header, rows) {
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) sheet = ss.insertSheet(name);
+  sheet.clearContents();
+  sheet.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold');
+  if (rows.length) {
+    sheet.getRange(2, 1, rows.length, header.length).setValues(rows);
+  }
+  sheet.setFrozenRows(1);
 }
