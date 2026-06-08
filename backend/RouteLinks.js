@@ -37,22 +37,36 @@ function GenerateRoutesFromColumnA() {
   // Header
   outSheet.getRange(1, 1, 1, 4).setValues([["Route #", "Stops Count", "Google Maps Route Link", "Notes"]]);
 
-  // Group every 10 locations into one route link
+  // ── Start point (depot) from H1 = Start Lat, I1 = Start Lng ──
+  const sLat = parseFloat(routesSheet.getRange("H1").getValue());
+  const sLng = parseFloat(routesSheet.getRange("I1").getValue());
+  const depot = (isFinite(sLat) && isFinite(sLng)) ? `${sLat},${sLng}` : null;
+
+  // Group every 10 locations into one route link.
+  // Each group is CONTINUOUS with the previous one: it begins from the last
+  // stop of the previous group (and the first group begins from the depot),
+  // so the delivery path never resets back to the start after 10 stops.
   const groupSize = 10;
   const output = [];
   let routeNumber = 1;
+  let connector = depot;   // first group starts from the depot
 
   for (let start = 0; start < coords.length; start += groupSize) {
     const group = coords.slice(start, start + groupSize);
 
-    const routeLink = buildGoogleMapsDirectionsLink(group);
+    // Prepend the connecting origin so the route is one continuous chain
+    const linkCoords = connector ? [connector].concat(group) : group.slice();
+
+    const routeLink = buildGoogleMapsDirectionsLink(linkCoords);
     output.push([
       routeNumber,
       group.length,
       routeLink,
-      `From row ${start + 2} to row ${start + 1 + group.length}`
+      `Stops ${start + 1} → ${start + group.length}` + (connector === depot ? ' (from start point)' : ' (continues from prev route)')
     ]);
 
+    // Next group continues from the LAST stop of this group
+    connector = group[group.length - 1];
     routeNumber++;
   }
 
