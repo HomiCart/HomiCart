@@ -733,18 +733,30 @@ function _writeMultiVendorExportSheets(ss, customers, vendors) {
     });
     _replaceSheet(ss, 'تجميع_موحد', header, combinedRows);
 
-    // ── Per-vendor sheets ──
+    // ── Per-vendor sheets (with column I = ready WhatsApp message) ──
+    var vendorHeader = header.concat(['الرسالة الجاهزة']); // column I
     vendors.forEach(function(sheetName) {
       var rows = [];
       routedCustomers.forEach(function(c) {
         var vOrders = c.orders.filter(function(o) { return o.vendor === sheetName; });
         if (!vOrders.length) return;
         var mapsUrl = (c.lat && c.lng) ? 'https://www.google.com/maps?q=' + c.lat + ',' + c.lng : '';
-        rows.push([c.deliveryNo, c.name, "'" + c.phone, c.area, c.address, mapsUrl, sheetName,
-                   vOrders.map(function(o){ return o.items; }).join(' | ')]);
+        var items = vOrders.map(function(o){ return o.items; }).join(' | ');
+
+        // Column I: formatted message — same layout as WhatsApp text
+        var msg = '🧾 رقم ' + c.deliveryNo + '\n'
+                + '📞 ' + c.phone + '\n'
+                + '👤 ' + c.name  + '\n'
+                + '📍 ' + c.area  + (c.area && c.address ? ' - ' : '') + c.address + '\n'
+                + (mapsUrl ? '🗺️ ' + mapsUrl + '\n' : '')
+                + '🛒 الاوردر 👇\n'
+                + vOrders.map(function(o){ return o.items; }).join('\n') + '\n'
+                + '---------------------------';
+
+        rows.push([c.deliveryNo, c.name, "'" + c.phone, c.area, c.address, mapsUrl, sheetName, items, msg]);
       });
       // Tab name capped (Sheets limit 100 chars)
-      _replaceSheet(ss, ('تصدير_' + sheetName).substring(0, 95), header, rows);
+      _replaceSheet(ss, ('تصدير_' + sheetName).substring(0, 95), vendorHeader, rows);
     });
   } catch(e) {
     console.warn('_writeMultiVendorExportSheets error:', e.toString());
