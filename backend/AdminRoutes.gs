@@ -524,7 +524,9 @@ function processMultiVendorFull(vendorsParam, startLat, startLng) {
     if (allOrders.length === 0)
       return { success: false, message: 'لا توجد أوردرات Preparing في التجار المختارين' };
 
-    // ── 2. Build customer lookup from DataBase (Lat=col15 idx14, Lng=col16 idx15) ──
+    // ── 2. Build customer lookup from DataBase ──
+    //  DataBase columns: ID(1) Name(2) Phone(3) WhatsApp(4) Area(5) Address(6)
+    //                    Location(7) CreatedAt(8) UpdatedAt(9) Latitude(10) Longitude(11)
     var dbLast = dbSheet.getLastRow();
     var dbData = dbLast >= 2 ? dbSheet.getRange(2, 1, dbLast - 1, 17).getValues() : [];
     var byId = {}, byPhone = {};
@@ -534,9 +536,9 @@ function processMultiVendorFull(vendorsParam, startLat, startLng) {
       var obj = {
         name    : r[1] || '', phone   : r[2] || '',
         area    : r[4] || '', address : r[5] || '',
-        location: String(r[6] || ''),
-        lat     : String(r[14] || '').trim(),
-        lng     : String(r[15] || '').trim()
+        location: String(r[6] || ''),       // col 7 = Location URL (contains correct coords)
+        lat     : String(r[9]  || '').trim(), // col 10 = Latitude
+        lng     : String(r[10] || '').trim()  // col 11 = Longitude
       };
       if (id) byId[id]    = obj;
       if (ph) byPhone[ph] = obj;
@@ -548,12 +550,15 @@ function processMultiVendorFull(vendorsParam, startLat, startLng) {
       var c   = byId[order.clientId] || byPhone[order.phone] || {};
       var key = order.clientId || order.phone;
       if (!customerMap[key]) {
-        var lat = c.lat || '', lng = c.lng || '';
-        if ((!lat || !lng) && c.location) {
+        var lat = '', lng = '';
+        // Prefer the stored Google Maps URL (most reliable source of truth)
+        if (c.location) {
           var m = c.location.match(/[?&]q=(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/i)
                || c.location.match(/@(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/i);
           if (m) { lat = m[1]; lng = m[2]; }
         }
+        // Fallback to explicit Latitude/Longitude columns
+        if ((!lat || !lng) && c.lat && c.lng) { lat = c.lat; lng = c.lng; }
         customerMap[key] = {
           clientId  : order.clientId,
           phone     : c.phone    || order.phone,
