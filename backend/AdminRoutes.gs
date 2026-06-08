@@ -646,7 +646,8 @@ function processMultiVendorFull(vendorsParam, startLat, startLng) {
       combinedText += '🧾 رقم ' + cust.deliveryNo + '\n';
       combinedText += '📞 ' + cust.phone + '\n';
       combinedText += '👤 ' + cust.name  + '\n';
-      combinedText += '📍 ' + cust.area  + (cust.area && cust.address ? ' - ' : '') + cust.address + '\n';
+      combinedText += '📍 ' + cust.area + '\n';
+      if (cust.address) combinedText += cust.address + '\n';
       if (mapsUrl) combinedText += '🗺️ ' + mapsUrl + '\n';
       combinedText += '🛒 الاوردر 👇\n';
       var byVendor = {};
@@ -672,7 +673,8 @@ function processMultiVendorFull(vendorsParam, startLat, startLng) {
         text += '🧾 رقم ' + cust.deliveryNo + '\n';
         text += '📞 ' + cust.phone + '\n';
         text += '👤 ' + cust.name  + '\n';
-        text += '📍 ' + cust.area  + (cust.area && cust.address ? ' - ' : '') + cust.address + '\n';
+        text += '📍 ' + cust.area + '\n';
+        if (cust.address) text += cust.address + '\n';
         if (mapsUrl) text += '🗺️ ' + mapsUrl + '\n';
         text += '🛒 الاوردر 👇\n';
         vOrders.forEach(function(o) { text += o.items + '\n'; });
@@ -747,7 +749,8 @@ function _writeMultiVendorExportSheets(ss, customers, vendors) {
         var msg = '🧾 رقم ' + c.deliveryNo + '\n'
                 + '📞 ' + c.phone + '\n'
                 + '👤 ' + c.name  + '\n'
-                + '📍 ' + c.area  + (c.area && c.address ? ' - ' : '') + c.address + '\n'
+                + '📍 ' + c.area + '\n'
+                + (c.address ? c.address + '\n' : '')
                 + (mapsUrl ? '🗺️ ' + mapsUrl + '\n' : '')
                 + '🛒 الاوردر 👇\n'
                 + vOrders.map(function(o){ return o.items; }).join('\n') + '\n'
