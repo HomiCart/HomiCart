@@ -741,12 +741,12 @@ async function renderStorePage(storeKey) {
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:.9rem">
           <div style="flex:1;min-width:140px">
             <label style="font-size:11px;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Latitude</label>
-            <input type="number" id="proc-lat-${storeKey}" step="any" value="24.488321" placeholder="24.488321"
+            <input type="number" id="proc-lat-${storeKey}" step="any" value="24.5144395" placeholder="24.5144395"
               style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none">
           </div>
           <div style="flex:1;min-width:140px">
             <label style="font-size:11px;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Longitude</label>
-            <input type="number" id="proc-lng-${storeKey}" step="any" value="54.36706" placeholder="54.36706"
+            <input type="number" id="proc-lng-${storeKey}" step="any" value="54.375908" placeholder="54.375908"
               style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none">
           </div>
           <button onclick="procGetLocation('${storeKey}')"
@@ -2075,12 +2075,12 @@ function mvPrint(key) {
       <div style="display:flex;gap:.6rem;flex-wrap:wrap">
         <div style="flex:1;min-width:120px">
           <label style="font-size:.72rem;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Latitude</label>
-          <input type="number" id="mv-lat" step="any" value="24.488321" placeholder="24.488321"
+          <input type="number" id="mv-lat" step="any" value="24.5144395" placeholder="24.5144395"
             style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none;box-sizing:border-box">
         </div>
         <div style="flex:1;min-width:120px">
           <label style="font-size:.72rem;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Longitude</label>
-          <input type="number" id="mv-lng" step="any" value="54.36706" placeholder="54.36706"
+          <input type="number" id="mv-lng" step="any" value="54.375908" placeholder="54.375908"
             style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none;box-sizing:border-box">
         </div>
         <button onclick="mvGetLocation()"
