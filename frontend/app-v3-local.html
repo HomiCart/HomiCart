@@ -3569,11 +3569,8 @@
     }
     err.textContent = '';
 
-    // Build delivery note (if delivery options enabled)
-    const deliveryNote = window._opDeliveryChoice
-      ? `التوصيل: ${window._opDeliveryChoice.label}` +
-        (Number(window._opDeliveryChoice.fee) > 0 ? ` (+${window._opDeliveryChoice.fee} درهم)` : ' (مجاناً)')
-      : '';
+    // Selected delivery option label only (no fee) — goes to its own column
+    const deliveryOption = window._opDeliveryChoice?.label || '';
 
     // Prevent duplicate submission
     const btn = document.getElementById('opSaveBtn');
@@ -3618,7 +3615,7 @@
         result = await _callScript('updateOrderWithNewId', {
           orderId : window._editingOrderId,
           items,
-          notes   : deliveryNote,
+          deliveryOption : deliveryOption,
           sheet   : store.sheetName,
         }, 30000);
         if (result.success) serverOrderId = result.newOrderId || window._editingOrderId;
@@ -3642,7 +3639,7 @@
           longitude   : !isNaN(parseFloat(customer.longitude)) ? String(parseFloat(customer.longitude)) : '',
           location    : (!isNaN(parseFloat(customer.latitude)) && !isNaN(parseFloat(customer.longitude))) ? `https://www.google.com/maps?q=${parseFloat(customer.latitude)},${parseFloat(customer.longitude)}` : '',
           orderText   : items,
-          notes       : deliveryNote,
+          deliveryOption : deliveryOption,
           store       : store.sheetName,   // ← primary: used by _validSheet
           sheet       : store.sheetName,   // ← fallback for older code
           vendor      : store.cfg?.name || store.storeKey,
