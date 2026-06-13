@@ -1241,6 +1241,45 @@
       margin-top: .45rem;
     }
 
+    /* ══════════════════════════════
+       Delivery options chooser
+    ══════════════════════════════ */
+    .delivery-options {
+      margin-bottom: 1rem;
+      background: rgba(255,255,255,.025);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      padding: .9rem 1.1rem;
+    }
+    .delivery-options-title {
+      font-family: 'Alexandria', sans-serif;
+      font-size: .9rem; font-weight: 800;
+      color: #18bfef;
+      margin-bottom: .65rem;
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .delivery-options-list {
+      display: flex; flex-direction: column; gap: .55rem;
+    }
+    .delivery-option {
+      display: flex; align-items: center; gap: .6rem;
+      background: rgba(255,255,255,.04);
+      border: 1.5px solid rgba(255,255,255,.10);
+      border-radius: 10px;
+      padding: .7rem .9rem;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      font-family: 'Cairo', sans-serif;
+    }
+    .delivery-option:hover { border-color: rgba(24,191,239,.35); }
+    .delivery-option.selected {
+      border-color: #18bfef;
+      background: rgba(24,191,239,.08);
+    }
+    .delivery-option input { accent-color: #18bfef; width: 17px; height: 17px; cursor: pointer; }
+    .delivery-option-label { flex: 1; color: #fff; font-size: .9rem; font-weight: 700; }
+    .delivery-option-fee { color: rgba(255,255,255,.55); font-size: .82rem; white-space: nowrap; }
+
     .order-panel-btns {
       display: flex; gap: .8rem; margin-top: 1.3rem;
     }
@@ -3435,6 +3474,7 @@
               <i class="fas fa-times"></i>
             </button>
           </div>
+          <div id="deliveryOptionsBox"></div>
           <textarea id="opItemsInput" class="order-items-ta"
             placeholder="اكتب الأصناف اللي عايزها وكمياتها ...&#10;مثال:&#10;دجاج بلدي — 2 كيلو&#10;دجاج رومي — 1 كيلو&#10;لحم مفروم — 500 جرام"
             rows="8"></textarea>
@@ -3468,6 +3508,35 @@
         if (box) box.classList.add('visible');
       }
     }).catch(() => {});
+
+    // Load delivery options in background
+    window._opDeliveryChoice = null;
+    _callScript('getDeliveryOptions', { store: _noteStore }, 6000).then(res => {
+      const cfg = res?.config;
+      const box = document.getElementById('deliveryOptionsBox');
+      if (!box || !cfg?.enabled || !Array.isArray(cfg.options) || !cfg.options.length) return;
+      window._opDeliveryOptions = cfg.options;
+      box.innerHTML = `
+        <div class="delivery-options">
+          <div class="delivery-options-title"><i class="fas fa-truck"></i> ${cfg.title || 'هل تفضل التوصيل مع'}</div>
+          <div class="delivery-options-list">
+            ${cfg.options.map((opt, i) => `
+              <label class="delivery-option" id="deliveryOpt${i}">
+                <input type="radio" name="deliveryOption" value="${i}" onchange="selectDeliveryOption(${i})">
+                <span class="delivery-option-label">${opt.label}</span>
+                <span class="delivery-option-fee">${(Number(opt.fee) > 0) ? ('+' + opt.fee + ' درهم') : 'مجاناً'}</span>
+              </label>`).join('')}
+          </div>
+        </div>`;
+    }).catch(() => {});
+  }
+
+  /* ── Track chosen delivery option ─────────────────────────── */
+  function selectDeliveryOption(idx) {
+    window._opDeliveryChoice = window._opDeliveryOptions?.[idx] || null;
+    document.querySelectorAll('.delivery-option').forEach((el, i) => {
+      el.classList.toggle('selected', i === idx);
+    });
   }
 
   /* ── Cancel order mode → restore normal menu view ────────────── */
@@ -3494,7 +3563,17 @@
       document.getElementById('opItemsInput').focus();
       return;
     }
+    if (window._opDeliveryOptions?.length && !window._opDeliveryChoice) {
+      err.textContent = 'يرجى اختيار طريقة التوصيل المفضلة';
+      return;
+    }
     err.textContent = '';
+
+    // Build delivery note (if delivery options enabled)
+    const deliveryNote = window._opDeliveryChoice
+      ? `التوصيل: ${window._opDeliveryChoice.label}` +
+        (Number(window._opDeliveryChoice.fee) > 0 ? ` (+${window._opDeliveryChoice.fee} درهم)` : ' (مجاناً)')
+      : '';
 
     // Prevent duplicate submission
     const btn = document.getElementById('opSaveBtn');
@@ -3539,6 +3618,7 @@
         result = await _callScript('updateOrderWithNewId', {
           orderId : window._editingOrderId,
           items,
+          notes   : deliveryNote,
           sheet   : store.sheetName,
         }, 30000);
         if (result.success) serverOrderId = result.newOrderId || window._editingOrderId;
@@ -3562,6 +3642,7 @@
           longitude   : !isNaN(parseFloat(customer.longitude)) ? String(parseFloat(customer.longitude)) : '',
           location    : (!isNaN(parseFloat(customer.latitude)) && !isNaN(parseFloat(customer.longitude))) ? `https://www.google.com/maps?q=${parseFloat(customer.latitude)},${parseFloat(customer.longitude)}` : '',
           orderText   : items,
+          notes       : deliveryNote,
           store       : store.sheetName,   // ← primary: used by _validSheet
           sheet       : store.sheetName,   // ← fallback for older code
           vendor      : store.cfg?.name || store.storeKey,
