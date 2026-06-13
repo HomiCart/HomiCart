@@ -1267,6 +1267,8 @@ async function loadStoreOrders(storeKey) {
 function renderOrdersTable(storeKey, orders) {
   const container = document.getElementById('table-' + storeKey);
   if (!container) return;
+  // Only show active orders — completed/cancelled stay in the sheet but are hidden here
+  orders = orders.filter(o => o.status === 'New' || o.status === 'Preparing');
   if (!orders.length) {
     container.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><br>لا توجد طلبات</div>';
     return;
@@ -1322,6 +1324,16 @@ async function updateSingleStatus(orderId, storeKey, selectEl) {
     if (res.success) {
       toast(`تم تحديث الحالة إلى: ${_statusAr(newStatus)}`, 'success');
       selectEl.dataset.orig = newStatus;
+      // Update cache and re-render so completed/cancelled orders disappear from the list
+      const cached = _storeOrdersCache[storeKey];
+      if (cached) {
+        const o = cached.find(x => x.id === orderId);
+        if (o) o.status = newStatus;
+        if (newStatus === 'Delivered' || newStatus === 'Cancelled') {
+          renderOrdersTable(storeKey, cached);
+          return;
+        }
+      }
     } else {
       toast('خطأ: ' + res.message, 'error');
       selectEl.value = orig;
