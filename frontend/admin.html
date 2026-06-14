@@ -1203,23 +1203,49 @@ function toggleDeliveryOptionsUI(storeKey) {
 }
 
 function addDeliveryOptionRow(storeKey, opt) {
-  opt = opt || { label: '', fee: 0 };
+  opt = opt || { label: '', fee: 0, requireVendorOrder: '', blockMsg: '' };
   const list = document.getElementById('deliveryOptionsList-' + storeKey);
   if (!list) return;
   const row = document.createElement('div');
   row.className = 'delivery-opt-row';
-  row.style = 'display:flex;gap:.6rem;margin-bottom:.55rem;align-items:center';
+  row.style = 'display:flex;flex-direction:column;gap:.45rem;margin-bottom:.7rem;padding:.6rem;background:rgba(255,255,255,.03);border-radius:8px';
+
+  const vendorOpts = STORES.filter(s => s.key !== storeKey).map(s =>
+    `<option value="${s.key}" data-name="${s.name}" ${opt.requireVendorOrder === s.key ? 'selected' : ''}>${s.name}</option>`
+  ).join('');
+
   row.innerHTML = `
-    <input type="text" placeholder="اسم الاختيار (مثال: الركن المصري)" value="${(opt.label||'').replace(/"/g,'&quot;')}"
-      class="delivery-opt-label"
-      style="flex:2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.55rem .7rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.85rem;outline:none;box-sizing:border-box;direction:rtl">
-    <input type="number" placeholder="قيمة التوصيل (درهم)" value="${Number(opt.fee)||0}" min="0" step="1"
-      class="delivery-opt-fee"
-      style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.55rem .7rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.85rem;outline:none;box-sizing:border-box">
-    <button onclick="this.closest('.delivery-opt-row').remove()"
-      style="background:none;border:none;color:rgba(255,80,80,.6);font-size:.95rem;cursor:pointer;padding:.3rem .5rem"
-      title="حذف"><i class="fas fa-trash-alt"></i></button>`;
+    <div style="display:flex;gap:.6rem;align-items:center">
+      <input type="text" placeholder="اسم الاختيار (مثال: الركن المصري)" value="${(opt.label||'').replace(/"/g,'&quot;')}"
+        class="delivery-opt-label"
+        style="flex:2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.55rem .7rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.85rem;outline:none;box-sizing:border-box;direction:rtl">
+      <input type="number" placeholder="قيمة التوصيل (درهم)" value="${Number(opt.fee)||0}" min="0" step="1"
+        class="delivery-opt-fee"
+        style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.55rem .7rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.85rem;outline:none;box-sizing:border-box">
+      <button onclick="this.closest('.delivery-opt-row').remove()"
+        style="background:none;border:none;color:rgba(255,80,80,.6);font-size:.95rem;cursor:pointer;padding:.3rem .5rem"
+        title="حذف"><i class="fas fa-trash-alt"></i></button>
+    </div>
+    <div style="display:flex;gap:.6rem;align-items:center">
+      <select class="delivery-opt-require" onchange="onDeliveryRequireChange(this)"
+        style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.5rem .6rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.78rem;outline:none;box-sizing:border-box;direction:rtl">
+        <option value="">— بدون شرط مسبق —</option>
+        ${vendorOpts}
+      </select>
+      <input type="text" placeholder="رسالة المنع (اختياري)" value="${(opt.blockMsg||'').replace(/"/g,'&quot;')}"
+        class="delivery-opt-msg"
+        style="flex:2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.5rem .6rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.78rem;outline:none;box-sizing:border-box;direction:rtl">
+    </div>`;
   list.appendChild(row);
+}
+
+// When admin picks a vendor that this option requires an active order from,
+// auto-fill a sensible default block message (if the admin hasn't written one)
+function onDeliveryRequireChange(sel) {
+  const msgInput = sel.closest('.delivery-opt-row').querySelector('.delivery-opt-msg');
+  if (!sel.value || msgInput.value.trim()) return;
+  const vendorName = sel.options[sel.selectedIndex].dataset.name || sel.value;
+  msgInput.value = `لا يمكن اختيار هذا التوصيل إلا بعد تسجيل طلبك من ${vendorName} أولاً`;
 }
 
 async function saveDeliveryOptions(storeKey) {
@@ -1232,6 +1258,8 @@ async function saveDeliveryOptions(storeKey) {
   const options = Array.from(list.querySelectorAll('.delivery-opt-row')).map(row => ({
     label: row.querySelector('.delivery-opt-label').value.trim(),
     fee:   Number(row.querySelector('.delivery-opt-fee').value) || 0,
+    requireVendorOrder: row.querySelector('.delivery-opt-require').value || '',
+    blockMsg: row.querySelector('.delivery-opt-msg').value.trim(),
   })).filter(o => o.label);
 
   const prev = btn.innerHTML;

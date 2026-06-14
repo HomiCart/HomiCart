@@ -3567,6 +3567,27 @@
       err.textContent = 'يرجى اختيار طريقة التوصيل المفضلة';
       return;
     }
+
+    // If the chosen delivery option requires an active order from another vendor first
+    if (window._opDeliveryChoice?.requireVendorOrder) {
+      const reqVendor = window._opDeliveryChoice.requireVendorOrder;
+      const custCheck = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
+      if (!custCheck.phone) {
+        err.textContent = 'لم يتم التعرف على رقم هاتفك';
+        return;
+      }
+      try {
+        const chk = await _callScript('getOrdersByPhone', { phone: custCheck.phone, sheet: reqVendor }, 8000);
+        const hasActive = (chk?.orders || []).some(o => o.status === 'New' || o.status === 'Preparing');
+        if (!hasActive) {
+          err.textContent = window._opDeliveryChoice.blockMsg || 'لا يمكن اختيار هذا التوصيل قبل تسجيل طلبك من المتجر المطلوب أولاً';
+          return;
+        }
+      } catch(e) {
+        err.textContent = 'تعذر التحقق من طلبك السابق، حاول مرة أخرى';
+        return;
+      }
+    }
     err.textContent = '';
 
     // Selected delivery option label only (no fee) — goes to its own column
