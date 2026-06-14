@@ -1717,8 +1717,11 @@ function procGetLocation(storeKey) {
         return;
       }
 
-      // Check all are Preparing
-      var nonPrep = batchOrders.filter(function(o){ return o.status !== 'Preparing'; });
+      // Check all are Preparing (ignore old Delivered/Cancelled orders — they're
+      // historical and won't be touched by the pipeline anyway)
+      var nonPrep = batchOrders.filter(function(o){
+        return o.status !== 'Preparing' && o.status !== 'Delivered' && o.status !== 'Cancelled';
+      });
       if (nonPrep.length > 0) {
         if (warnList) warnList.innerHTML = nonPrep.map(function(o){
           return '<div style="margin-bottom:.3rem">🔸 طلب <strong style="color:#fff">'
