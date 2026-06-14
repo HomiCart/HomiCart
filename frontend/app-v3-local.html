@@ -1241,6 +1241,51 @@
       margin-top: .45rem;
     }
 
+    /* ── Order alert popup ────────────────────────────────── */
+    .order-alert-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 10050;
+      background: rgba(4,8,14,.75);
+      backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .order-alert-overlay.active { display: flex; animation: fadeUp .22s ease; }
+    .order-alert-box {
+      background: #14202c;
+      border: 1px solid rgba(255,107,107,.35);
+      border-radius: 14px;
+      padding: 1.5rem 1.7rem;
+      max-width: 380px;
+      width: 100%;
+      text-align: center;
+      direction: rtl;
+      box-shadow: 0 10px 40px rgba(0,0,0,.55);
+    }
+    .order-alert-icon { font-size: 2.2rem; color: #ff6b6b; margin-bottom: .7rem; }
+    .order-alert-msg {
+      color: #fff;
+      font-family: 'Cairo', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.7;
+      margin-bottom: 1.2rem;
+    }
+    .order-alert-ok {
+      background: #18bfef;
+      color: #fff;
+      border: none;
+      border-radius: 9px;
+      padding: .65rem 2.2rem;
+      font-family: 'Cairo', sans-serif;
+      font-weight: 700;
+      font-size: .92rem;
+      cursor: pointer;
+    }
+
     /* ══════════════════════════════
        Delivery options chooser
     ══════════════════════════════ */
@@ -2089,6 +2134,15 @@
     </div>
   </div>
 
+</div>
+
+<!-- Order Alert Popup -->
+<div id="orderAlertOverlay" class="order-alert-overlay">
+  <div class="order-alert-box">
+    <div class="order-alert-icon"><i class="fas fa-exclamation-circle"></i></div>
+    <div class="order-alert-msg" id="orderAlertMsg"></div>
+    <button class="order-alert-ok" onclick="document.getElementById('orderAlertOverlay').classList.remove('active')">حسناً</button>
+  </div>
 </div>
 
 <!-- Slideshow Modal -->
@@ -3531,6 +3585,12 @@
     }).catch(() => {});
   }
 
+  /* ── Show a prominent popup alert ─────────────────────────── */
+  function showOrderAlert(msg) {
+    document.getElementById('orderAlertMsg').textContent = msg;
+    document.getElementById('orderAlertOverlay').classList.add('active');
+  }
+
   /* ── Track chosen delivery option ─────────────────────────── */
   function selectDeliveryOption(idx) {
     window._opDeliveryChoice = window._opDeliveryOptions?.[idx] || null;
@@ -3580,11 +3640,11 @@
         const chk = await _callScript('getOrdersByPhone', { phone: custCheck.phone, sheet: reqVendor }, 8000);
         const hasActive = (chk?.orders || []).some(o => o.status === 'New');
         if (!hasActive) {
-          err.textContent = window._opDeliveryChoice.blockMsg || 'لا يمكن اختيار هذا التوصيل قبل تسجيل طلبك من المتجر المطلوب أولاً';
+          showOrderAlert(window._opDeliveryChoice.blockMsg || 'لا يمكن اختيار هذا التوصيل قبل تسجيل طلبك من المتجر المطلوب أولاً');
           return;
         }
       } catch(e) {
-        err.textContent = 'تعذر التحقق من طلبك السابق، حاول مرة أخرى';
+        showOrderAlert('تعذر التحقق من طلبك السابق، حاول مرة أخرى');
         return;
       }
     }
