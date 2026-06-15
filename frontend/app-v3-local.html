@@ -3707,12 +3707,9 @@
     // Selected delivery option label only (no fee) — goes to its own column
     const deliveryOption = window._opDeliveryChoice?.label || '';
 
-    // Append the chosen payment method (cash / bank transfer) to the order text
+    // Chosen payment method (cash / bank transfer) — goes to its own column
     const paymentLabels = { cash: 'كاش عند التوصيل', bank: 'تحويل بنكي' };
-    const paymentMethod = window._opPaymentMethod || '';
-    const itemsWithPayment = paymentMethod
-      ? `${items}\n----\nطريقة الدفع: ${paymentLabels[paymentMethod] || paymentMethod}`
-      : items;
+    const paymentMethod = window._opPaymentMethod ? (paymentLabels[window._opPaymentMethod] || window._opPaymentMethod) : '';
 
     // Prevent duplicate submission
     const btn = document.getElementById('opSaveBtn');
@@ -3756,7 +3753,7 @@
         // ── EDIT: update same row, generate NEW OrderID ──────
         result = await _callScript('updateOrderWithNewId', {
           orderId : window._editingOrderId,
-          items   : itemsWithPayment,
+          items   : items,
           deliveryOption : deliveryOption,
           paymentMethod  : paymentMethod,
           sheet   : store.sheetName,
@@ -3781,7 +3778,7 @@
           latitude    : !isNaN(parseFloat(customer.latitude))  ? String(parseFloat(customer.latitude))  : '',
           longitude   : !isNaN(parseFloat(customer.longitude)) ? String(parseFloat(customer.longitude)) : '',
           location    : (!isNaN(parseFloat(customer.latitude)) && !isNaN(parseFloat(customer.longitude))) ? `https://www.google.com/maps?q=${parseFloat(customer.latitude)},${parseFloat(customer.longitude)}` : '',
-          orderText   : itemsWithPayment,
+          orderText   : items,
           deliveryOption : deliveryOption,
           paymentMethod  : paymentMethod,
           store       : store.sheetName,   // ← primary: used by _validSheet
