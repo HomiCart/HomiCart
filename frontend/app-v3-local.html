@@ -1325,6 +1325,14 @@
     .delivery-option-label { flex: 1; color: #fff; font-size: .9rem; font-weight: 700; }
     .delivery-option-fee { color: rgba(255,255,255,.55); font-size: .82rem; white-space: nowrap; }
 
+    /* ══════════════════════════════
+       Payment method chooser
+    ══════════════════════════════ */
+    .payment-options-list {
+      display: flex; gap: .6rem;
+    }
+    .payment-options-list .delivery-option { flex: 1; justify-content: center; }
+
     .order-panel-btns {
       display: flex; gap: .8rem; margin-top: 1.3rem;
     }
@@ -3529,6 +3537,7 @@
             </button>
           </div>
           <div id="deliveryOptionsBox"></div>
+          <div id="paymentMethodBox" style="display:none"></div>
           <textarea id="opItemsInput" class="order-items-ta"
             placeholder="اكتب الأصناف اللي عايزها وكمياتها ...&#10;مثال:&#10;دجاج بلدي — 2 كيلو&#10;دجاج رومي — 1 كيلو&#10;لحم مفروم — 500 جرام"
             rows="8"></textarea>
@@ -3565,6 +3574,7 @@
 
     // Load delivery options in background
     window._opDeliveryChoice = null;
+    window._opPaymentMethod = null;
     _callScript('getDeliveryOptions', { store: _noteStore }, 6000).then(res => {
       const cfg = res?.config;
       const box = document.getElementById('deliveryOptionsBox');
@@ -3594,8 +3604,48 @@
   /* ── Track chosen delivery option ─────────────────────────── */
   function selectDeliveryOption(idx) {
     window._opDeliveryChoice = window._opDeliveryOptions?.[idx] || null;
-    document.querySelectorAll('.delivery-option').forEach((el, i) => {
+    document.querySelectorAll('#deliveryOptionsBox .delivery-option').forEach((el, i) => {
       el.classList.toggle('selected', i === idx);
+    });
+
+    // Show the payment method chooser only for paid (shipping company) delivery
+    const box = document.getElementById('paymentMethodBox');
+    const needsPayment = Number(window._opDeliveryChoice?.fee) > 0;
+    if (needsPayment) {
+      renderPaymentMethodBox();
+      box.style.display = '';
+    } else {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      window._opPaymentMethod = null;
+    }
+  }
+
+  /* ── Build payment method chooser (cash / bank transfer) ─────── */
+  function renderPaymentMethodBox() {
+    const box = document.getElementById('paymentMethodBox');
+    const methods = [
+      { id: 'cash', label: 'كاش عند التوصيل' },
+      { id: 'bank', label: 'تحويل بنكي' }
+    ];
+    box.innerHTML = `
+      <div class="delivery-options">
+        <div class="delivery-options-title"><i class="fas fa-money-bill-wave"></i> هل تفضل الدفع</div>
+        <div class="delivery-options-list payment-options-list">
+          ${methods.map((m, i) => `
+            <label class="delivery-option${window._opPaymentMethod === m.id ? ' selected' : ''}" id="paymentOpt${i}">
+              <input type="radio" name="paymentMethod" value="${m.id}" ${window._opPaymentMethod === m.id ? 'checked' : ''} onchange="selectPaymentMethod('${m.id}')">
+              <span class="delivery-option-label">${m.label}</span>
+            </label>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  /* ── Track chosen payment method ──────────────────────────── */
+  function selectPaymentMethod(id) {
+    window._opPaymentMethod = id;
+    document.querySelectorAll('#paymentMethodBox .delivery-option').forEach(el => {
+      el.classList.toggle('selected', el.querySelector('input').value === id);
     });
   }
 
@@ -3627,6 +3677,10 @@
       err.textContent = 'يرجى اختيار طريقة التوصيل المفضلة';
       return;
     }
+    if (Number(window._opDeliveryChoice?.fee) > 0 && !window._opPaymentMethod) {
+      err.textContent = 'يرجى اختيار طريقة الدفع';
+      return;
+    }
 
     // If the chosen delivery option requires an active order from another vendor first
     if (window._opDeliveryChoice?.requireVendorOrder) {
@@ -3652,6 +3706,13 @@
 
     // Selected delivery option label only (no fee) — goes to its own column
     const deliveryOption = window._opDeliveryChoice?.label || '';
+
+    // Append the chosen payment method (cash / bank transfer) to the order text
+    const paymentLabels = { cash: 'كاش عند التوصيل', bank: 'تحويل بنكي' };
+    const paymentMethod = window._opPaymentMethod || '';
+    const itemsWithPayment = paymentMethod
+      ? `${items}\n----\nطريقة الدفع: ${paymentLabels[paymentMethod] || paymentMethod}`
+      : items;
 
     // Prevent duplicate submission
     const btn = document.getElementById('opSaveBtn');
@@ -3695,8 +3756,9 @@
         // ── EDIT: update same row, generate NEW OrderID ──────
         result = await _callScript('updateOrderWithNewId', {
           orderId : window._editingOrderId,
-          items,
+          items   : itemsWithPayment,
           deliveryOption : deliveryOption,
+          paymentMethod  : paymentMethod,
           sheet   : store.sheetName,
         }, 30000);
         if (result.success) serverOrderId = result.newOrderId || window._editingOrderId;
@@ -3719,8 +3781,9 @@
           latitude    : !isNaN(parseFloat(customer.latitude))  ? String(parseFloat(customer.latitude))  : '',
           longitude   : !isNaN(parseFloat(customer.longitude)) ? String(parseFloat(customer.longitude)) : '',
           location    : (!isNaN(parseFloat(customer.latitude)) && !isNaN(parseFloat(customer.longitude))) ? `https://www.google.com/maps?q=${parseFloat(customer.latitude)},${parseFloat(customer.longitude)}` : '',
-          orderText   : items,
+          orderText   : itemsWithPayment,
           deliveryOption : deliveryOption,
+          paymentMethod  : paymentMethod,
           store       : store.sheetName,   // ← primary: used by _validSheet
           sheet       : store.sheetName,   // ← fallback for older code
           vendor      : store.cfg?.name || store.storeKey,
