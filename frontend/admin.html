@@ -1726,8 +1726,9 @@ function procGetLocation(storeKey) {
         return;
       }
 
-      // Check count of Preparing
-      var prepOrders = batchOrders.filter(function(o){ return o.status === 'Preparing'; });
+      // Check count of Preparing (status may be 'Preparing' or its Arabic equivalent 'جاري التحضير')
+      var isPreparing = function(o){ return o.status === 'Preparing' || o.status === 'جاري التحضير'; };
+      var prepOrders = batchOrders.filter(isPreparing);
       var newOrders  = batchOrders.filter(function(o){ return o.status === 'New'; });
 
       if (prepOrders.length === 0 && newOrders.length > 0) {
@@ -1748,7 +1749,7 @@ function procGetLocation(storeKey) {
       // Check all are Preparing (ignore old Delivered/Cancelled orders — they're
       // historical and won't be touched by the pipeline anyway)
       var nonPrep = batchOrders.filter(function(o){
-        return o.status !== 'Preparing' && o.status !== 'Delivered' && o.status !== 'Cancelled';
+        return !isPreparing(o) && o.status !== 'Delivered' && o.status !== 'Cancelled';
       });
       if (nonPrep.length > 0) {
         if (warnList) warnList.innerHTML = nonPrep.map(function(o){
