@@ -437,6 +437,27 @@ async function api(action, data={}, timeout=25000) {
   }
 }
 
+async function apiPost(action, data={}, timeout=25000) {
+  const payload = JSON.stringify({ action, ...data });
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      signal: ctrl.signal,
+      headers: { 'Content-Type': 'text/plain' },
+      body: payload
+    });
+    clearTimeout(t);
+    const text = await res.text();
+    return JSON.parse(text);
+  } catch(e) {
+    clearTimeout(t);
+    throw new Error(e.name==='AbortError' ? 'انتهت مهلة الاتصال' : e.message);
+  }
+}
+
 // ════════════════════════════════════════════════════════
 //  NAVIGATION
 // ════════════════════════════════════════════════════════
@@ -1355,7 +1376,7 @@ async function saveMenuItems(storeKey) {
   const prev = btn.innerHTML;
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
   try {
-    const res = await api('setMenuItems', { store: storeKey, items: JSON.stringify(items) }, 12000);
+    const res = await apiPost('setMenuItems', { store: storeKey, items: items }, 12000);
     if (res?.success) toast('✓ تم حفظ قائمة المنتجات', 'success');
     else throw new Error(res?.message || 'فشل الحفظ');
   } catch(e) { toast('❌ ' + e.message, 'error'); }
