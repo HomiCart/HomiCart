@@ -3751,7 +3751,8 @@
           </div>
           <div class="menu-item-qty-row">
             <button class="menu-item-qty-btn" onclick="stepMenuQty(${i},1)" type="button">+</button>
-            <input class="menu-item-qty-input" id="miQty${i}" type="number" min="0" value="0"
+            <input class="menu-item-qty-input" id="miQty${i}" type="number" min="0"
+              step="${item.step || 0.5}" value="0"
               oninput="onMenuQtyChange(${i})" onchange="onMenuQtyChange(${i})">
             <button class="menu-item-qty-btn" onclick="stepMenuQty(${i},-1)" type="button">−</button>
           </div>
@@ -3785,10 +3786,11 @@
   }
 
   function stepMenuQty(idx, delta) {
-    const inp = document.getElementById('miQty' + idx);
+    const inp  = document.getElementById('miQty' + idx);
     if (!inp) return;
-    const cur = parseFloat(inp.value) || 0;
-    inp.value = Math.max(0, +(cur + delta).toFixed(2));
+    const step = parseFloat((window._opMenuItems || [])[idx]?.step) || 0.5;
+    const cur  = parseFloat(inp.value) || 0;
+    inp.value  = Math.max(0, +(cur + delta * step).toFixed(2));
     onMenuQtyChange(idx);
   }
 

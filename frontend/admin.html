@@ -1334,23 +1334,31 @@ async function loadMenuItems(storeKey) {
 }
 
 function addMenuItemRow(storeKey, item) {
-  item = item || { name: '', unit: 'كيلو', price: '', enabled: true };
+  item = item || { name: '', unit: 'كيلو', price: '', enabled: true, step: 0.5 };
+  const step = item.step != null ? Number(item.step) : 0.5;
   const list = document.getElementById('menuItemsList-' + storeKey);
   if (!list) return;
   const row = document.createElement('div');
   row.className = 'menu-item-row';
   row.style.cssText = 'display:flex;gap:.5rem;align-items:center;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:.55rem .7rem';
+  const inputStyle = 'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.45rem .65rem;color:#fff;font-family:\'Cairo\',sans-serif;outline:none;box-sizing:border-box;direction:rtl;flex-shrink:0';
+  const selectStyle = `${inputStyle};cursor:pointer;font-size:.78rem`;
   row.innerHTML = `
     <label class="toggle" style="flex-shrink:0" title="ظهور للعميل">
       <input type="checkbox" class="menu-item-enabled" ${item.enabled !== false ? 'checked' : ''}>
       <span class="toggle-slider"></span>
     </label>
     <input type="text" class="menu-item-name" placeholder="اسم المنتج" value="${(item.name||'').replace(/"/g,'&quot;')}"
-      style="flex:2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.45rem .65rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.85rem;outline:none;box-sizing:border-box;direction:rtl;min-width:0">
-    <input type="text" class="menu-item-unit" placeholder="وحدة (كيلو/عدد/جرام)" value="${(item.unit||'كيلو').replace(/"/g,'&quot;')}"
-      style="width:90px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.45rem .65rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.82rem;outline:none;box-sizing:border-box;direction:rtl;flex-shrink:0">
-    <input type="text" class="menu-item-price" placeholder="السعر (اختياري)" value="${(item.price||'').replace(/"/g,'&quot;')}"
-      style="width:80px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.45rem .65rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.82rem;outline:none;box-sizing:border-box;direction:rtl;flex-shrink:0">
+      style="flex:2;${inputStyle};font-size:.85rem;min-width:0">
+    <input type="text" class="menu-item-unit" placeholder="وحدة" value="${(item.unit||'كيلو').replace(/"/g,'&quot;')}"
+      style="width:70px;font-size:.82rem;${inputStyle}">
+    <select class="menu-item-step" title="الحد الأدنى للطلب" style="width:80px;${selectStyle}">
+      <option value="0.25" ${step===0.25?'selected':''}>¼ (ربع)</option>
+      <option value="0.5"  ${step===0.5 ?'selected':''}>½ (نص)</option>
+      <option value="1"    ${step===1   ?'selected':''}>1 (عدد)</option>
+    </select>
+    <input type="text" class="menu-item-price" placeholder="السعر" value="${(item.price||'').replace(/"/g,'&quot;')}"
+      style="width:90px;font-size:.82rem;${inputStyle}">
     <button onclick="this.closest('.menu-item-row').remove()"
       style="background:none;border:none;color:rgba(255,80,80,.55);font-size:.9rem;cursor:pointer;padding:.3rem .4rem;flex-shrink:0" title="حذف">
       <i class="fas fa-trash-alt"></i>
@@ -1372,6 +1380,7 @@ async function saveMenuItems(storeKey) {
     unit:    row.querySelector('.menu-item-unit').value.trim() || 'كيلو',
     price:   row.querySelector('.menu-item-price').value.trim(),
     enabled: row.querySelector('.menu-item-enabled').checked,
+    step:    Number(row.querySelector('.menu-item-step').value) || 0.5,
   })).filter(i => i.name);
   const prev = btn.innerHTML;
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
