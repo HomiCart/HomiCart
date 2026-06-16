@@ -1352,10 +1352,9 @@ function addMenuItemRow(storeKey, item) {
       style="flex:2;${inputStyle};font-size:.85rem;min-width:0">
     <input type="text" class="menu-item-unit" placeholder="وحدة" value="${(item.unit||'كيلو').replace(/"/g,'&quot;')}"
       style="width:70px;font-size:.82rem;${inputStyle}">
-    <select class="menu-item-step" title="الحد الأدنى للطلب" style="width:80px;${selectStyle}">
-      <option value="0.25" ${step===0.25?'selected':''}>¼ (ربع)</option>
-      <option value="0.5"  ${step===0.5 ?'selected':''}>½ (نص)</option>
-      <option value="1"    ${step===1   ?'selected':''}>1 (عدد)</option>
+    <select class="menu-item-step" title="نوع الكمية" style="width:90px;${selectStyle}">
+      <option value="0.5" ${step < 1 ?'selected':''}>كسور (½)</option>
+      <option value="1"   ${step >= 1?'selected':''}>عدد صحيح</option>
     </select>
     <input type="text" class="menu-item-price" placeholder="السعر" value="${(item.price||'').replace(/"/g,'&quot;')}"
       style="width:90px;font-size:.82rem;${inputStyle}">
