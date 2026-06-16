@@ -846,6 +846,25 @@ async function renderStorePage(storeKey) {
         </div>
       </div>
 
+      <!-- Menu Items -->
+      <div class="section-head" style="margin-bottom:.6rem">
+        <div class="section-title"><i class="fas fa-boxes" style="color:#18bfef"></i> قائمة المنتجات</div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-outline" onclick="toggleAllMenuItems('${storeKey}',true)" title="تشغيل الكل" style="font-size:.78rem;padding:.35rem .65rem"><i class="fas fa-toggle-on"></i> تشغيل الكل</button>
+          <button class="btn btn-outline" onclick="toggleAllMenuItems('${storeKey}',false)" title="إيقاف الكل" style="font-size:.78rem;padding:.35rem .65rem;color:rgba(255,100,100,.8)"><i class="fas fa-toggle-off"></i> إيقاف الكل</button>
+          <button class="btn btn-outline" id="saveMenuBtn-${storeKey}" onclick="saveMenuItems('${storeKey}')"><i class="fas fa-save"></i> حفظ</button>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(24,191,239,.15);border-radius:12px;padding:1rem;margin-bottom:1.5rem">
+        <div style="font-size:.75rem;color:rgba(255,255,255,.35);margin-bottom:.8rem">
+          كل عنصر مفعّل يظهر للعميل مع خانة للكمية — الطلب بيتجمع أوتوماتيك من الكميات المحددة
+        </div>
+        <div id="menuItemsList-${storeKey}" style="display:flex;flex-direction:column;gap:.55rem"></div>
+        <button class="btn btn-outline" onclick="addMenuItemRow('${storeKey}')" style="margin-top:.7rem;width:100%;justify-content:center">
+          <i class="fas fa-plus"></i> إضافة منتج
+        </button>
+      </div>
+
       <!-- Orders Table -->
       <div class="section-head">
         <div class="section-title"><i class="fas fa-list-alt"></i> الطلبات</div>
@@ -867,6 +886,7 @@ async function renderStorePage(storeKey) {
   loadProcBatchDropdown(storeKey);
   loadStoreNote(storeKey);
   loadDeliveryOptions(storeKey);
+  loadMenuItems(storeKey);
   startBatchWatcher(storeKey);  // auto-close when time expires
 }
 
@@ -1273,6 +1293,71 @@ async function saveDeliveryOptions(storeKey) {
     }, 12000);
     if (res?.success) toast('✓ تم حفظ خيارات التوصيل', 'success');
     else throw new Error(res?.message || 'فشل');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  btn.disabled = false; btn.innerHTML = prev;
+}
+
+// ══════════════════════════════════════════════════════
+//  Menu Items — per-store product list with toggle
+// ══════════════════════════════════════════════════════
+
+async function loadMenuItems(storeKey) {
+  try {
+    const res = await api('getMenuItems', { store: storeKey }, 8000);
+    const items = res?.items || [];
+    const list  = document.getElementById('menuItemsList-' + storeKey);
+    if (!list) return;
+    list.innerHTML = '';
+    (items.length ? items : []).forEach(item => addMenuItemRow(storeKey, item));
+  } catch(e) { /* silent */ }
+}
+
+function addMenuItemRow(storeKey, item) {
+  item = item || { name: '', unit: 'كيلو', price: '', enabled: true };
+  const list = document.getElementById('menuItemsList-' + storeKey);
+  if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'menu-item-row';
+  row.style.cssText = 'display:flex;gap:.5rem;align-items:center;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:.55rem .7rem';
+  row.innerHTML = `
+    <label class="toggle" style="flex-shrink:0" title="ظهور للعميل">
+      <input type="checkbox" class="menu-item-enabled" ${item.enabled !== false ? 'checked' : ''}>
+      <span class="toggle-slider"></span>
+    </label>
+    <input type="text" class="menu-item-name" placeholder="اسم المنتج" value="${(item.name||'').replace(/"/g,'&quot;')}"
+      style="flex:2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.45rem .65rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.85rem;outline:none;box-sizing:border-box;direction:rtl;min-width:0">
+    <input type="text" class="menu-item-unit" placeholder="وحدة (كيلو/عدد/جرام)" value="${(item.unit||'كيلو').replace(/"/g,'&quot;')}"
+      style="width:90px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.45rem .65rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.82rem;outline:none;box-sizing:border-box;direction:rtl;flex-shrink:0">
+    <input type="text" class="menu-item-price" placeholder="السعر (اختياري)" value="${(item.price||'').replace(/"/g,'&quot;')}"
+      style="width:80px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.45rem .65rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.82rem;outline:none;box-sizing:border-box;direction:rtl;flex-shrink:0">
+    <button onclick="this.closest('.menu-item-row').remove()"
+      style="background:none;border:none;color:rgba(255,80,80,.55);font-size:.9rem;cursor:pointer;padding:.3rem .4rem;flex-shrink:0" title="حذف">
+      <i class="fas fa-trash-alt"></i>
+    </button>`;
+  list.appendChild(row);
+}
+
+function toggleAllMenuItems(storeKey, state) {
+  document.querySelectorAll(`#menuItemsList-${storeKey} .menu-item-enabled`)
+    .forEach(cb => cb.checked = state);
+}
+
+async function saveMenuItems(storeKey) {
+  const btn  = document.getElementById('saveMenuBtn-' + storeKey);
+  const list = document.getElementById('menuItemsList-' + storeKey);
+  if (!list) return;
+  const items = Array.from(list.querySelectorAll('.menu-item-row')).map(row => ({
+    name:    row.querySelector('.menu-item-name').value.trim(),
+    unit:    row.querySelector('.menu-item-unit').value.trim() || 'كيلو',
+    price:   row.querySelector('.menu-item-price').value.trim(),
+    enabled: row.querySelector('.menu-item-enabled').checked,
+  })).filter(i => i.name);
+  const prev = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  try {
+    const res = await api('setMenuItems', { store: storeKey, items: JSON.stringify(items) }, 12000);
+    if (res?.success) toast('✓ تم حفظ قائمة المنتجات', 'success');
+    else throw new Error(res?.message || 'فشل الحفظ');
   } catch(e) { toast('❌ ' + e.message, 'error'); }
   btn.disabled = false; btn.innerHTML = prev;
 }

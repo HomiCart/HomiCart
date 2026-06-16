@@ -1333,6 +1333,89 @@
     }
     .payment-options-list .delivery-option { flex: 1; justify-content: center; }
 
+    /* ══════════════════════════════
+       Menu items picker (customer)
+    ══════════════════════════════ */
+    .menu-items-section {
+      margin-bottom: 1rem;
+      background: rgba(255,255,255,.025);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      padding: .9rem 1.1rem;
+    }
+    .menu-items-title {
+      font-family: 'Alexandria', sans-serif;
+      font-size: .9rem; font-weight: 800;
+      color: #18bfef;
+      margin-bottom: .75rem;
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .menu-items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+      gap: .55rem;
+    }
+    .menu-item-card {
+      background: rgba(255,255,255,.04);
+      border: 1.5px solid rgba(255,255,255,.10);
+      border-radius: 12px;
+      padding: .7rem .8rem;
+      display: flex; flex-direction: column; gap: .45rem;
+      transition: border-color .2s, background .2s;
+      font-family: 'Cairo', sans-serif;
+    }
+    .menu-item-card.has-qty {
+      border-color: #18bfef;
+      background: rgba(24,191,239,.07);
+    }
+    .menu-item-card-name {
+      color: #fff; font-size: .88rem; font-weight: 700;
+      text-align: right;
+    }
+    .menu-item-card-meta {
+      color: rgba(255,255,255,.45); font-size: .76rem;
+      text-align: right;
+    }
+    .menu-item-qty-row {
+      display: flex; align-items: center; gap: .4rem; justify-content: flex-end;
+    }
+    .menu-item-qty-btn {
+      width: 28px; height: 28px;
+      background: rgba(24,191,239,.15);
+      border: 1px solid rgba(24,191,239,.3);
+      border-radius: 7px;
+      color: #18bfef; font-size: 1rem; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+      flex-shrink: 0;
+    }
+    .menu-item-qty-btn:hover { background: rgba(24,191,239,.28); }
+    .menu-item-qty-input {
+      width: 42px; text-align: center;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 7px;
+      color: #fff; font-family: 'Cairo', sans-serif; font-size: .9rem;
+      padding: .25rem .2rem;
+      outline: none;
+    }
+    .menu-items-note {
+      margin-top: .7rem;
+      font-size: .76rem; color: rgba(255,255,255,.35);
+      text-align: right; font-family: 'Cairo', sans-serif;
+    }
+    .menu-order-preview {
+      margin-top: .65rem;
+      background: rgba(24,191,239,.06);
+      border: 1px solid rgba(24,191,239,.2);
+      border-radius: 9px;
+      padding: .55rem .8rem;
+      font-size: .82rem; color: rgba(255,255,255,.75);
+      font-family: 'Cairo', sans-serif;
+      white-space: pre-wrap; line-height: 1.7; direction: rtl;
+      display: none;
+    }
+
     .order-panel-btns {
       display: flex; gap: .8rem; margin-top: 1.3rem;
     }
@@ -3538,9 +3621,10 @@
           </div>
           <div id="deliveryOptionsBox"></div>
           <div id="paymentMethodBox" style="display:none"></div>
+          <div id="menuItemsBox"></div>
           <textarea id="opItemsInput" class="order-items-ta"
-            placeholder="اكتب الأصناف اللي عايزها وكمياتها ...&#10;مثال:&#10;دجاج بلدي — 2 كيلو&#10;دجاج رومي — 1 كيلو&#10;لحم مفروم — 500 جرام"
-            rows="8"></textarea>
+            placeholder="ملاحظات إضافية (اختياري)"
+            rows="3"></textarea>
           <div id="opError" class="order-panel-err"></div>
           <div class="ordering-btns">
             <button class="btn-op-save" id="opSaveBtn" onclick="saveOrder()">
@@ -3572,9 +3656,10 @@
       }
     }).catch(() => {});
 
-    // Load delivery options in background
+    // Load delivery options & menu items in background
     window._opDeliveryChoice = null;
-    window._opPaymentMethod = null;
+    window._opPaymentMethod  = null;
+    window._opMenuItems      = [];
     _callScript('getDeliveryOptions', { store: _noteStore }, 6000).then(res => {
       const cfg = res?.config;
       const box = document.getElementById('deliveryOptionsBox');
@@ -3593,6 +3678,78 @@
           </div>
         </div>`;
     }).catch(() => {});
+
+    // Load menu items in background
+    _callScript('getMenuItems', { store: _noteStore }, 6000).then(res => {
+      const items = (res?.items || []).filter(i => i.enabled !== false && i.name);
+      window._opMenuItems = items;
+      if (!items.length) return;
+      renderMenuItemsBox(items);
+    }).catch(() => {});
+  }
+
+  /* ── Render customer-facing menu items picker ─────────────── */
+  function renderMenuItemsBox(items) {
+    const box = document.getElementById('menuItemsBox');
+    if (!box) return;
+    box.innerHTML = `
+      <div class="menu-items-section">
+        <div class="menu-items-title"><i class="fas fa-drumstick-bite"></i> اختار من القائمة</div>
+        <div class="menu-items-grid">
+          ${items.map((item, i) => `
+            <div class="menu-item-card" id="miCard${i}">
+              <div class="menu-item-card-name">${item.name}</div>
+              ${item.price ? `<div class="menu-item-card-meta">💰 ${item.price}</div>` : ''}
+              <div class="menu-item-qty-row">
+                <button class="menu-item-qty-btn" onclick="stepMenuQty(${i},-1)">−</button>
+                <input class="menu-item-qty-input" id="miQty${i}" type="number" min="0" value="0"
+                  oninput="onMenuQtyChange(${i})" onchange="onMenuQtyChange(${i})">
+                <span style="font-size:.78rem;color:rgba(255,255,255,.45);white-space:nowrap">${item.unit || 'كيلو'}</span>
+                <button class="menu-item-qty-btn" onclick="stepMenuQty(${i},1)">+</button>
+              </div>
+            </div>`).join('')}
+        </div>
+        <div class="menu-order-preview" id="menuOrderPreview"></div>
+        <div class="menu-items-note">الأصناف اللي هتحدد كميتها هتتضاف للطلب أوتوماتيك ✓</div>
+      </div>`;
+  }
+
+  function stepMenuQty(idx, delta) {
+    const inp = document.getElementById('miQty' + idx);
+    if (!inp) return;
+    const cur = parseFloat(inp.value) || 0;
+    inp.value = Math.max(0, +(cur + delta).toFixed(2));
+    onMenuQtyChange(idx);
+  }
+
+  function onMenuQtyChange(idx) {
+    const inp  = document.getElementById('miQty' + idx);
+    const card = document.getElementById('miCard' + idx);
+    if (inp)  inp.value = Math.max(0, parseFloat(inp.value) || 0);
+    if (card) card.classList.toggle('has-qty', parseFloat(inp?.value) > 0);
+    updateMenuOrderPreview();
+  }
+
+  function updateMenuOrderPreview() {
+    const preview = document.getElementById('menuOrderPreview');
+    if (!preview) return;
+    const lines = buildMenuOrderLines();
+    if (lines.length) {
+      preview.style.display = '';
+      preview.textContent = '📋 طلبك:\n' + lines.join('\n');
+    } else {
+      preview.style.display = 'none';
+    }
+  }
+
+  function buildMenuOrderLines() {
+    const items = window._opMenuItems || [];
+    const lines = [];
+    items.forEach((item, i) => {
+      const qty = parseFloat(document.getElementById('miQty' + i)?.value) || 0;
+      if (qty > 0) lines.push(`${item.name} — ${qty} ${item.unit || 'كيلو'}`);
+    });
+    return lines;
   }
 
   /* ── Show a prominent popup alert ─────────────────────────── */
@@ -3666,11 +3823,19 @@
 
   /* ── Submit order directly to Google Sheets ─────────── */
   async function saveOrder() {
-    const items = document.getElementById('opItemsInput').value.trim();
-    const err   = document.getElementById('opError');
+    // Compile menu-item quantities + manual notes into one clean order text
+    const menuLines = buildMenuOrderLines();
+    const manualNotes = document.getElementById('opItemsInput').value.trim();
+    const items = menuLines.length
+      ? (menuLines.join('\n') + (manualNotes ? '\n---\n' + manualNotes : ''))
+      : manualNotes;
+
+    const err = document.getElementById('opError');
     if (!items) {
-      err.textContent = 'يرجى كتابة الأصناف المطلوبة أولاً';
-      document.getElementById('opItemsInput').focus();
+      err.textContent = menuLines.length === 0
+        ? 'يرجى تحديد كمية لمنتج واحد على الأقل أو كتابة طلبك'
+        : 'يرجى كتابة الأصناف المطلوبة أولاً';
+      if (!menuLines.length) document.getElementById('opItemsInput').focus();
       return;
     }
     if (window._opDeliveryOptions?.length && !window._opDeliveryChoice) {
