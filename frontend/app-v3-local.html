@@ -1338,83 +1338,121 @@
     ══════════════════════════════ */
     .menu-items-section {
       margin-bottom: 1rem;
-      background: rgba(255,255,255,.025);
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 14px;
-      padding: .9rem 1.1rem;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(24,191,239,.18);
+      border-radius: 16px;
+      padding: 1rem 1rem .85rem;
     }
     .menu-items-title {
       font-family: 'Alexandria', sans-serif;
-      font-size: .9rem; font-weight: 800;
+      font-size: .92rem; font-weight: 800;
       color: #18bfef;
-      margin-bottom: .75rem;
-      display: flex; align-items: center; gap: .4rem;
+      margin-bottom: .9rem;
+      display: flex; align-items: center; gap: .45rem;
     }
     .menu-items-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-      gap: .55rem;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: .6rem;
     }
     .menu-item-card {
-      background: rgba(255,255,255,.04);
-      border: 1.5px solid rgba(255,255,255,.10);
-      border-radius: 12px;
-      padding: .7rem .8rem;
-      display: flex; flex-direction: column; gap: .45rem;
-      transition: border-color .2s, background .2s;
+      background: rgba(255,255,255,.045);
+      border: 1.5px solid rgba(255,255,255,.09);
+      border-radius: 13px;
+      padding: .8rem .65rem .65rem;
+      display: flex; flex-direction: column; align-items: center; gap: .3rem;
+      transition: border-color .18s, background .18s, box-shadow .18s, transform .15s;
       font-family: 'Cairo', sans-serif;
+      cursor: default;
+    }
+    .menu-item-card:hover {
+      border-color: rgba(24,191,239,.3);
+      background: rgba(255,255,255,.06);
     }
     .menu-item-card.has-qty {
       border-color: #18bfef;
-      background: rgba(24,191,239,.07);
+      background: rgba(24,191,239,.1);
+      box-shadow: 0 0 0 3px rgba(24,191,239,.12);
+      transform: translateY(-1px);
     }
     .menu-item-card-name {
-      color: #fff; font-size: .88rem; font-weight: 700;
-      text-align: right;
+      color: #fff; font-size: .85rem; font-weight: 700;
+      text-align: center; line-height: 1.35;
+      min-height: 2.2em; display: flex; align-items: center; justify-content: center;
     }
-    .menu-item-card-meta {
-      color: rgba(255,255,255,.45); font-size: .76rem;
-      text-align: right;
+    .menu-item-card-price {
+      color: #18bfef; font-size: .74rem; font-weight: 600;
+      background: rgba(24,191,239,.1);
+      padding: .15rem .5rem;
+      border-radius: 20px;
+    }
+    .menu-item-card-unit {
+      color: rgba(255,255,255,.38); font-size: .7rem;
+      margin-top: .05rem;
     }
     .menu-item-qty-row {
-      display: flex; align-items: center; gap: .4rem; justify-content: flex-end;
+      display: flex; align-items: center; justify-content: center;
+      gap: .4rem; margin-top: .45rem; width: 100%;
     }
     .menu-item-qty-btn {
       width: 28px; height: 28px;
-      background: rgba(24,191,239,.15);
-      border: 1px solid rgba(24,191,239,.3);
-      border-radius: 7px;
-      color: #18bfef; font-size: 1rem; font-weight: 700;
+      background: rgba(24,191,239,.13);
+      border: 1.5px solid rgba(24,191,239,.28);
+      border-radius: 8px;
+      color: #18bfef; font-size: 1.05rem; font-weight: 700;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
-      transition: background .15s;
-      flex-shrink: 0;
+      transition: background .12s, transform .1s;
+      flex-shrink: 0; user-select: none;
     }
-    .menu-item-qty-btn:hover { background: rgba(24,191,239,.28); }
+    .menu-item-qty-btn:hover  { background: rgba(24,191,239,.28); }
+    .menu-item-qty-btn:active { transform: scale(.9); }
     .menu-item-qty-input {
-      width: 42px; text-align: center;
-      background: rgba(255,255,255,.07);
-      border: 1px solid rgba(255,255,255,.15);
-      border-radius: 7px;
-      color: #fff; font-family: 'Cairo', sans-serif; font-size: .9rem;
-      padding: .25rem .2rem;
-      outline: none;
+      width: 38px; text-align: center;
+      background: rgba(0,0,0,.25);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 8px;
+      color: #fff; font-family: 'Cairo', sans-serif; font-size: .92rem; font-weight: 700;
+      padding: .2rem .1rem; outline: none;
     }
-    .menu-items-note {
-      margin-top: .7rem;
-      font-size: .76rem; color: rgba(255,255,255,.35);
-      text-align: right; font-family: 'Cairo', sans-serif;
+    .menu-items-divider {
+      grid-column: 1 / -1;
+      display: flex; align-items: center; gap: .6rem;
+      margin: .35rem 0 .1rem;
+    }
+    .menu-items-divider span {
+      font-family: 'Cairo', sans-serif; font-size: .76rem; font-weight: 700;
+      color: rgba(255,255,255,.4); white-space: nowrap;
+    }
+    .menu-items-divider::before, .menu-items-divider::after {
+      content: ''; flex: 1; height: 1px;
+      background: rgba(255,255,255,.09);
     }
     .menu-order-preview {
-      margin-top: .65rem;
-      background: rgba(24,191,239,.06);
-      border: 1px solid rgba(24,191,239,.2);
-      border-radius: 9px;
-      padding: .55rem .8rem;
-      font-size: .82rem; color: rgba(255,255,255,.75);
+      margin-top: .75rem;
+      background: rgba(24,191,239,.07);
+      border: 1px solid rgba(24,191,239,.22);
+      border-radius: 11px;
+      padding: .65rem .9rem;
+      font-size: .82rem; color: rgba(255,255,255,.8);
       font-family: 'Cairo', sans-serif;
-      white-space: pre-wrap; line-height: 1.7; direction: rtl;
+      white-space: pre-wrap; line-height: 1.75; direction: rtl;
       display: none;
     }
+    .menu-items-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: .7rem;
+    }
+    .menu-items-note {
+      font-size: .74rem; color: rgba(255,255,255,.32);
+      font-family: 'Cairo', sans-serif;
+    }
+    .menu-clear-btn {
+      font-size: .72rem; color: rgba(255,100,100,.5);
+      background: none; border: none; cursor: pointer;
+      font-family: 'Cairo', sans-serif; padding: 0;
+      transition: color .15s;
+    }
+    .menu-clear-btn:hover { color: rgba(255,100,100,.8); }
 
     .order-panel-btns {
       display: flex; gap: .8rem; margin-top: 1.3rem;
@@ -3692,26 +3730,50 @@
   function renderMenuItemsBox(items) {
     const box = document.getElementById('menuItemsBox');
     if (!box) return;
+
+    let lastCat = null;
+    let cells = '';
+    items.forEach((item, i) => {
+      if (item.category && item.category !== lastCat) {
+        lastCat = item.category;
+        cells += `<div class="menu-items-divider"><span>${item.category}</span></div>`;
+      }
+      cells += `
+        <div class="menu-item-card" id="miCard${i}">
+          <div class="menu-item-card-name">${item.name}</div>
+          ${item.price ? `<div class="menu-item-card-price">${item.price}</div>` : ''}
+          <div class="menu-item-card-unit">${item.unit || 'كيلو'}</div>
+          <div class="menu-item-qty-row">
+            <button class="menu-item-qty-btn" onclick="stepMenuQty(${i},1)" type="button">+</button>
+            <input class="menu-item-qty-input" id="miQty${i}" type="number" min="0" value="0"
+              oninput="onMenuQtyChange(${i})" onchange="onMenuQtyChange(${i})">
+            <button class="menu-item-qty-btn" onclick="stepMenuQty(${i},-1)" type="button">−</button>
+          </div>
+        </div>`;
+    });
+
     box.innerHTML = `
       <div class="menu-items-section">
         <div class="menu-items-title"><i class="fas fa-drumstick-bite"></i> اختار من القائمة</div>
-        <div class="menu-items-grid">
-          ${items.map((item, i) => `
-            <div class="menu-item-card" id="miCard${i}">
-              <div class="menu-item-card-name">${item.name}</div>
-              ${item.price ? `<div class="menu-item-card-meta">💰 ${item.price}</div>` : ''}
-              <div class="menu-item-qty-row">
-                <button class="menu-item-qty-btn" onclick="stepMenuQty(${i},-1)">−</button>
-                <input class="menu-item-qty-input" id="miQty${i}" type="number" min="0" value="0"
-                  oninput="onMenuQtyChange(${i})" onchange="onMenuQtyChange(${i})">
-                <span style="font-size:.78rem;color:rgba(255,255,255,.45);white-space:nowrap">${item.unit || 'كيلو'}</span>
-                <button class="menu-item-qty-btn" onclick="stepMenuQty(${i},1)">+</button>
-              </div>
-            </div>`).join('')}
-        </div>
+        <div class="menu-items-grid">${cells}</div>
         <div class="menu-order-preview" id="menuOrderPreview"></div>
-        <div class="menu-items-note">الأصناف اللي هتحدد كميتها هتتضاف للطلب أوتوماتيك ✓</div>
+        <div class="menu-items-footer">
+          <div class="menu-items-note">✓ الأصناف المحددة بتضاف للطلب أوتوماتيك</div>
+          <button class="menu-clear-btn" type="button" onclick="clearAllMenuQty()">
+            <i class="fas fa-times"></i> مسح الكل
+          </button>
+        </div>
       </div>`;
+  }
+
+  function clearAllMenuQty() {
+    (window._opMenuItems || []).forEach((_, i) => {
+      const inp = document.getElementById('miQty' + i);
+      if (inp) inp.value = 0;
+      const card = document.getElementById('miCard' + i);
+      if (card) card.classList.remove('has-qty');
+    });
+    updateMenuOrderPreview();
   }
 
   function stepMenuQty(idx, delta) {
