@@ -3934,7 +3934,7 @@
       }
       try {
         const chk = await _callScript('getOrdersByPhone', { phone: custCheck.phone, sheet: reqVendor }, 8000);
-        const hasActive = (chk?.orders || []).some(o => o.status === 'New');
+        const hasActive = (chk?.orders || []).some(o => o.status !== 'Delivered' && o.status !== 'Cancelled');
         if (!hasActive) {
           showOrderAlert(window._opDeliveryChoice.blockMsg || 'لا يمكن اختيار هذا التوصيل قبل تسجيل طلبك من المتجر المطلوب أولاً');
           return;
