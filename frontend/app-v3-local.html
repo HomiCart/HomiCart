@@ -3578,20 +3578,23 @@
     }
 
     // Level 2 → Level 1 : menu page → back to customer info page
-    currentStore = null;
-    showPage('customerPage');
-    return;
-  }
+    if (document.getElementById('menuPage')?.classList.contains('active')) {
+      currentStore = null;
+      showPage('customerPage');
+      return;
+    }
 
-  // Customer page → back to stores list
-  if (document.getElementById('customerPage').classList.contains('active')) {
-    showPage('storePage');
-    requestAnimationFrame(() => {
-      document.querySelectorAll('.store-card').forEach(c => {
-        c.classList.remove('visible');
-        setTimeout(() => c.classList.add('visible'), 60);
+    // Customer page → back to stores list
+    if (document.getElementById('customerPage')?.classList.contains('active')) {
+      showPage('storePage');
+      requestAnimationFrame(() => {
+        document.querySelectorAll('.store-card').forEach(c => {
+          c.classList.remove('visible');
+          setTimeout(() => c.classList.add('visible'), 60);
+        });
       });
-    });
+      return;
+    }
   }
 
   /* ══════════════════════════════════════════════════════════
