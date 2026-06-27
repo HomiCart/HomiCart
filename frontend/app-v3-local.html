@@ -1308,68 +1308,6 @@
       cursor: pointer;
     }
     .cust-menu-preview-btn:hover { background: rgba(24,191,239,.2); }
-    .menu-preview-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 10060;
-      background: rgba(4,8,14,.8);
-      backdrop-filter: blur(4px);
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;
-    }
-    .menu-preview-overlay.active { display: flex; animation: fadeUp .22s ease; }
-    .menu-preview-box {
-      background: #14202c;
-      border: 1px solid rgba(24,191,239,.35);
-      border-radius: 14px;
-      padding: 1.3rem;
-      max-width: 480px;
-      width: 100%;
-      max-height: 80vh;
-      overflow-y: auto;
-      direction: rtl;
-      box-shadow: 0 10px 40px rgba(0,0,0,.55);
-    }
-    .menu-preview-title {
-      color: #fff;
-      font-family: 'Cairo', sans-serif;
-      font-weight: 800;
-      font-size: 1.1rem;
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .menu-preview-close {
-      background: rgba(255,255,255,.08);
-      border: none;
-      color: #fff;
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
-      cursor: pointer;
-      font-size: .9rem;
-    }
-    .menu-preview-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: .6rem;
-      padding: .6rem 0;
-      border-bottom: 1px solid rgba(255,255,255,.07);
-    }
-    .menu-preview-row-name { color: #fff; font-family: 'Cairo', sans-serif; font-weight: 600; font-size: .9rem; }
-    .menu-preview-row-price { color: #18bfef; font-family: 'Cairo', sans-serif; font-weight: 700; font-size: .88rem; white-space: nowrap; }
-    .menu-preview-divider {
-      color: rgba(255,255,255,.45);
-      font-family: 'Cairo', sans-serif;
-      font-weight: 700;
-      font-size: .85rem;
-      margin: 1rem 0 .3rem;
-    }
-    .menu-preview-empty { color: rgba(255,255,255,.4); text-align: center; padding: 1.5rem 0; font-family: 'Cairo', sans-serif; }
 
     /* ══════════════════════════════
        Delivery options chooser
@@ -2363,17 +2301,6 @@
   </div>
 </div>
 
-<!-- Public Menu Preview (view-only, no batch/login required) -->
-<div id="menuPreviewOverlay" class="menu-preview-overlay" onclick="if(event.target===this) closeMenuPreview()">
-  <div class="menu-preview-box">
-    <div class="menu-preview-title">
-      <span><i class="fas fa-book-open"></i> المنيو والأسعار</span>
-      <button class="menu-preview-close" onclick="closeMenuPreview()"><i class="fas fa-times"></i></button>
-    </div>
-    <div id="menuPreviewBody"></div>
-  </div>
-</div>
-
 <!-- Slideshow Modal -->
 <div id="slideshowModal" class="slideshow-modal">
   <div class="ss-topbar">
@@ -2974,52 +2901,34 @@
     updateCountdownForStore(folder); // show timer from first step
     setTimeout(() => document.getElementById('custPhone').focus(), 100);
 
-    // Pre-fetch the menu for the preview button — available regardless of
-    // whether the order window/batch is open, so customers can browse prices anytime.
-    window._custPreviewMenu = null;
-    const sheetName = SHEET_NAMES[folder] || folder;
-    _callScript('getMenuItems', { store: sheetName }, 6000).then(res => {
-      window._custPreviewMenu = (res?.items || []).filter(i => i.enabled !== false && i.name);
-    }).catch(() => { window._custPreviewMenu = []; });
+    // Pre-fetch the same menu photos shown inside the order page (same
+    // GitHub folder / fetchImages path) so customers can browse them here
+    // too, without needing to submit their phone number first.
+    window._custPreviewImages = null;
+    const config = MENU_CONFIG[folder];
+    fetchImages(config?.githubFolder || '').then(images => {
+      window._custPreviewImages = images;
+    }).catch(() => { window._custPreviewImages = []; });
   }
 
   /* ── Public read-only menu preview (no phone/batch required) ───── */
   function openMenuPreview() {
-    const body = document.getElementById('menuPreviewBody');
-    const items = window._custPreviewMenu;
-    if (!items) {
-      body.innerHTML = '<div class="menu-preview-empty">جاري تحميل المنيو...</div>';
-    } else if (!items.length) {
-      body.innerHTML = '<div class="menu-preview-empty">المنيو غير متاح حاليًا لهذا المتجر</div>';
-    } else {
-      let lastCat = null, rows = '';
-      items.forEach(item => {
-        if (item.category && item.category !== lastCat) {
-          lastCat = item.category;
-          rows += `<div class="menu-preview-divider">${item.category}</div>`;
-        }
-        rows += `
-          <div class="menu-preview-row">
-            <span class="menu-preview-row-name">${item.name}${item.unit ? ' (' + item.unit + ')' : ''}</span>
-            <span class="menu-preview-row-price">${item.price || ''}</span>
-          </div>`;
-      });
-      body.innerHTML = rows;
-    }
-    document.getElementById('menuPreviewOverlay').classList.add('active');
-
-    // If the menu hadn't finished loading yet, fill it in once it arrives
-    if (!items) {
+    const images = window._custPreviewImages;
+    if (images === null) {
+      // Not loaded yet — wait briefly then open the slideshow once ready
       const check = setInterval(() => {
-        if (window._custPreviewMenu) {
+        if (window._custPreviewImages !== null) {
           clearInterval(check);
-          if (document.getElementById('menuPreviewOverlay').classList.contains('active')) openMenuPreview();
+          openMenuPreview();
         }
-      }, 300);
+      }, 250);
+      return;
     }
-  }
-  function closeMenuPreview() {
-    document.getElementById('menuPreviewOverlay').classList.remove('active');
+    if (!images.length) {
+      showOrderAlert('لا توجد صور للمنيو حالياً لهذا المتجر');
+      return;
+    }
+    openSlideshow(images, 0);
   }
 
   // ── "طلباتي وتعديلها" from customer info page ─────────
