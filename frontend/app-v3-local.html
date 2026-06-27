@@ -727,7 +727,13 @@
     /* Brighter, readable text inside the batch-closed notice card */
     #custBatchClosedNotice .no-discount-title { color: rgba(255,255,255,.9); }
     #custBatchClosedNotice .no-discount-msg   { color: rgba(255,255,255,.65); }
-    #custBatchClosedNotice .no-discount-soon  { color: #18bfef; border-color: rgba(24,191,239,.45); }
+    #custBatchClosedNotice .no-discount-soon  {
+      color: #18bfef;
+      border-color: rgba(24,191,239,.45);
+      font-size: 1rem;
+      font-weight: 700;
+      padding: .5rem 1.2rem;
+    }
 
     /* Discount preview card accent overrides */
     .discount-preview-card .menu-preview-badge {
@@ -3611,12 +3617,6 @@
   ══════════════════════════════════════════════════════════ */
   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRW2K-GbHfawvZMpxk5ExfyYg5EIhFpUgTy-nHaMjtNR1ZiWn-9BuZpRSWACTEGLqNlA/exec';
 
-  // ── Per-store closing times — update these dates to control each store's window ──
-  const STORE_CLOSING_TIMES = {
-    'Al Rokn AL masry': '2027-01-01 23:00:00',   // الركن المصري closing time
-    'Al Fayoumy'      : '2027-01-01 22:00:00',   // الفيومي closing time
-  };
-
   // Sheet names MUST match your Google Apps Script tabs
   const SHEET_NAMES = {
     'Al Rokn AL masry' : 'AlRoknAlMasry',  // → "AlRoknAlMasry" tab  (الركن المصري)
@@ -4460,44 +4460,37 @@
     // e.g. 'Al Rokn AL masry' → 'AlRoknAlMasry'
     const apiKey = SHEET_NAMES[storeKey] || storeKey;
 
-    // Hide any previous notice and show the phone form while we check —
-    // avoids flashing the closed-notice for a split second on every store.
+    // Hide any previous notice/countdown and show the phone form while we
+    // check — avoids flashing stale info for a split second on every store.
     setBatchClosedNotice(null);
-
-    // Show hardcoded fallback immediately while API loads
-    const fallback = STORE_CLOSING_TIMES[storeKey];
-    if (fallback) {
-      const d = new Date(fallback.trim());
-      if (!isNaN(d.getTime())) { _cdEndTime = d; startCountdown(); }
-    }
+    hideCountdown();
 
     _callScript('getStoreOrderWindow', { store: apiKey }, 12000)
       .then(res => {
         if (!res || !res.success) return;
         window._batchPhase = res.phase || 'no_settings';
-        // Update countdown with live end time from admin
-        if (res.end) {
-          const live = new Date(res.end);
-          if (!isNaN(live.getTime())) { _cdEndTime = live; }
-        }
+
         if (res.phase === 'closed' || res.phase === 'before_open') {
           // "before_open" means the admin already scheduled the next batch's
-          // start/end (via بدء دورة جديدة) — use that real date. Otherwise
-          // (closed, no future batch created yet) fall back to the manually
-          // typed "next batch" note, if the admin set one.
-          const nextDate = res.phase === 'before_open' ? res.start : res.nextBatchDate;
-          setBatchClosedNotice(res.phase, nextDate);
-        } else if (_cdEndTime) {
-          startCountdown();
+          // start/end (via بدء دورة جديدة) — show both real dates. Otherwise
+          // (closed, no future batch created yet) there's nothing scheduled.
+          if (res.phase === 'before_open') {
+            setBatchClosedNotice(res.phase, res.start, res.end);
+          } else {
+            setBatchClosedNotice(res.phase, null, null);
+          }
+        } else if (res.end) {
+          const live = new Date(res.end);
+          if (!isNaN(live.getTime())) { _cdEndTime = live; startCountdown(); }
         }
       })
-      .catch(() => {}); // fallback already set above
+      .catch(() => {});
   }
 
   // Show/hide the "batch closed" block on the customer info page and hide
   // the phone form underneath it — customer can't even type a phone number
   // while the order batch is closed or hasn't opened yet.
-  function setBatchClosedNotice(phase, nextBatchDate) {
+  function setBatchClosedNotice(phase, startDate, endDate) {
     const notice   = document.getElementById('custBatchClosedNotice');
     const formWrap = document.querySelector('#customerPage .cust-form-wrap');
     if (!notice || !formWrap) return;
@@ -4514,19 +4507,25 @@
     const title = phase === 'before_open'
       ? '⏳ لم يبدأ وقت تلقي الطلبات بعد'
       : '🔒 التجميع مقفول حالياً';
-    const baseMsg = phase === 'before_open'
-      ? 'لم تبدأ هذه الدورة بعد، تابعنا لمعرفة وقت البداية.'
-      : 'لا يمكن تقديم طلبات في الوقت الحالي.';
+    // The before_open dates already say everything — no extra filler line needed.
+    const baseMsg = phase === 'before_open' ? '' : 'لا يمكن تقديم طلبات في الوقت الحالي.';
 
-    const dateHtml = _formatNextBatchDate(nextBatchDate)
-      ? `<span class="no-discount-soon"><i class="fas fa-calendar-alt"></i> التجميع الجديد يبدأ: ${_formatNextBatchDate(nextBatchDate)}</span>`
-      : '<span class="no-discount-soon"><i class="fas fa-clock"></i> تابعنا لمعرفة موعد التجميع القادم</span>';
+    let datesHtml = '';
+    if (_formatNextBatchDate(startDate)) {
+      datesHtml += `<span class="no-discount-soon"><i class="fas fa-calendar-alt"></i> يبدأ: ${_formatNextBatchDate(startDate)}</span>`;
+    }
+    if (_formatNextBatchDate(endDate)) {
+      datesHtml += `<span class="no-discount-soon"><i class="fas fa-calendar-check"></i> ينتهي: ${_formatNextBatchDate(endDate)}</span>`;
+    }
+    if (!datesHtml) {
+      datesHtml = '<span class="no-discount-soon"><i class="fas fa-clock"></i> تابعنا لمعرفة موعد التجميع القادم</span>';
+    }
 
     notice.innerHTML = `
       <div class="no-discount-icon"><i class="fas fa-lock"></i></div>
       <div class="no-discount-title">${title}</div>
-      <div class="no-discount-msg">${baseMsg}</div>
-      ${dateHtml}`;
+      ${baseMsg ? `<div class="no-discount-msg">${baseMsg}</div>` : ''}
+      <div style="display:flex;flex-direction:column;gap:.6rem;align-items:center">${datesHtml}</div>`;
   }
 
   function _escHtml(s) {

@@ -719,21 +719,6 @@ async function renderStorePage(storeKey) {
         <div id="batchStatus-${storeKey}" style="font-size:.8rem;color:rgba(255,255,255,.4)">جاري التحقق...</div>
       </div>
 
-      <!-- Schedule next batch: auto-opens at this date/time and shown to
-           customers while this store's batch is closed -->
-      <div class="window-panel" style="margin-bottom:1rem">
-        <div style="font-size:.75rem;color:rgba(255,255,255,.45);margin-bottom:.5rem">
-          <i class="fas fa-calendar-alt" style="color:#18bfef;margin-left:.3rem"></i>
-          موعد التجميع الجديد (يفتح أوتوماتيك في هذا الموعد ويظهر للعميل وقت ما الدورة مقفولة)
-        </div>
-        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-          <input type="datetime-local" id="nextBatchDate-${storeKey}"
-            style="flex:1;min-width:220px;padding:.6rem .8rem;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font-size:.85rem">
-          <button class="btn btn-outline" onclick="saveNextBatchDate('${storeKey}')">
-            <i class="fas fa-save"></i> حفظ
-          </button>
-        </div>
-      </div>
 
       <div class="window-panel" style="margin-bottom:1.5rem">
 
@@ -1218,9 +1203,6 @@ async function loadStoreWindow(storeKey) {
     const res = await api('getStoreOrderWindow', { store: storeKey });
     _windowData[storeKey] = res;
 
-    const nbdInput = document.getElementById('nextBatchDate-' + storeKey);
-    if (nbdInput && res.success) nbdInput.value = res.nextBatchDate ? _toDatetimeLocal(res.nextBatchDate) : '';
-
     if (res.success && res.start) {
       // Store in hidden inputs for confirmExtend to read
       const startInput = document.getElementById('win-start-' + storeKey);
@@ -1233,18 +1215,6 @@ async function loadStoreWindow(storeKey) {
     // فتح الدورة / غلق الدورة and the live نشطة/مغلقة badge together.
     renderBatchHeader(storeKey);
   } catch(e) { console.warn('loadStoreWindow', e.message); }
-}
-
-// ── Schedule next batch: auto-opens at this date/time, and shown to
-//    customers while the batch is closed ──
-async function saveNextBatchDate(storeKey) {
-  const raw = document.getElementById('nextBatchDate-' + storeKey)?.value || '';
-  const value = raw ? raw.replace('T', ' ') + ':00' : '';
-  try {
-    const res = await api('setNextBatchDate', { store: storeKey, value });
-    if (res.success) toast(value ? 'تم جدولة التجميع الجديد ✓' : 'تم إلغاء الجدولة', 'success');
-    else toast('خطأ: ' + res.message, 'error');
-  } catch(e) { toast('تعذر الحفظ: ' + e.message, 'error'); }
 }
 
 // ── Save order window for store ──
