@@ -4481,7 +4481,12 @@
           if (!isNaN(live.getTime())) { _cdEndTime = live; }
         }
         if (res.phase === 'closed' || res.phase === 'before_open') {
-          setBatchClosedNotice(res.phase, res.nextBatchDate);
+          // "before_open" means the admin already scheduled the next batch's
+          // start/end (via بدء دورة جديدة) — use that real date. Otherwise
+          // (closed, no future batch created yet) fall back to the manually
+          // typed "next batch" note, if the admin set one.
+          const nextDate = res.phase === 'before_open' ? res.start : res.nextBatchDate;
+          setBatchClosedNotice(res.phase, nextDate);
         } else if (_cdEndTime) {
           startCountdown();
         }

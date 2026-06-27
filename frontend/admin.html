@@ -929,7 +929,59 @@ async function renderStorePage(storeKey) {
 }
 
 // ── Batch functions ──
-let _batchData = {}; // cache: storeKey → batches array
+let _batchData  = {}; // cache: storeKey → batches array
+let _windowData = {}; // cache: storeKey → last getStoreOrderWindow() result
+
+// Single source of truth for "is this store's batch actually open right now":
+// requires batch_status === 'active' AND the current time to be inside
+// [start, end]. Updates both the top-right نشطة/مغلقة badge and the
+// آخر إغلاق / فتح الدورة / غلق الدورة summary together, so they never
+// contradict each other like the separate badges used to.
+function renderBatchHeader(storeKey) {
+  const statusEl = document.getElementById('batchStatus-' + storeKey);
+  const winEl    = document.getElementById('winStatus-'   + storeKey);
+  const win      = _windowData[storeKey];
+  const batches  = _batchData[storeKey] || [];
+  if (!statusEl && !winEl) return;
+
+  const fmt = d => d.toLocaleDateString('ar-AE',{day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('ar-AE',{hour:'2-digit',minute:'2-digit'});
+
+  let isLiveOpen = false;
+  if (win && win.success && win.start && win.end) {
+    const now = new Date(), start = new Date(win.start), end = new Date(win.end);
+    isLiveOpen = win.batchStatus === 'active' && now >= start && now <= end;
+  }
+
+  if (statusEl) {
+    statusEl.innerHTML = isLiveOpen
+      ? '<span style="color:#28c864"><i class="fas fa-circle" style="font-size:.5rem"></i> نشطة</span>'
+      : '<span style="color:#ff6060"><i class="fas fa-circle" style="font-size:.5rem"></i> مغلقة</span>';
+  }
+
+  if (winEl) {
+    if (!win || !win.success || !win.start) {
+      winEl.innerHTML = '<i class="fas fa-circle" style="font-size:.45rem"></i> لم يُحدد وقت بعد';
+      return;
+    }
+    const start = new Date(win.start), end = new Date(win.end), now = new Date();
+
+    // آخر إغلاق: نهاية أقرب دورة سابقة غير نشطة (من قائمة الدورات المحمّلة)
+    const lastClosed = batches.find(b => !b.isActive && b.lastOrder);
+    const lastCloseHtml = lastClosed
+      ? `<span style="color:rgba(255,255,255,.45)">آخر إغلاق:</span> ${fmt(new Date(lastClosed.lastOrder))}`
+      : '';
+
+    const openLabel  = now < start ? 'تفتح الدورة الجديدة' : 'فُتحت الدورة';
+    const closeLabel = 'تُغلق الدورة';
+    const parts = [
+      lastCloseHtml,
+      `<span style="color:#28c864">${openLabel}:</span> ${fmt(start)}`,
+      `<span style="color:#ff6060">${closeLabel}:</span> ${fmt(end)}`
+    ].filter(Boolean);
+
+    winEl.innerHTML = '<i class="fas fa-circle" style="font-size:.45rem;color:' + (isLiveOpen ? '#28c864' : '#ffa500') + '"></i> ' + parts.join(' &nbsp;|&nbsp; ');
+  }
+}
 
 async function loadBatchDropdown(storeKey) {
   const sel      = document.getElementById('batchDropdown-' + storeKey);
@@ -970,14 +1022,10 @@ async function loadBatchDropdown(storeKey) {
 
     onBatchSelect(storeKey);
 
-    // Update status indicator
-    if (statusEl) {
-      if (active) {
-        statusEl.innerHTML = '<span style="color:#28c864"><i class="fas fa-circle" style="font-size:.5rem"></i> نشطة</span>';
-      } else {
-        statusEl.innerHTML = '<span style="color:#ff6060"><i class="fas fa-circle" style="font-size:.5rem"></i> مغلقة</span>';
-      }
-    }
+    // Status badge is derived from the time window (renderBatchHeader),
+    // not just whether a batch is flagged active — keeps it consistent
+    // with the open/close dates shown right below it.
+    renderBatchHeader(storeKey);
   } catch(e) {
     sel.innerHTML = '<option value="__new__">➕ بدء دورة جديدة</option>';
     console.warn('loadBatchDropdown', e.message);
@@ -1168,7 +1216,7 @@ async function closeBatchAdmin(storeKey) {
 async function loadStoreWindow(storeKey) {
   try {
     const res = await api('getStoreOrderWindow', { store: storeKey });
-    const statusEl = document.getElementById('winStatus-' + storeKey);
+    _windowData[storeKey] = res;
 
     const nbdInput = document.getElementById('nextBatchDate-' + storeKey);
     if (nbdInput && res.success) nbdInput.value = res.nextBatchDate ? _toDatetimeLocal(res.nextBatchDate) : '';
@@ -1179,25 +1227,11 @@ async function loadStoreWindow(storeKey) {
       const endInput   = document.getElementById('win-end-'   + storeKey);
       if (startInput) startInput.value = _toDatetimeLocal(res.start);
       if (endInput)   endInput.value   = _toDatetimeLocal(res.end);
-
-      const now = new Date(), start = new Date(res.start), end = new Date(res.end);
-      const fmt = d => d.toLocaleDateString('ar-AE',{day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('ar-AE',{hour:'2-digit',minute:'2-digit'});
-
-      if (statusEl) {
-        if (now < start) {
-          statusEl.style.color = '#ffa500';
-          statusEl.innerHTML = `<i class="fas fa-circle" style="font-size:.45rem;color:#ffa500"></i> لم تُفتح بعد &nbsp;|&nbsp; تُفتح: ${fmt(start)} &nbsp;→&nbsp; تُغلق: ${fmt(end)}`;
-        } else if (now <= end) {
-          statusEl.style.color = '#28c864';
-          statusEl.innerHTML = `<i class="fas fa-circle" style="font-size:.45rem;color:#28c864"></i> مفتوحة &nbsp;|&nbsp; تُغلق: <b style="color:#fff">${fmt(end)}</b>`;
-        } else {
-          statusEl.style.color = 'rgba(255,255,255,.35)';
-          statusEl.innerHTML = `<i class="fas fa-circle" style="font-size:.45rem"></i> مغلقة &nbsp;|&nbsp; آخر إغلاق: ${fmt(end)}`;
-        }
-      }
-    } else {
-      if (statusEl) { statusEl.style.color='rgba(255,255,255,.3)'; statusEl.innerHTML='<i class="fas fa-circle" style="font-size:.45rem"></i> لم يُحدد وقت بعد'; }
     }
+
+    // Combined with whatever _batchData already has — shows آخر إغلاق /
+    // فتح الدورة / غلق الدورة and the live نشطة/مغلقة badge together.
+    renderBatchHeader(storeKey);
   } catch(e) { console.warn('loadStoreWindow', e.message); }
 }
 
