@@ -2024,9 +2024,11 @@ var _mvResults = null; // cache last result
 function openMultiVendorModal() {
   // Build vendor checkboxes from current STORES list
   var list = document.getElementById('mvVendorList');
+  // Default to ALL vendors selected — admin can still uncheck any of them,
+  // but forgetting to tick a store should not be how it gets left out.
   list.innerHTML = STORES.map(function(s) {
     return '<label style="display:flex;align-items:center;gap:.7rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:.65rem 1rem;cursor:pointer">'
-      + '<input type="checkbox" data-key="' + s.key + '" style="width:18px;height:18px;accent-color:#f59e0b;cursor:pointer">'
+      + '<input type="checkbox" data-key="' + s.key + '" checked style="width:18px;height:18px;accent-color:#f59e0b;cursor:pointer">'
       + '<span class="store-dot" style="background:' + s.color + '"></span>'
       + '<span style="font-size:.92rem;color:#fff;font-weight:600">' + s.name + '</span>'
       + '</label>';
