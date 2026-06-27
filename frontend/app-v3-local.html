@@ -4508,8 +4508,8 @@
       ? 'لم تبدأ هذه الدورة بعد، تابعنا لمعرفة وقت البداية.'
       : 'لا يمكن تقديم طلبات في الوقت الحالي.';
 
-    const dateHtml = nextBatchDate
-      ? `<span class="no-discount-soon"><i class="fas fa-calendar-alt"></i> التجميع الجديد يبدأ: ${_escHtml(nextBatchDate)}</span>`
+    const dateHtml = _formatNextBatchDate(nextBatchDate)
+      ? `<span class="no-discount-soon"><i class="fas fa-calendar-alt"></i> التجميع الجديد يبدأ: ${_formatNextBatchDate(nextBatchDate)}</span>`
       : '<span class="no-discount-soon"><i class="fas fa-clock"></i> تابعنا لمعرفة موعد التجميع القادم</span>';
 
     notice.innerHTML = `
@@ -4521,6 +4521,18 @@
 
   function _escHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // Format the admin-scheduled "next batch" datetime into Arabic, e.g.
+  // "السبت، ٤ يوليو | ٣:٠٠ م". Returns '' if missing/unparseable.
+  function _formatNextBatchDate(raw) {
+    if (!raw) return '';
+    const d = new Date(String(raw).trim());
+    if (isNaN(d.getTime())) return _escHtml(raw); // fallback: show as-is
+    const dayName  = d.toLocaleDateString('ar-EG', { weekday: 'long' });
+    const datePart = d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' });
+    const timePart = d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    return _escHtml(`${dayName}، ${datePart} | ${timePart}`);
   }
 
   function hideCountdown() {
