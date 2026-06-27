@@ -2001,6 +2001,10 @@
       <i class="fas fa-book-open"></i> شاهد المنيو والأسعار
     </button>
 
+    <!-- Shown instead of the phone form whenever the order batch is closed
+         or hasn't opened yet — customer never gets to type a phone number. -->
+    <div id="custBatchClosedNotice" class="no-discount-card" style="display:none;max-width:460px;margin:0 auto"></div>
+
     <div class="cust-form-wrap">
 
       <!-- ══ STEP 1: Phone (always visible) ══ -->
@@ -4451,6 +4455,10 @@
     // e.g. 'Al Rokn AL masry' → 'AlRoknAlMasry'
     const apiKey = SHEET_NAMES[storeKey] || storeKey;
 
+    // Hide any previous notice and show the phone form while we check —
+    // avoids flashing the closed-notice for a split second on every store.
+    setBatchClosedNotice(null);
+
     // Show hardcoded fallback immediately while API loads
     const fallback = STORE_CLOSING_TIMES[storeKey];
     if (fallback) {
@@ -4465,10 +4473,54 @@
         // Update countdown with live end time from admin
         if (res.end) {
           const live = new Date(res.end);
-          if (!isNaN(live.getTime())) { _cdEndTime = live; startCountdown(); }
+          if (!isNaN(live.getTime())) { _cdEndTime = live; }
+        }
+        if (res.phase === 'closed' || res.phase === 'before_open') {
+          setBatchClosedNotice(res.phase, res.nextBatchDate);
+        } else if (_cdEndTime) {
+          startCountdown();
         }
       })
       .catch(() => {}); // fallback already set above
+  }
+
+  // Show/hide the "batch closed" block on the customer info page and hide
+  // the phone form underneath it — customer can't even type a phone number
+  // while the order batch is closed or hasn't opened yet.
+  function setBatchClosedNotice(phase, nextBatchDate) {
+    const notice   = document.getElementById('custBatchClosedNotice');
+    const formWrap = document.querySelector('#customerPage .cust-form-wrap');
+    if (!notice || !formWrap) return;
+
+    if (!phase) {
+      notice.style.display = 'none';
+      formWrap.style.display = '';
+      return;
+    }
+
+    formWrap.style.display = 'none';
+    notice.style.display = '';
+
+    const title = phase === 'before_open'
+      ? '⏳ لم يبدأ وقت تلقي الطلبات بعد'
+      : '🔒 التجميع مقفول حالياً';
+    const baseMsg = phase === 'before_open'
+      ? 'لم تبدأ هذه الدورة بعد، تابعنا لمعرفة وقت البداية.'
+      : 'لا يمكن تقديم طلبات في الوقت الحالي.';
+
+    const dateHtml = nextBatchDate
+      ? `<span class="no-discount-soon"><i class="fas fa-calendar-alt"></i> التجميع الجديد يبدأ: ${_escHtml(nextBatchDate)}</span>`
+      : '<span class="no-discount-soon"><i class="fas fa-clock"></i> تابعنا لمعرفة موعد التجميع القادم</span>';
+
+    notice.innerHTML = `
+      <div class="no-discount-icon"><i class="fas fa-lock"></i></div>
+      <div class="no-discount-title">${title}</div>
+      <div class="no-discount-msg">${baseMsg}</div>
+      ${dateHtml}`;
+  }
+
+  function _escHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
   function hideCountdown() {

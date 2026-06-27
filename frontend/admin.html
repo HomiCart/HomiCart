@@ -718,6 +718,22 @@ async function renderStorePage(storeKey) {
         </div>
         <div id="batchStatus-${storeKey}" style="font-size:.8rem;color:rgba(255,255,255,.4)">جاري التحقق...</div>
       </div>
+
+      <!-- Next batch date shown to customers while this store's batch is closed -->
+      <div class="window-panel" style="margin-bottom:1rem">
+        <div style="font-size:.75rem;color:rgba(255,255,255,.45);margin-bottom:.5rem">
+          <i class="fas fa-calendar-alt" style="color:#18bfef;margin-left:.3rem"></i>
+          موعد التجميع الجديد (يظهر للعميل وقت ما الدورة مقفولة)
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+          <input type="text" id="nextBatchDate-${storeKey}" placeholder="مثال: السبت ٤ يوليو"
+            style="flex:1;min-width:220px;padding:.6rem .8rem;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font-size:.85rem">
+          <button class="btn btn-outline" onclick="saveNextBatchDate('${storeKey}')">
+            <i class="fas fa-save"></i> حفظ
+          </button>
+        </div>
+      </div>
+
       <div class="window-panel" style="margin-bottom:1.5rem">
 
         <!-- Batch dropdown row -->
@@ -1152,6 +1168,10 @@ async function loadStoreWindow(storeKey) {
   try {
     const res = await api('getStoreOrderWindow', { store: storeKey });
     const statusEl = document.getElementById('winStatus-' + storeKey);
+
+    const nbdInput = document.getElementById('nextBatchDate-' + storeKey);
+    if (nbdInput && res.success) nbdInput.value = res.nextBatchDate || '';
+
     if (res.success && res.start) {
       // Store in hidden inputs for confirmExtend to read
       const startInput = document.getElementById('win-start-' + storeKey);
@@ -1178,6 +1198,16 @@ async function loadStoreWindow(storeKey) {
       if (statusEl) { statusEl.style.color='rgba(255,255,255,.3)'; statusEl.innerHTML='<i class="fas fa-circle" style="font-size:.45rem"></i> لم يُحدد وقت بعد'; }
     }
   } catch(e) { console.warn('loadStoreWindow', e.message); }
+}
+
+// ── Save "next batch starts on" date shown to customers while closed ──
+async function saveNextBatchDate(storeKey) {
+  const value = document.getElementById('nextBatchDate-' + storeKey)?.value.trim() || '';
+  try {
+    const res = await api('setNextBatchDate', { store: storeKey, value });
+    if (res.success) toast('تم الحفظ ✓', 'success');
+    else toast('خطأ: ' + res.message, 'error');
+  } catch(e) { toast('تعذر الحفظ: ' + e.message, 'error'); }
 }
 
 // ── Save order window for store ──
