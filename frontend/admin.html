@@ -1297,7 +1297,7 @@ async function saveWindow(storeKey) {
 // ── Store Note (إزاي اطلب العرض) ──
 async function loadStoreNote(storeKey) {
   try {
-    const res = await api('getStoreNote', { store: storeKey }, 8000);
+    const res = await api('getStoreNote', { store: storeKey }, 15000);
     if (res?.success) {
       const ta = document.getElementById('storeNote-' + storeKey);
       if (ta) ta.value = res.note || '';
@@ -1322,7 +1322,7 @@ async function saveStoreNote(storeKey) {
 // ── Admin Note (ملاحظة أدمن مستقلة عن نص إزاي اطلب العرض) ──
 async function loadAdminNote(storeKey) {
   try {
-    const res = await api('getAdminNote', { store: storeKey }, 8000);
+    const res = await api('getAdminNote', { store: storeKey }, 15000);
     const cfg = res?.config || { enabled: false, title: '', text: '' };
     const chk     = document.getElementById('adminNoteEnabled-' + storeKey);
     const titleEl = document.getElementById('adminNoteTitle-' + storeKey);
@@ -1364,7 +1364,7 @@ async function saveAdminNote(storeKey) {
 // ── Delivery Options (هل تفضل التوصيل مع...) ──
 async function loadDeliveryOptions(storeKey) {
   try {
-    const res = await api('getDeliveryOptions', { store: storeKey }, 8000);
+    const res = await api('getDeliveryOptions', { store: storeKey }, 15000);
     const cfg = res?.config || { enabled: false, title: '', options: [] };
     const chk = document.getElementById('deliveryEnabled-' + storeKey);
     const titleEl = document.getElementById('deliveryTitle-' + storeKey);
@@ -1466,14 +1466,19 @@ async function saveDeliveryOptions(storeKey) {
 // ══════════════════════════════════════════════════════
 
 async function loadMenuItems(storeKey) {
+  const list = document.getElementById('menuItemsList-' + storeKey);
   try {
-    const res = await api('getMenuItems', { store: storeKey }, 8000);
+    const res = await api('getMenuItems', { store: storeKey }, 15000);
     const items = res?.items || [];
-    const list  = document.getElementById('menuItemsList-' + storeKey);
     if (!list) return;
     list.innerHTML = '';
-    (items.length ? items : []).forEach(item => addMenuItemRow(storeKey, item));
-  } catch(e) { /* silent */ }
+    items.forEach(item => addMenuItemRow(storeKey, item));
+  } catch(e) {
+    if (list) list.innerHTML = `<div style="font-size:.8rem;color:#ff8060;padding:.5rem">
+      ❌ تعذر تحميل قائمة المنتجات: ${e.message}
+      <button onclick="loadMenuItems('${storeKey}')" style="background:none;border:1px solid rgba(255,128,96,.4);color:#ff8060;border-radius:6px;padding:.25rem .6rem;margin-right:.5rem;cursor:pointer;font-family:'Cairo',sans-serif;font-size:.75rem">إعادة المحاولة</button>
+    </div>`;
+  }
 }
 
 function addMenuItemRow(storeKey, item) {
