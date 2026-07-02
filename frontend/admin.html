@@ -558,6 +558,12 @@ function renderStoresSidebar() {
         <input type="checkbox" id="nav-vis-${s.key}" checked onchange="toggleStoreVisibility('${s.key}', this.checked)">
         <span class="nvt-slider"></span>
       </label>
+      <button onclick="event.stopPropagation();openEditStoreModal('${s.key}')"
+        title="تعديل بيانات المتجر"
+        style="background:none;border:none;color:rgba(24,191,239,.55);font-size:.72rem;cursor:pointer;padding:0 .3rem;line-height:1;transition:color .2s"
+        onmouseover="this.style.color='#18bfef'" onmouseout="this.style.color='rgba(24,191,239,.55)'">
+        <i class="fas fa-pen"></i>
+      </button>
       <button onclick="event.stopPropagation();confirmDeleteStore('${s.key}','${s.name}')"
         title="حذف المتجر"
         style="background:none;border:none;color:rgba(255,80,80,.45);font-size:.72rem;cursor:pointer;padding:0 0 0 .3rem;line-height:1;transition:color .2s"
@@ -595,11 +601,38 @@ function renderStorePages() {
   ).join('');
 }
 
-// ── Add Store Modal ──
+// ── Add / Edit Store Modal ──
+let _editingStoreKey = null;
+
 function openAddStoreModal() {
+  _editingStoreKey = null;
+  document.getElementById('as-key').disabled = false;
+  document.getElementById('as-key-hint').style.display = '';
+  document.getElementById('addStoreModalTitle').innerHTML = '<i class="fas fa-store" style="color:#18bfef;margin-left:.5rem"></i>إضافة متجر جديد';
+  document.getElementById('as-submit-btn').innerHTML = '<i class="fas fa-plus"></i> إضافة المتجر';
   document.getElementById('addStoreModal').style.display = 'flex';
   document.getElementById('as-name').focus();
 }
+
+function openEditStoreModal(key) {
+  const s = STORES.find(x => x.key === key);
+  if (!s) return;
+  _editingStoreKey = key;
+  document.getElementById('as-name').value      = s.name || '';
+  document.getElementById('as-key').value       = s.key  || '';
+  document.getElementById('as-key').disabled    = true;
+  document.getElementById('as-key-hint').style.display = 'none';
+  document.getElementById('as-tag').value       = s.tag  || '';
+  document.getElementById('as-icon').value      = s.icon || '🛒';
+  document.getElementById('as-city').value      = s.city || '';
+  document.getElementById('as-itemlabel').value = s.itemLabel || '';
+  document.getElementById('as-color').value     = s.color || '#18bfef';
+  document.getElementById('addStoreModalTitle').innerHTML = '<i class="fas fa-pen" style="color:#18bfef;margin-left:.5rem"></i>تعديل بيانات المتجر';
+  document.getElementById('as-submit-btn').innerHTML = '<i class="fas fa-save"></i> حفظ التعديلات';
+  document.getElementById('addStoreModal').style.display = 'flex';
+  document.getElementById('as-name').focus();
+}
+
 function closeAddStoreModal() {
   document.getElementById('addStoreModal').style.display = 'none';
   ['as-name','as-key','as-tag','as-city','as-itemlabel'].forEach(id => {
@@ -607,11 +640,15 @@ function closeAddStoreModal() {
   });
   document.getElementById('as-icon').value = '🛒';
   document.getElementById('as-color').value = '#18bfef';
+  document.getElementById('as-key').disabled = false;
+  document.getElementById('as-key-hint').style.display = '';
+  _editingStoreKey = null;
 }
 
 async function submitAddStore() {
+  const isEdit    = !!_editingStoreKey;
   const name      = document.getElementById('as-name').value.trim();
-  const key       = document.getElementById('as-key').value.trim().replace(/\s+/g,'');
+  const key       = isEdit ? _editingStoreKey : document.getElementById('as-key').value.trim().replace(/\s+/g,'');
   const tag       = document.getElementById('as-tag').value.trim();
   const icon      = document.getElementById('as-icon').value.trim() || '🛒';
   const city      = document.getElementById('as-city').value.trim() || 'الإمارات';
@@ -623,28 +660,29 @@ async function submitAddStore() {
 
   const btn = document.getElementById('as-submit-btn');
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإنشاء...';
+  btn.innerHTML = isEdit
+    ? '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...'
+    : '<i class="fas fa-spinner fa-spin"></i> جاري الإنشاء...';
 
   try {
     const res = await api('saveStore', { key, name, color, tag, icon, city, itemLabel }, 20000);
     if (!res?.success) throw new Error(res?.message || 'فشل الحفظ');
 
-    let msg = `✓ تمت إضافة ${name}\n`;
-    msg += res.sheetResult  === 'created'   ? '✓ شيت Google Sheets تم إنشاؤه\n' : '';
-    msg += res.githubResult === 'no_token'  ? '⚠️ GitHub Token غير مضبوط — الفولدرات لم تُنشأ\n' : '';
-    msg += (res.githubResult || '').includes('ok') ? '✓ فولدرات GitHub تم إنشاؤها\n' : '';
-
-    toast(`✓ تمت إضافة ${name} بنجاح`, 'success');
-    if (res.githubResult === 'no_token') toast('⚠️ فولدرات GitHub: أضف GitHub Token من إعدادات الأدمن', 'info');
+    if (isEdit) {
+      toast(`✓ تم تحديث بيانات ${name}`, 'success');
+    } else {
+      toast(`✓ تمت إضافة ${name} بنجاح`, 'success');
+      if (res.githubResult === 'no_token') toast('⚠️ فولدرات GitHub: أضف GitHub Token من إعدادات الأدمن', 'info');
+    }
     closeAddStoreModal();
     await loadStoresList();
     await loadVisibility();
     switchPage('store-' + key);
   } catch(e) {
-    alert('❌ خطأ: ' + e.message + '\n\nتأكدي من:\n• إعادة نشر Apps Script (New Deployment)\n• الاتصال بالإنترنت');
+    alert('❌ خطأ: ' + e.message + (isEdit ? '' : '\n\nتأكدي من:\n• إعادة نشر Apps Script (New Deployment)\n• الاتصال بالإنترنت'));
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-plus"></i> إضافة المتجر';
+    btn.innerHTML = isEdit ? '<i class="fas fa-save"></i> حفظ التعديلات' : '<i class="fas fa-plus"></i> إضافة المتجر';
   }
 }
 
@@ -841,6 +879,31 @@ async function renderStorePage(storeKey) {
           style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.7rem .9rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.88rem;outline:none;resize:vertical;box-sizing:border-box;direction:rtl;line-height:1.7"></textarea>
       </div>
 
+      <!-- Admin Note (separate note block, admin-controlled show/hide) -->
+      <div class="section-head" style="margin-bottom:.6rem">
+        <div class="section-title"><i class="fas fa-bullhorn" style="color:#f59e0b"></i> ملاحظة الأدمن للعملاء</div>
+        <button class="btn btn-outline" id="saveAdminNoteBtn-${storeKey}" onclick="saveAdminNote('${storeKey}')">
+          <i class="fas fa-save"></i> حفظ
+        </button>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(245,158,11,.2);border-radius:12px;padding:1rem;margin-bottom:1.5rem">
+        <div class="toggle-wrap" style="margin-bottom:.8rem">
+          <label class="toggle">
+            <input type="checkbox" id="adminNoteEnabled-${storeKey}" onchange="toggleAdminNoteUI('${storeKey}')">
+            <span class="toggle-slider"></span>
+          </label>
+          <span style="font-size:.85rem;color:rgba(255,255,255,.7)">إظهار الملاحظة للعميل في صفحة الطلب</span>
+        </div>
+        <div id="adminNoteFields-${storeKey}" style="display:none">
+          <div style="font-size:.75rem;color:rgba(255,255,255,.35);margin-bottom:.4rem">عنوان الملاحظة</div>
+          <input type="text" id="adminNoteTitle-${storeKey}" placeholder="مثال: تنويه هام"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.6rem .8rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.88rem;outline:none;box-sizing:border-box;direction:rtl;margin-bottom:.9rem">
+          <div style="font-size:.75rem;color:rgba(255,255,255,.35);margin-bottom:.4rem">نص الملاحظة</div>
+          <textarea id="adminNoteText-${storeKey}" rows="4" placeholder="اكتب أي ملاحظة عايز توصلها للعملاء"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.7rem .9rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.88rem;outline:none;resize:vertical;box-sizing:border-box;direction:rtl;line-height:1.7"></textarea>
+        </div>
+      </div>
+
       <!-- Delivery Options -->
       <div class="section-head" style="margin-bottom:.6rem">
         <div class="section-title"><i class="fas fa-truck" style="color:#18bfef"></i> خيارات التوصيل</div>
@@ -908,6 +971,7 @@ async function renderStorePage(storeKey) {
   loadBatchDropdown(storeKey);
   loadProcBatchDropdown(storeKey);
   loadStoreNote(storeKey);
+  loadAdminNote(storeKey);
   loadDeliveryOptions(storeKey);
   loadMenuItems(storeKey);
   startBatchWatcher(storeKey);  // auto-close when time expires
@@ -1255,6 +1319,48 @@ async function saveStoreNote(storeKey) {
   btn.disabled = false; btn.innerHTML = prev;
 }
 
+// ── Admin Note (ملاحظة أدمن مستقلة عن نص إزاي اطلب العرض) ──
+async function loadAdminNote(storeKey) {
+  try {
+    const res = await api('getAdminNote', { store: storeKey }, 8000);
+    const cfg = res?.config || { enabled: false, title: '', text: '' };
+    const chk     = document.getElementById('adminNoteEnabled-' + storeKey);
+    const titleEl = document.getElementById('adminNoteTitle-' + storeKey);
+    const textEl  = document.getElementById('adminNoteText-' + storeKey);
+    if (chk)     chk.checked = !!cfg.enabled;
+    if (titleEl) titleEl.value = cfg.title || '';
+    if (textEl)  textEl.value = cfg.text || '';
+    toggleAdminNoteUI(storeKey);
+  } catch(e) { /* silent */ }
+}
+
+function toggleAdminNoteUI(storeKey) {
+  const chk    = document.getElementById('adminNoteEnabled-' + storeKey);
+  const fields = document.getElementById('adminNoteFields-' + storeKey);
+  if (fields) fields.style.display = chk?.checked ? '' : 'none';
+}
+
+async function saveAdminNote(storeKey) {
+  const btn     = document.getElementById('saveAdminNoteBtn-' + storeKey);
+  const chk     = document.getElementById('adminNoteEnabled-' + storeKey);
+  const titleEl = document.getElementById('adminNoteTitle-' + storeKey);
+  const textEl  = document.getElementById('adminNoteText-' + storeKey);
+  if (!chk) return;
+  const prev = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  try {
+    const res = await api('setAdminNote', {
+      store: storeKey,
+      enabled: chk.checked,
+      title: titleEl.value.trim() || 'ملاحظة من الأدمن',
+      text: textEl.value,
+    }, 12000);
+    if (res?.success) toast('✓ تم حفظ الملاحظة', 'success');
+    else throw new Error(res?.message || 'فشل');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  btn.disabled = false; btn.innerHTML = prev;
+}
+
 // ── Delivery Options (هل تفضل التوصيل مع...) ──
 async function loadDeliveryOptions(storeKey) {
   try {
@@ -1377,10 +1483,15 @@ function addMenuItemRow(storeKey, item) {
   if (!list) return;
   const row = document.createElement('div');
   row.className = 'menu-item-row';
-  row.style.cssText = 'display:flex;gap:.5rem;align-items:center;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:.55rem .7rem';
+  row.draggable = true;
+  row.style.cssText = 'display:flex;gap:.5rem;align-items:center;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:.55rem .7rem;transition:opacity .15s';
   const inputStyle = 'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.45rem .65rem;color:#fff;font-family:\'Cairo\',sans-serif;outline:none;box-sizing:border-box;direction:rtl;flex-shrink:0';
   const selectStyle = `${inputStyle};cursor:pointer;font-size:.78rem`;
   row.innerHTML = `
+    <span class="menu-item-drag-handle" title="اسحب لإعادة الترتيب"
+      style="cursor:grab;color:rgba(255,255,255,.3);flex-shrink:0;padding:0 .15rem;font-size:.85rem">
+      <i class="fas fa-grip-vertical"></i>
+    </span>
     <label class="toggle" style="flex-shrink:0" title="ظهور للعميل">
       <input type="checkbox" class="menu-item-enabled" ${item.enabled !== false ? 'checked' : ''}>
       <span class="toggle-slider"></span>
@@ -1399,7 +1510,35 @@ function addMenuItemRow(storeKey, item) {
       style="background:none;border:none;color:rgba(255,80,80,.55);font-size:.9rem;cursor:pointer;padding:.3rem .4rem;flex-shrink:0" title="حذف">
       <i class="fas fa-trash-alt"></i>
     </button>`;
+  row.addEventListener('dragstart', onMenuItemDragStart);
+  row.addEventListener('dragover', onMenuItemDragOver);
+  row.addEventListener('dragend', onMenuItemDragEnd);
   list.appendChild(row);
+}
+
+// ── Drag & drop reordering for product rows ──
+let _draggedMenuItemRow = null;
+
+function onMenuItemDragStart(e) {
+  _draggedMenuItemRow = this;
+  this.style.opacity = '.35';
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function onMenuItemDragOver(e) {
+  e.preventDefault();
+  if (!_draggedMenuItemRow || _draggedMenuItemRow === this) return;
+  const list = this.parentElement;
+  const rows = Array.from(list.children);
+  const draggedIdx = rows.indexOf(_draggedMenuItemRow);
+  const overIdx    = rows.indexOf(this);
+  if (draggedIdx < overIdx) this.after(_draggedMenuItemRow);
+  else this.before(_draggedMenuItemRow);
+}
+
+function onMenuItemDragEnd() {
+  this.style.opacity = '';
+  _draggedMenuItemRow = null;
 }
 
 function toggleAllMenuItems(storeKey, state) {
@@ -2448,7 +2587,7 @@ function mvPrint(key) {
 <div id="addStoreModal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);align-items:center;justify-content:center">
   <div style="background:#0d1520;border:1px solid rgba(24,191,239,.3);border-radius:18px;padding:2rem;width:min(480px,92vw);max-height:85vh;overflow-y:auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem">
-      <div style="font-family:'Alexandria',sans-serif;font-size:1.1rem;font-weight:800;color:#fff"><i class="fas fa-store" style="color:#18bfef;margin-left:.5rem"></i>إضافة متجر جديد</div>
+      <div id="addStoreModalTitle" style="font-family:'Alexandria',sans-serif;font-size:1.1rem;font-weight:800;color:#fff"><i class="fas fa-store" style="color:#18bfef;margin-left:.5rem"></i>إضافة متجر جديد</div>
       <button onclick="closeAddStoreModal()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:1.2rem;cursor:pointer"><i class="fas fa-times"></i></button>
     </div>
 
@@ -2462,7 +2601,7 @@ function mvPrint(key) {
       <div>
         <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">المعرّف الإنجليزي (يطابق اسم الشيت في Google Sheets) *</label>
         <input id="as-key" type="text" placeholder="مثال: AlRoknAlMasry" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem 1rem;color:#fff;font-family:monospace;font-size:.9rem;outline:none;box-sizing:border-box">
-        <div style="font-size:.7rem;color:rgba(255,255,255,.3);margin-top:.25rem">⚠️ انجليزي بدون مسافات — لازم يطابق اسم الـ Tab في Google Sheets</div>
+        <div id="as-key-hint" style="font-size:.7rem;color:rgba(255,255,255,.3);margin-top:.25rem">⚠️ انجليزي بدون مسافات — لازم يطابق اسم الـ Tab في Google Sheets</div>
       </div>
       <!-- Tag & Icon row -->
       <div style="display:flex;gap:.7rem">

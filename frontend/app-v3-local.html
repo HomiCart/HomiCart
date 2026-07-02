@@ -1051,6 +1051,33 @@
     }
 
     /* ══════════════════════════════
+       Admin note card (separate from how-to-order)
+    ══════════════════════════════ */
+    .admin-note {
+      margin-top: 1.5rem;
+      background: rgba(245,158,11,.08);
+      border: 1px solid rgba(245,158,11,.25);
+      border-radius: 16px;
+      padding: 1.2rem 1.5rem;
+      display: none;
+    }
+    .admin-note.visible { display: block; animation: fadeUp .4s ease both; }
+    .admin-note-title {
+      font-family: 'Alexandria', sans-serif;
+      font-size: .95rem; font-weight: 800;
+      color: #f59e0b;
+      margin-bottom: .65rem;
+      display: flex; align-items: center; gap: .45rem;
+    }
+    .admin-note-text {
+      font-family: 'Cairo', sans-serif;
+      font-size: .9rem;
+      color: rgba(255,255,255,.82);
+      line-height: 1.95;
+      white-space: pre-line;
+    }
+
+    /* ══════════════════════════════
        ORDERING INLINE LAYOUT
        Menu thumbnails + order form side by side
     ══════════════════════════════ */
@@ -2752,6 +2779,10 @@
           <i class="fas fa-lightbulb"></i> معلومات التوصيل
         </div>
         <div class="how-to-order-text" id="howToOrderText"></div>
+      </div>
+      <div class="admin-note" id="adminNoteBox">
+        <div class="admin-note-title" id="adminNoteTitle"></div>
+        <div class="admin-note-text" id="adminNoteText"></div>
       </div>`;
 
     // Staggered entrance animation for both cards
@@ -2768,6 +2799,19 @@
         const el = document.getElementById('howToOrderText');
         const box = document.getElementById('howToOrder');
         if (el) el.textContent = res.note.trim();
+        if (box) box.classList.add('visible');
+      }
+    }).catch(() => {});
+
+    // Load admin note in background (separate, admin-controlled)
+    _callScript('getAdminNote', { store: apiKey }, 6000).then(res => {
+      const cfg = res?.config;
+      if (cfg?.enabled && cfg.text && cfg.text.trim()) {
+        const titleEl = document.getElementById('adminNoteTitle');
+        const textEl  = document.getElementById('adminNoteText');
+        const box     = document.getElementById('adminNoteBox');
+        if (titleEl) titleEl.innerHTML = `<i class="fas fa-bullhorn"></i> ${cfg.title || 'ملاحظة من الأدمن'}`;
+        if (textEl)  textEl.textContent = cfg.text.trim();
         if (box) box.classList.add('visible');
       }
     }).catch(() => {});
@@ -3712,6 +3756,11 @@
             </div>
             <div class="how-to-order-text" id="howToOrderText" style="font-size:.82rem"></div>
           </div>
+          <!-- Admin note (separate, admin-controlled) -->
+          <div class="admin-note" id="adminNoteBox" style="margin-top:1rem;border-radius:12px;padding:1rem 1.1rem">
+            <div class="admin-note-title" id="adminNoteTitle" style="font-size:.85rem"></div>
+            <div class="admin-note-text" id="adminNoteText" style="font-size:.82rem"></div>
+          </div>
         </div>
 
         <!-- RIGHT: order form -->
@@ -3758,6 +3807,19 @@
         const el  = document.getElementById('howToOrderText');
         const box = document.getElementById('howToOrder');
         if (el)  el.textContent = res.note.trim();
+        if (box) box.classList.add('visible');
+      }
+    }).catch(() => {});
+
+    // Load admin note in background (separate, admin-controlled)
+    _callScript('getAdminNote', { store: _noteStore }, 6000).then(res => {
+      const cfg = res?.config;
+      if (cfg?.enabled && cfg.text && cfg.text.trim()) {
+        const titleEl = document.getElementById('adminNoteTitle');
+        const textEl  = document.getElementById('adminNoteText');
+        const box     = document.getElementById('adminNoteBox');
+        if (titleEl) titleEl.innerHTML = `<i class="fas fa-bullhorn"></i> ${cfg.title || 'ملاحظة من الأدمن'}`;
+        if (textEl)  textEl.textContent = cfg.text.trim();
         if (box) box.classList.add('visible');
       }
     }).catch(() => {});
