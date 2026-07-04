@@ -2366,7 +2366,9 @@
 <script>
   const RAW = 'https://raw.githubusercontent.com/HomiCart/HomiCart/main/';
 
-  // Fallback stores (shown instantly while API loads)
+  // Fallback stores — used ONLY if the live getStoresList call fails/times out.
+  // Kept to a single known-stable store; anything deleted/added in admin should
+  // never have to be hand-edited here (see _storesCache below for the real fix).
   let stores = window._appStores = [
     {
       id: 'alkrkn',
@@ -2377,18 +2379,13 @@
       bgImage: RAW + 'frontend/assets/Menu/Al%20Rokn%20AL%20masry/WhatsApp%20Image%202026-05-15%20at%2011.35.26%20AM.jpeg',
       tag: 'لحوم طازجة',
       city: 'عجمان، الإمارات'
-    },
-    {
-      id: 'alfayoumi',
-      key: 'AlFayoumi',
-      name: 'الفيومي',
-      icon: '🍗',
-      folder: 'Al Fayoumy',
-      bgImage: RAW + 'frontend/assets/Menu/Al%20Fayoumy/WhatsApp%20Image%202026-04-17%20at%203.25.36%20PM%20%281%29.jpeg',
-      tag: 'دواجن طازجة',
-      city: 'عجمان، الإمارات'
     }
   ];
+
+  // Last known-good store list from the API, cached on this device so a failed/timed-out
+  // getStoresList call falls back to real (if slightly old) data instead of the stale
+  // hardcoded list above — which otherwise keeps showing deleted vendors forever.
+  const STORES_CACHE_KEY = 'homiCart_storesCache';
 
   // Convert API store object to app store format
   function _apiStoreToAppStore(s) {
@@ -4728,15 +4725,27 @@
   window._editingOrderId = null;
 
   // Boot — fetch dynamic stores, then load window, then render
-  _callScript('getStoresList', {}, 8000)
+  _callScript('getStoresList', {}, 15000)
     .then(res => {
       if (res?.success && Array.isArray(res.stores) && res.stores.length) {
         stores = res.stores.map(_apiStoreToAppStore);
         window._appStores = stores; // save globally for showMyOrders
         _syncMenuConfig(res.stores);
+        try { localStorage.setItem(STORES_CACHE_KEY, JSON.stringify(res.stores)); } catch(e) {}
       }
     })
-    .catch(() => {})
+    .catch(() => {
+      // Live call failed/timed out — prefer the last known-good list from this
+      // device over the (possibly stale) hardcoded fallback declared above.
+      try {
+        const cached = JSON.parse(localStorage.getItem(STORES_CACHE_KEY) || 'null');
+        if (Array.isArray(cached) && cached.length) {
+          stores = cached.map(_apiStoreToAppStore);
+          window._appStores = stores;
+          _syncMenuConfig(cached);
+        }
+      } catch(e) {}
+    })
     .finally(() => loadOrderWindow().finally(() => renderStores()));
 </script>
 
