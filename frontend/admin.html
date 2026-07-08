@@ -410,11 +410,13 @@ select option { background:#0d1a28; color:#fff; }
 // ════════════════════════════════════════════════════════
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRW2K-GbHfawvZMpxk5ExfyYg5EIhFpUgTy-nHaMjtNR1ZiWn-9BuZpRSWACTEGLqNlA/exec';
 
-// Dynamic — populated from API on init
-let STORES = [
-  { key:'AlRoknAlMasry', name:'الركن المصري', color:'#ef4444', folder:'Al Rokn AL masry' },
-  { key:'AlFayoumi',     name:'الفيومي',      color:'#f59e0b', folder:'Al Fayoumy'       },
-];
+// Dynamic — populated from API on init, cached in localStorage
+const ADMIN_STORES_CACHE_KEY = 'homiCart_adminStoresCache';
+let STORES = [];
+try {
+  const cached = localStorage.getItem(ADMIN_STORES_CACHE_KEY);
+  if (cached) STORES = JSON.parse(cached);
+} catch(e) {}
 
 // ════════════════════════════════════════════════════════
 //  API HELPER
@@ -538,11 +540,12 @@ async function loadOverview() {
 // ════════════════════════════════════════════════════════
 async function loadStoresList() {
   try {
-    const res = await api('getStoresList', {}, 12000);
+    const res = await api('getStoresList', {}, 15000);
     if (res?.success && Array.isArray(res.stores) && res.stores.length) {
       STORES = res.stores;
+      try { localStorage.setItem(ADMIN_STORES_CACHE_KEY, JSON.stringify(STORES)); } catch(e) {}
     }
-  } catch(e) { /* use default STORES fallback */ }
+  } catch(e) { /* use cached STORES from localStorage */ }
   renderStoresSidebar();
   renderStorePages();
 }
