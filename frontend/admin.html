@@ -1680,15 +1680,15 @@ async function bulkStatus(storeKey, fromStatus, toStatus) {
   } catch(e) { toast('تعذر التنفيذ: ' + e.message, 'error'); }
 }
 
-// Marks every "Preparing" order that already has a DeliveryNo (i.e. it went
-// through routing/تجميع) as "Delivered". Replaces the old button logic that
-// relied on a separate "جاري التحضير" status — now there's only
-// New → Preparing → Delivered, and "has a delivery number" is what flags
-// a Preparing order as ready to deliver.
 async function bulkMarkDelivered(storeKey) {
-  if (!confirm('تحويل كل الطلبات "تحضير" اللي أخذت رقم توصيل إلى "تم التوصيل"؟\n\nالطلبات اللي لسه ماتجمعتش (من غير رقم) لن تتأثر.')) return;
+  const batchSel = document.getElementById('proc-batch-' + storeKey);
+  const batchId  = (batchSel && batchSel.value) ? batchSel.value : '';
+  const batchLabel = batchId ? '\nالدورة: ' + batchId.split('-').slice(-1)[0] : '\n(كل الدورات)';
+  if (!confirm('تحويل كل طلبات "تحضير" إلى "تم التوصيل"؟' + batchLabel)) return;
   try {
-    const res = await api('bulkMarkDelivered', { sheet: storeKey });
+    const params = { sheet: storeKey };
+    if (batchId) params.batchId = batchId;
+    const res = await api('bulkMarkDelivered', params);
     if (res.success) {
       toast(`تم تحويل ${res.updated} طلب إلى "تم التوصيل" ✓`, 'success');
       loadStoreOrders(storeKey);
