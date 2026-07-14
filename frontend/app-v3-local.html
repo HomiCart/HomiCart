@@ -1430,7 +1430,7 @@
     @media (max-width: 780px) {
       .menu-items-list { grid-template-columns: repeat(2, 1fr); }
     }
-    @media (max-width: 400px) {
+    @media (max-width: 340px) {
       .menu-items-list { grid-template-columns: 1fr; }
     }
     .menu-item-row {
@@ -4201,7 +4201,7 @@
       preview.innerHTML = '';
       return;
     }
-    preview.style.display = '';
+    preview.style.display = 'block';
     preview.innerHTML = `
       <div class="invoice-title">📋 فاتورتك التقريبية</div>
       <div class="invoice-rows">
