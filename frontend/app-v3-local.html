@@ -3063,15 +3063,36 @@
     if (_custMap) { _custMap.remove(); _custMap = null; _custMarker = null; }
   }
 
-  // "Remember me" — reuse the phone saved from a previous visit so returning
-  // customers never have to retype it. Gated by the "تذكرني" checkbox: only
-  // persist to localStorage while it's checked.
-  function _getSavedPhone() {
+  // ── Customer identity: two layers ──────────────────────────
+  // 1. SESSION (sessionStorage) — always kept, regardless of "تذكرني".
+  //    Lets a customer identify themselves once and move between vendors
+  //    in the same visit without retyping their phone every time. Cleared
+  //    when the browser tab/window closes.
+  // 2. LONG-TERM (localStorage) — only kept while "تذكرني" is checked.
+  //    Survives closing the tab, so returning days later still auto-fills.
+  function _saveSessionCustomer(data) {
+    try { sessionStorage.setItem('homiCart_sessionCustomer', JSON.stringify(data)); } catch(e) {}
+  }
+
+  // The single source of truth for "who is ordering right now" — every
+  // place that needs the customer's phone/name/area/etc (submitting an
+  // order, showing "طلباتي") should read through this, never localStorage
+  // directly, so it works the same whether "تذكرني" is on or off.
+  function _getActiveCustomer() {
     try {
-      const saved = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
-      const phone = (saved.phone || '').toString().trim();
-      return _isCustPhoneValid(phone) ? phone : '';
-    } catch(e) { return ''; }
+      const s = JSON.parse(sessionStorage.getItem('homiCart_sessionCustomer') || 'null');
+      if (s && s.phone) return s;
+    } catch(e) {}
+    try {
+      const l = JSON.parse(localStorage.getItem('homiCart_customer') || 'null');
+      if (l && l.phone) return l;
+    } catch(e) {}
+    return {};
+  }
+
+  function _getSavedPhone() {
+    const phone = (_getActiveCustomer().phone || '').toString().trim();
+    return _isCustPhoneValid(phone) ? phone : '';
   }
 
   function _isRememberMeChecked() {
@@ -3079,8 +3100,10 @@
     return !el || el.checked;
   }
 
-  // Save (or forget) the customer record depending on the checkbox state.
+  // Always remembers for the rest of this visit (session); additionally
+  // persists long-term only while "تذكرني" is checked.
   function _persistSavedCustomer(data) {
+    _saveSessionCustomer(data);
     if (_isRememberMeChecked()) {
       localStorage.setItem('homiCart_customer', JSON.stringify(data));
     } else {
@@ -3097,6 +3120,7 @@
 
   function forgetSavedCustomer() {
     localStorage.removeItem('homiCart_customer');
+    sessionStorage.removeItem('homiCart_sessionCustomer');
     document.getElementById('custPhone').value = '';
     document.getElementById('rememberMeCheck').checked = true;
     _resetForm();
@@ -3399,8 +3423,8 @@
       document.getElementById('eciArea').textContent     = area;
       document.getElementById('eciAddress').textContent  = address;
 
-      // Update localStorage (only if "تذكرني" is checked)
-      const saved = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
+      // Update saved customer (session always; localStorage only if "تذكرني" checked)
+      const saved = _getActiveCustomer();
       _persistSavedCustomer({
         ...saved, phone, name, area, address,
         whatsapp : whatsapp || phone,
@@ -4163,7 +4187,7 @@
       // nothing, since they could get free delivery with their existing order.
       const freeOpt = (window._opDeliveryOptions || []).find(o => o.requireVendorOrder && !(Number(o.fee) > 0));
       if (freeOpt) {
-        const cust = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
+        const cust = _getActiveCustomer();
         if (cust.phone) {
           try {
             const chk = await _callScript('getOrdersByPhone', { phone: cust.phone, sheet: freeOpt.requireVendorOrder }, 8000);
@@ -4253,7 +4277,7 @@
     // If the chosen delivery option requires an active order from another vendor first
     if (window._opDeliveryChoice?.requireVendorOrder) {
       const reqVendor = window._opDeliveryChoice.requireVendorOrder;
-      const custCheck = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
+      const custCheck = _getActiveCustomer();
       if (!custCheck.phone) {
         err.textContent = 'لم يتم التعرف على رقم هاتفك';
         return;
@@ -4300,7 +4324,7 @@
     }, 1000);
 
     const store    = window._opStore;
-    const customer = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
+    const customer = _getActiveCustomer();
 
     // Check order window
     if (!isOrderWindowOpen()) {
@@ -4422,7 +4446,7 @@
   ══════════════════════════════════════════════════════ */
 
   async function showMyOrders() {
-    const customer = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
+    const customer = _getActiveCustomer();
     if (!customer.phone) { alert('لم يتم التعرف على رقم هاتفك'); return; }
 
     document.getElementById('menuContainer').innerHTML = `
