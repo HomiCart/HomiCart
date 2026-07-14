@@ -1514,11 +1514,33 @@
       background: rgba(24,191,239,.07);
       border: 1px solid rgba(24,191,239,.22);
       border-radius: 11px;
-      padding: .65rem .9rem;
+      padding: .75rem .9rem;
       font-size: .82rem; color: rgba(255,255,255,.8);
       font-family: 'Cairo', sans-serif;
-      white-space: pre-wrap; line-height: 1.75; direction: rtl;
+      direction: rtl;
       display: none;
+    }
+    .invoice-title {
+      font-weight: 700; color: #fff; margin-bottom: .5rem;
+    }
+    .invoice-rows { display: flex; flex-direction: column; gap: .35rem; }
+    .invoice-row {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: .6rem;
+    }
+    .invoice-row-name { color: rgba(255,255,255,.85); }
+    .invoice-row-qty  { color: rgba(255,255,255,.45); font-size: .78rem; }
+    .invoice-row-total { color: #18bfef; font-weight: 700; white-space: nowrap; }
+    .invoice-total-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: .6rem; padding-top: .55rem;
+      border-top: 1px solid rgba(24,191,239,.25);
+      font-weight: 800; color: #fff;
+    }
+    .invoice-total-value { color: #18bfef; font-size: 1.02rem; }
+    .invoice-disclaimer {
+      margin-top: .45rem; font-size: .72rem;
+      color: rgba(255,255,255,.4); line-height: 1.5;
     }
     .menu-items-footer {
       display: flex; justify-content: space-between; align-items: center;
@@ -4145,16 +4167,57 @@
     updateMenuOrderPreview();
   }
 
+  // Prices are typed freely in admin (e.g. "35 درهم/كيلو"), not a clean
+  // number — but they consistently start with the numeric value, so
+  // parseFloat reliably extracts it (stops at the first non-digit char).
+  function _parseItemUnitPrice(item) {
+    const n = parseFloat(item?.price);
+    return isNaN(n) ? null : n;
+  }
+
+  function buildMenuOrderInvoice() {
+    const items = window._opMenuItems || [];
+    const rows = [];
+    let total = 0;
+    let hasUnknownPrice = false;
+    items.forEach((item, i) => {
+      const qty = parseFloat(document.getElementById('miQty' + i)?.value) || 0;
+      if (qty <= 0) return;
+      const unitPrice = _parseItemUnitPrice(item);
+      const lineTotal = unitPrice != null ? +(qty * unitPrice).toFixed(2) : null;
+      if (lineTotal != null) total += lineTotal;
+      else hasUnknownPrice = true;
+      rows.push({ name: item.name, qty, unit: item.unit || 'كيلو', lineTotal });
+    });
+    return { rows, total: +total.toFixed(2), hasUnknownPrice };
+  }
+
   function updateMenuOrderPreview() {
     const preview = document.getElementById('menuOrderPreview');
     if (!preview) return;
-    const lines = buildMenuOrderLines();
-    if (lines.length) {
-      preview.style.display = '';
-      preview.textContent = '📋 طلبك:\n' + lines.join('\n');
-    } else {
+    const { rows, total, hasUnknownPrice } = buildMenuOrderInvoice();
+    if (!rows.length) {
       preview.style.display = 'none';
+      preview.innerHTML = '';
+      return;
     }
+    preview.style.display = '';
+    preview.innerHTML = `
+      <div class="invoice-title">📋 فاتورتك التقريبية</div>
+      <div class="invoice-rows">
+        ${rows.map(r => `
+          <div class="invoice-row">
+            <span class="invoice-row-name">${r.name} <span class="invoice-row-qty">× ${r.qty} ${r.unit}</span></span>
+            <span class="invoice-row-total">${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}</span>
+          </div>`).join('')}
+      </div>
+      <div class="invoice-total-row">
+        <span>الإجمالي التقريبي</span>
+        <span class="invoice-total-value">${total} درهم</span>
+      </div>
+      <div class="invoice-disclaimer">
+        * سعر تقديري للمنتجات فقط، من غير رسوم التوصيل${hasUnknownPrice ? ' — وفيه صنف السعر بتاعه هيتأكد مع التاجر' : ''}.
+      </div>`;
   }
 
   function buildMenuOrderLines() {
