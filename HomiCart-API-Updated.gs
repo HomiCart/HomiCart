@@ -1670,6 +1670,11 @@ function saveStore(p) {
   var stores = raw ? JSON.parse(raw) : [];
   var idx    = stores.findIndex(function(s){ return s.key === p.key; });
   var isNew  = (idx < 0);
+  // Preserve the existing background image on edit — only overwrite it if
+  // the caller explicitly sent a new one. Previously this always reset to
+  // '', so editing any other field (name/tag/city/icon) silently wiped the
+  // store's header photo on the customer-facing store list.
+  var existingBgFile = (idx >= 0 && stores[idx].bgFile) || '';
   var store  = {
     key:          p.key,
     name:         p.name,
@@ -1680,7 +1685,7 @@ function saveStore(p) {
     city:         p.city         || 'الإمارات',
     githubFolder: 'frontend/assets/Menu/' + p.key,
     itemLabel:    p.itemLabel    || 'منتج',
-    bgFile:       '',
+    bgFile:       p.bgFile !== undefined ? p.bgFile : existingBgFile,
     sheet:        p.key,
     workspace:    p.key + 'Workspace'
   };
