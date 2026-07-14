@@ -621,6 +621,23 @@
 			.feature-card-custom { padding: 1.25rem .9rem; }
 		}
 
+		/* ═══════════════════════════════════════════════════
+		   SOCIAL ICONS — brand-colored circular buttons
+		═══════════════════════════════════════════════════ */
+		.social-icons li .icon:before {
+			box-shadow: inset 0 0 0 2px rgba(255,255,255,.3);
+			transition: color .2s ease, box-shadow .2s ease, transform .2s ease;
+		}
+		.social-icons li a.icon:hover:before {
+			transform: translateY(-2px);
+			box-shadow: inset 0 0 0 2px currentColor;
+		}
+		.social-icons li a.fa-whatsapp:hover:before        { color: #25D366; }
+		.social-icons li a.fa-facebook-f:hover:before,
+		.social-icons li a.fa-facebook-square:hover:before { color: #1877F2; }
+		.social-icons li a.fa-instagram:hover:before       { color: #E4405F; }
+		.social-icons li a.fa-tiktok:hover:before          { color: #EE1D52; }
+
 	</style>
 </head>
 <body class="is-preload">
@@ -678,10 +695,12 @@
 			<li><a href="#steps-section">كيف يعمل</a></li>
 			<li><a href="index.html">التطبيق</a></li>
 		</ul>
-		<ul class="icons">
-			<li><a href="#" class="icon brands fa-whatsapp"><span class="label">WhatsApp</span></a></li>
-			<li><a href="#" class="icon brands fa-facebook-f"><span class="label">Facebook</span></a></li>
-			<li><a href="#" class="icon brands fa-instagram"><span class="label">Instagram</span></a></li>
+		<ul class="icons social-icons">
+			<li><a href="https://chat.whatsapp.com/CQm1EJAvESmDDXqhNXnN3I" target="_blank" rel="noopener noreferrer" title="جروب واتساب" class="icon brands fa-whatsapp"><span class="label">WhatsApp Group</span></a></li>
+			<li><a href="https://www.facebook.com/profile.php?id=61591563300028" target="_blank" rel="noopener noreferrer" title="صفحة فيسبوك" class="icon brands fa-facebook-f"><span class="label">Facebook Page</span></a></li>
+			<li><a href="https://www.facebook.com/share/g/1DsEtKGjBp/" target="_blank" rel="noopener noreferrer" title="جروب فيسبوك" class="icon brands fa-facebook-square"><span class="label">Facebook Group</span></a></li>
+			<li><a href="https://www.instagram.com/homicart.ae/" target="_blank" rel="noopener noreferrer" title="انستجرام" class="icon brands fa-instagram"><span class="label">Instagram</span></a></li>
+			<li><a href="https://www.tiktok.com/@homicart.uae" target="_blank" rel="noopener noreferrer" title="تيك توك" class="icon brands fa-tiktok"><span class="label">TikTok</span></a></li>
 		</ul>
 	</nav>
 
@@ -782,10 +801,12 @@
 		<section class="split contact">
 			<section>
 				<h3>تابعنا</h3>
-				<ul class="icons alt">
-					<li><a href="#" class="icon brands alt fa-whatsapp"><span class="label">WhatsApp</span></a></li>
-					<li><a href="#" class="icon brands alt fa-facebook-f"><span class="label">Facebook</span></a></li>
-					<li><a href="#" class="icon brands alt fa-instagram"><span class="label">Instagram</span></a></li>
+				<ul class="icons alt social-icons">
+					<li><a href="https://chat.whatsapp.com/CQm1EJAvESmDDXqhNXnN3I" target="_blank" rel="noopener noreferrer" title="جروب واتساب" class="icon brands alt fa-whatsapp"><span class="label">WhatsApp Group</span></a></li>
+					<li><a href="https://www.facebook.com/profile.php?id=61591563300028" target="_blank" rel="noopener noreferrer" title="صفحة فيسبوك" class="icon brands alt fa-facebook-f"><span class="label">Facebook Page</span></a></li>
+					<li><a href="https://www.facebook.com/share/g/1DsEtKGjBp/" target="_blank" rel="noopener noreferrer" title="جروب فيسبوك" class="icon brands alt fa-facebook-square"><span class="label">Facebook Group</span></a></li>
+					<li><a href="https://www.instagram.com/homicart.ae/" target="_blank" rel="noopener noreferrer" title="انستجرام" class="icon brands alt fa-instagram"><span class="label">Instagram</span></a></li>
+					<li><a href="https://www.tiktok.com/@homicart.uae" target="_blank" rel="noopener noreferrer" title="تيك توك" class="icon brands alt fa-tiktok"><span class="label">TikTok</span></a></li>
 				</ul>
 			</section>
 		</section>
