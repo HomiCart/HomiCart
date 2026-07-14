@@ -765,6 +765,16 @@
       flex-direction: column;
       gap: 1.5rem;
     }
+    .cust-window-note {
+      font-size: .82rem;
+      color: #f5a623;
+      background: rgba(245,166,35,.1);
+      border: 1px solid rgba(245,166,35,.25);
+      border-radius: 10px;
+      padding: .6rem .8rem;
+      text-align: center;
+      margin-top: .4rem;
+    }
     .cust-field { display: flex; flex-direction: column; gap: .5rem; }
     .cust-label {
       font-family: 'Alexandria', sans-serif;
@@ -2039,9 +2049,11 @@
       <i class="fas fa-book-open"></i> شاهد المنيو والأسعار
     </button>
 
-    <!-- Shown instead of the phone form whenever the order batch is closed
-         or hasn't opened yet — customer never gets to type a phone number. -->
-    <div id="custBatchClosedNotice" class="no-discount-card" style="display:none;max-width:460px;margin:0 auto"></div>
+    <!-- Shown above the phone form whenever the order batch is closed or
+         hasn't opened yet. The form underneath stays usable — customers can
+         still look up their profile and past/current orders, they just
+         can't start a new order (see _applyOrderWindowGating). -->
+    <div id="custBatchClosedNotice" class="no-discount-card" style="display:none;max-width:460px;margin:0 auto 1.2rem"></div>
 
     <div class="cust-form-wrap">
 
@@ -2054,6 +2066,11 @@
           onkeydown="custBlockNonDigits(event)"
           onpaste="custHandlePaste(event)" />
         <div id="custPhoneHint" style="font-size:.78rem;margin-top:.3rem;min-height:1rem;color:rgba(255,255,255,.35)"></div>
+        <label style="display:flex;align-items:center;gap:.45rem;margin-top:.4rem;font-size:.85rem;color:rgba(255,255,255,.6);cursor:pointer">
+          <input type="checkbox" id="rememberMeCheck" checked onchange="onRememberMeChange()"
+            style="width:1.1rem;height:1.1rem;accent-color:#18bfef;cursor:pointer">
+          تذكرني (من غير ما تكتب رقمك تاني في المرة الجاية)
+        </label>
         <div id="custLookupStatus" class="cust-lookup-status"></div>
         <div id="forgetPhoneLink" style="display:none;margin-top:.4rem">
           <a href="javascript:void(0)" onclick="forgetSavedCustomer()"
@@ -2074,9 +2091,10 @@
         </div>
         <div class="cust-action-btns">
           <!-- Row 1: Start Order — full width, most important -->
-          <button class="btn-cust-primary" style="width:100%" onclick="goToOrderPage()">
+          <button id="btnStartOrder" class="btn-cust-primary" style="width:100%" onclick="goToOrderPage()">
             <i class="fas fa-shopping-cart"></i>&nbsp;ابدأ الطلب
           </button>
+          <div id="btnStartOrderNote" class="cust-window-note" style="display:none"></div>
           <!-- Row 2: My Orders + Edit Info — side by side -->
           <div class="cust-action-row">
             <button class="btn-cust-amber" onclick="goToMyOrdersFromCustomerPage()">
@@ -2158,6 +2176,7 @@
             onclick="document.getElementById('curOrderNewWarn').style.display='block';this.style.display='none'">
             <i class="fas fa-plus-circle"></i>&nbsp;طلب جديد إضافي
           </button>
+          <div id="btnCurNewNote" class="cust-window-note" style="display:none"></div>
           <div class="cur-order-new-warn" id="curOrderNewWarn" style="display:none">
             <strong>⚠ تنبيه:</strong> لديك طلب مسجل بالفعل ضمن هذه الدورة.<br>
             أي طلب جديد سيُسجَّل <strong>بشكل مستقل</strong> وقد تُطبَّق عليه
@@ -2262,9 +2281,10 @@
           <i class="fas fa-check-circle"></i>
           <span>تم تسجيل بياناتك بنجاح</span>
         </div>
-        <button class="btn-cust-primary btn-start-order" onclick="goToOrderPage()">
+        <button id="btnStartOrderSuccess" class="btn-cust-primary btn-start-order" onclick="goToOrderPage()">
           <i class="fas fa-shopping-cart"></i>&nbsp;ابدأ الطلب
         </button>
+        <div id="btnStartOrderSuccessNote" class="cust-window-note" style="display:none"></div>
       </div>
 
     </div>
@@ -3044,7 +3064,8 @@
   }
 
   // "Remember me" — reuse the phone saved from a previous visit so returning
-  // customers never have to retype it.
+  // customers never have to retype it. Gated by the "تذكرني" checkbox: only
+  // persist to localStorage while it's checked.
   function _getSavedPhone() {
     try {
       const saved = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
@@ -3053,9 +3074,31 @@
     } catch(e) { return ''; }
   }
 
+  function _isRememberMeChecked() {
+    const el = document.getElementById('rememberMeCheck');
+    return !el || el.checked;
+  }
+
+  // Save (or forget) the customer record depending on the checkbox state.
+  function _persistSavedCustomer(data) {
+    if (_isRememberMeChecked()) {
+      localStorage.setItem('homiCart_customer', JSON.stringify(data));
+    } else {
+      localStorage.removeItem('homiCart_customer');
+    }
+  }
+
+  function onRememberMeChange() {
+    if (!_isRememberMeChecked()) {
+      localStorage.removeItem('homiCart_customer');
+      document.getElementById('forgetPhoneLink').style.display = 'none';
+    }
+  }
+
   function forgetSavedCustomer() {
     localStorage.removeItem('homiCart_customer');
     document.getElementById('custPhone').value = '';
+    document.getElementById('rememberMeCheck').checked = true;
     _resetForm();
     document.getElementById('forgetPhoneLink').style.display = 'none';
     setTimeout(() => document.getElementById('custPhone').focus(), 100);
@@ -3066,6 +3109,7 @@
     window._pendingStore = { folder, name, tag };
     document.getElementById('custStoreName').textContent = name;
     document.getElementById('custPhone').value = '';
+    document.getElementById('rememberMeCheck').checked = true;
     _resetForm();
     showPage('customerPage');
     updateCountdownForStore(folder); // show timer from first step
@@ -3355,14 +3399,14 @@
       document.getElementById('eciArea').textContent     = area;
       document.getElementById('eciAddress').textContent  = address;
 
-      // Update localStorage
+      // Update localStorage (only if "تذكرني" is checked)
       const saved = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
-      localStorage.setItem('homiCart_customer', JSON.stringify({
-        ...saved, name, area, address,
+      _persistSavedCustomer({
+        ...saved, phone, name, area, address,
         whatsapp : whatsapp || phone,
         latitude : loc?.lat || '',
         longitude: loc?.lng || '',
-      }));
+      });
 
       // Update stored customer object
       if (window._existingCustomer) {
@@ -3521,8 +3565,8 @@
         window._existingCustomerId = c.id;
         window._existingCustomer   = c;
 
-        // Save to localStorage
-        localStorage.setItem('homiCart_customer', JSON.stringify({
+        // Save to localStorage (only if "تذكرني" is checked)
+        _persistSavedCustomer({
           phone,
           name      : c.name     || '',
           area      : c.area     || '',
@@ -3531,7 +3575,7 @@
           customerId: c.id       || '',
           latitude  : !isNaN(parseFloat(c.latitude))  ? String(parseFloat(c.latitude))  : '',
           longitude : !isNaN(parseFloat(c.longitude)) ? String(parseFloat(c.longitude)) : '',
-        }));
+        });
 
         // Populate info card (normal flow fallback)
         document.getElementById('eciName').textContent    = c.name     || '-';
@@ -3603,6 +3647,9 @@
           _showStep('stepExisting', true);
           _showStep('stepCurrentOrder', false);
         }
+
+        // Re-apply after the steps above may have reset button visibility
+        _applyOrderWindowGating();
 
       } else {
         // ── NEW CUSTOMER ──────────────────────────────────
@@ -3735,18 +3782,19 @@
 
       if (!result.success) throw new Error(result.message || 'خطأ في الحفظ');
 
-      localStorage.setItem('homiCart_customer', JSON.stringify({
+      _persistSavedCustomer({
         phone, name, area, address,
         whatsapp   : whatsapp || phone,
         customerId : result.customerId,
         latitude   : loc?.lat || '',
-        longitude     : loc?.lng || '',
-      }));
+        longitude  : loc?.lng || '',
+      });
 
       // Hide registration form, show success + Start Order button
       _showStep('stepWhatsapp', false);
       _showStep('stepDetails', false);
       _showStep('stepSuccess', true);
+      _applyOrderWindowGating();
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-user-check"></i>&nbsp;تسجيل البيانات';
 
@@ -4639,6 +4687,20 @@
     return '🔒 انتهى وقت تلقي الطلبات لهذه الدورة';
   }
 
+  // Show/hide the "start a new order" buttons based on the current window
+  // state — customers can still view their profile and past/current orders
+  // when the window is closed, they just can't start or add a new order.
+  function _applyOrderWindowGating() {
+    const open = isOrderWindowOpen();
+    const msg  = getWindowClosedMsg();
+    ['btnStartOrder', 'btnStartOrderSuccess', 'btnCurNew'].forEach(btnId => {
+      const btn  = document.getElementById(btnId);
+      const note = document.getElementById(btnId + 'Note');
+      if (btn)  btn.style.display  = open ? '' : 'none';
+      if (note) { note.style.display = open ? 'none' : ''; note.textContent = msg; }
+    });
+  }
+
   let _cdInterval   = null;
   let _cdEndTime    = null;
   let _pollInterval = null; // polls server to detect manual admin close
@@ -4661,6 +4723,7 @@
       .then(res => {
         if (!res || !res.success) return;
         window._batchPhase = res.phase || 'no_settings';
+        _applyOrderWindowGating();
 
         if (res.phase === 'closed' || res.phase === 'before_open') {
           // "before_open" means the admin already scheduled the next batch's
@@ -4679,28 +4742,24 @@
       .catch(() => {});
   }
 
-  // Show/hide the "batch closed" block on the customer info page and hide
-  // the phone form underneath it — customer can't even type a phone number
-  // while the order batch is closed or hasn't opened yet.
+  // Show a small "batch closed" banner on the customer info page — the
+  // phone form and profile/order lookup stay fully usable underneath it;
+  // only starting a new order is blocked (see _applyOrderWindowGating).
   function setBatchClosedNotice(phase, startDate, endDate) {
-    const notice   = document.getElementById('custBatchClosedNotice');
-    const formWrap = document.querySelector('#customerPage .cust-form-wrap');
-    if (!notice || !formWrap) return;
+    const notice = document.getElementById('custBatchClosedNotice');
+    if (!notice) return;
 
     if (!phase) {
       notice.style.display = 'none';
-      formWrap.style.display = '';
       return;
     }
 
-    formWrap.style.display = 'none';
     notice.style.display = '';
 
     const title = phase === 'before_open'
       ? '⏳ لم يبدأ وقت تلقي الطلبات بعد'
       : '🔒 التجميع مقفول حالياً';
-    // The before_open dates already say everything — no extra filler line needed.
-    const baseMsg = phase === 'before_open' ? '' : 'لا يمكن تقديم طلبات في الوقت الحالي.';
+    const baseMsg = 'لا يمكن تقديم طلبات جديدة الآن — لكن تقدر تدخل رقمك تحت وتشوف بياناتك وطلباتك السابقة.';
 
     let datesHtml = '';
     if (_formatNextBatchDate(startDate)) {
