@@ -2055,6 +2055,12 @@
           onpaste="custHandlePaste(event)" />
         <div id="custPhoneHint" style="font-size:.78rem;margin-top:.3rem;min-height:1rem;color:rgba(255,255,255,.35)"></div>
         <div id="custLookupStatus" class="cust-lookup-status"></div>
+        <div id="forgetPhoneLink" style="display:none;margin-top:.4rem">
+          <a href="javascript:void(0)" onclick="forgetSavedCustomer()"
+            style="font-size:.78rem;color:rgba(255,255,255,.4);text-decoration:underline">
+            مش أنا؟ امسح البيانات المحفوظة
+          </a>
+        </div>
       </div>
 
       <!-- ══ EXISTING CUSTOMER: info card + action buttons ══ -->
@@ -2094,8 +2100,16 @@
             <input type="tel" id="editWhatsapp" class="cust-input" />
           </div>
           <div class="cust-field">
-            <label class="cust-label">المنطقة / الإمارة</label>
-            <input type="text" id="editArea" class="cust-input" />
+            <label class="cust-label">الإمارة</label>
+            <select id="editEmirate" class="cust-input" onchange="onEmirateChange('editEmirate','areaOptionsEdit')">
+              <option value="">اختر الإمارة</option>
+            </select>
+          </div>
+          <div class="cust-field">
+            <label class="cust-label">المنطقة</label>
+            <input type="text" id="editArea" class="cust-input" list="areaOptionsEdit"
+              placeholder="اكتب أو اختر المنطقة" autocomplete="off" />
+            <datalist id="areaOptionsEdit"></datalist>
           </div>
           <div class="cust-field">
             <label class="cust-label">العنوان التفصيلي</label>
@@ -2207,8 +2221,16 @@
           <input type="text" id="custName" class="cust-input" placeholder="محمد أحمد" />
         </div>
         <div class="cust-field">
-          <label class="cust-label">المنطقة / الإمارة <span class="req">*</span></label>
-          <input type="text" id="custArea" class="cust-input" placeholder="مثال: عجمان - المنامة" />
+          <label class="cust-label">الإمارة <span class="req">*</span></label>
+          <select id="custEmirate" class="cust-input" onchange="onEmirateChange('custEmirate','areaOptionsCust')">
+            <option value="">اختر الإمارة</option>
+          </select>
+        </div>
+        <div class="cust-field">
+          <label class="cust-label">المنطقة <span class="req">*</span></label>
+          <input type="text" id="custArea" class="cust-input" list="areaOptionsCust"
+            placeholder="اكتب أو اختر المنطقة" autocomplete="off" />
+          <datalist id="areaOptionsCust"></datalist>
         </div>
         <div class="cust-field">
           <label class="cust-label">العنوان التفصيلي <span class="req">*</span></label>
@@ -2365,6 +2387,79 @@
 
 <script>
   const RAW = 'https://raw.githubusercontent.com/HomiCart/HomiCart/main/';
+
+  // ═══════════════════════════════════════════════════════════════
+  //  UAE EMIRATES + AREAS — two-stage location picker
+  //  Emirate (select) → Area (text input + datalist autocomplete)
+  //  Free typing is still allowed for areas not listed here.
+  // ═══════════════════════════════════════════════════════════════
+  const UAE_EMIRATES = ['دبي', 'أبوظبي', 'الشارقة', 'عجمان', 'رأس الخيمة', 'الفجيرة', 'أم القيوين'];
+  const UAE_AREAS = {
+    'دبي': [
+      'ديرة', 'بر دبي', 'الكرامة', 'القصيص', 'المزهر', 'الورقاء', 'ند الشبا', 'ميدان',
+      'الخليج التجاري', 'دبي مارينا', 'الجميرا', 'البرشاء', 'داماك هيلز', 'ديسكفري جاردنز',
+      'جبل علي', 'الفرجان', 'مردف', 'الراشدية', 'القوز', 'عود ميثاء', 'السطوة', 'الثنية',
+      'النهدة', 'الطوار', 'دبي لاند', 'الصفا', 'الوصل', 'جميرا فيليج سيركل', 'جميرا فيليج تراينغل',
+      'بيزنس باي',
+    ],
+    'أبوظبي': [
+      'الخالدية', 'الكورنيش', 'المشرف', 'الشامخة', 'مصفح', 'الروضة', 'البطين', 'النادي السياحي',
+      'الوثبة', 'الشهامة', 'مدينة خليفة', 'ياس', 'السعديات', 'الراحة', 'بني ياس', 'الفلاح',
+    ],
+    'الشارقة': [
+      'الخان', 'القاسمية', 'الياسمين', 'النهدة', 'الممزر', 'الروضة', 'المجاز', 'الرولة',
+      'الخزامية', 'النخيلات', 'الطي', 'الشارقة الصناعية', 'الفلج',
+    ],
+    'عجمان': ['النعيمية', 'الراشدية', 'الجرف', 'مويهات', 'الحميدية', 'الرميلة', 'عجمان الصناعية'],
+    'رأس الخيمة': ['الحمرا', 'اليرموك', 'النخيل', 'الجزيرة الحمراء', 'الظيت', 'السيح', 'خزام', 'المعيريض'],
+    'الفجيرة': ['مدينة الفجيرة', 'دبا الفجيرة', 'مسافي', 'البدية', 'قدفع'],
+    'أم القيوين': ['أم القيوين البلدة', 'الرأس', 'السلامة', 'الحمرية'],
+  };
+
+  // Fill an <select> with the emirate list once (skip if already populated)
+  function _populateEmirateSelect(selectId) {
+    const sel = document.getElementById(selectId);
+    if (!sel || sel.options.length > 1) return;
+    UAE_EMIRATES.forEach(em => {
+      const opt = document.createElement('option');
+      opt.value = em; opt.textContent = em;
+      sel.appendChild(opt);
+    });
+  }
+
+  // Refresh the area <datalist> whenever the emirate <select> changes
+  function onEmirateChange(selectId, datalistId) {
+    const sel = document.getElementById(selectId);
+    const dl  = document.getElementById(datalistId);
+    if (!sel || !dl) return;
+    dl.innerHTML = '';
+    (UAE_AREAS[sel.value] || []).forEach(area => {
+      const opt = document.createElement('option');
+      opt.value = area;
+      dl.appendChild(opt);
+    });
+  }
+
+  // "أبوظبي - الخالدية"  →  { emirate: 'أبوظبي', area: 'الخالدية' }
+  // Falls back gracefully for old free-text values that don't match this shape.
+  function _splitAreaString(str) {
+    str = (str || '').trim();
+    for (const em of UAE_EMIRATES) {
+      if (str === em) return { emirate: em, area: '' };
+      if (str.startsWith(em + ' - ')) return { emirate: em, area: str.slice(em.length + 3).trim() };
+    }
+    return { emirate: '', area: str };
+  }
+
+  function _composeArea(emirate, area) {
+    emirate = (emirate || '').trim();
+    area    = (area    || '').trim();
+    if (emirate && area) return emirate + ' - ' + area;
+    return emirate || area;
+  }
+
+  // Populate the emirate <select> elements once the DOM for them exists
+  ['custEmirate', 'editEmirate'].forEach(_populateEmirateSelect);
 
   // Fallback stores — used ONLY if the live getStoresList call fails/times out.
   // Kept to a single known-stable store; anything deleted/added in admin should
@@ -2937,6 +3032,10 @@
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
+    ['custEmirate','editEmirate'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
     document.getElementById('custLookupStatus').textContent = '';
     document.getElementById('custLookupStatus').className   = 'cust-lookup-status';
     const errEl = document.getElementById('custFormErr');
@@ -2947,6 +3046,24 @@
     if (_custMap) { _custMap.remove(); _custMap = null; _custMarker = null; }
   }
 
+  // "Remember me" — reuse the phone saved from a previous visit so returning
+  // customers never have to retype it.
+  function _getSavedPhone() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('homiCart_customer') || '{}');
+      const phone = (saved.phone || '').toString().trim();
+      return _isCustPhoneValid(phone) ? phone : '';
+    } catch(e) { return ''; }
+  }
+
+  function forgetSavedCustomer() {
+    localStorage.removeItem('homiCart_customer');
+    document.getElementById('custPhone').value = '';
+    _resetForm();
+    document.getElementById('forgetPhoneLink').style.display = 'none';
+    setTimeout(() => document.getElementById('custPhone').focus(), 100);
+  }
+
   // ── Show customer page ──────────────────────────────────
   function showCustomerPage(folder, name, tag) {
     window._pendingStore = { folder, name, tag };
@@ -2955,7 +3072,17 @@
     _resetForm();
     showPage('customerPage');
     updateCountdownForStore(folder); // show timer from first step
-    setTimeout(() => document.getElementById('custPhone').focus(), 100);
+
+    const savedPhone = _getSavedPhone();
+    document.getElementById('forgetPhoneLink').style.display = savedPhone ? '' : 'none';
+    if (savedPhone) {
+      // Auto-fill + trigger the same lookup flow as manual typing —
+      // customer sees their saved info without typing anything.
+      document.getElementById('custPhone').value = savedPhone;
+      onPhoneInput();
+    } else {
+      setTimeout(() => document.getElementById('custPhone').focus(), 100);
+    }
 
     // Pre-fetch the same menu photos shown inside the order page (same
     // GitHub folder / fetchImages path) so customers can browse them here
@@ -3157,7 +3284,10 @@
     const c = window._existingCustomer || {};
     document.getElementById('editName').value     = c.name     || '';
     document.getElementById('editWhatsapp').value = c.whatsapp || document.getElementById('custPhone').value.trim();
-    document.getElementById('editArea').value     = c.area     || '';
+    const editAreaParts = _splitAreaString(c.area || '');
+    document.getElementById('editEmirate').value  = editAreaParts.emirate;
+    onEmirateChange('editEmirate', 'areaOptionsEdit');
+    document.getElementById('editArea').value     = editAreaParts.area;
     document.getElementById('editAddress').value  = c.address  || '';
     document.getElementById('editFormErr').textContent = '';
     _showStep('editFormWrap', true);
@@ -3190,12 +3320,15 @@
     const phone    = document.getElementById('custPhone').value.trim();
     const name     = document.getElementById('editName').value.trim();
     const whatsapp = document.getElementById('editWhatsapp').value.trim();
-    const area     = document.getElementById('editArea').value.trim();
+    const emirate  = document.getElementById('editEmirate').value.trim();
+    const areaName = document.getElementById('editArea').value.trim();
+    const area     = _composeArea(emirate, areaName);
     const address  = document.getElementById('editAddress').value.trim();
     const errEl    = document.getElementById('editFormErr');
 
     if (!name)    { errEl.textContent = '⚠ الاسم مطلوب'; return; }
-    if (!area)    { errEl.textContent = '⚠ المنطقة مطلوبة'; return; }
+    if (!emirate) { errEl.textContent = '⚠ الإمارة مطلوبة'; return; }
+    if (!areaName){ errEl.textContent = '⚠ المنطقة مطلوبة'; return; }
     if (!address) { errEl.textContent = '⚠ العنوان مطلوب'; return; }
     errEl.textContent = '';
 
@@ -3567,14 +3700,17 @@
   async function submitCustomerInfo() {
     const phone    = document.getElementById('custPhone').value.trim();
     const name     = document.getElementById('custName').value.trim();
-    const area     = document.getElementById('custArea').value.trim();
+    const emirate  = document.getElementById('custEmirate').value.trim();
+    const areaName = document.getElementById('custArea').value.trim();
+    const area     = _composeArea(emirate, areaName);
     const address  = document.getElementById('custAddress').value.trim();
     const whatsapp = document.getElementById('custWhatsapp').value.trim();
     const errEl    = document.getElementById('custFormErr');
 
     if (!phone)   { errEl.textContent = '⚠ رقم الهاتف مطلوب';        document.getElementById('custPhone').focus();   return; }
     if (!name)    { errEl.textContent = '⚠ الاسم الكامل مطلوب';       document.getElementById('custName').focus();    return; }
-    if (!area)    { errEl.textContent = '⚠ المنطقة / الإمارة مطلوبة'; document.getElementById('custArea').focus();    return; }
+    if (!emirate) { errEl.textContent = '⚠ الإمارة مطلوبة'; document.getElementById('custEmirate').focus(); return; }
+    if (!areaName){ errEl.textContent = '⚠ المنطقة مطلوبة'; document.getElementById('custArea').focus();    return; }
     if (!address) { errEl.textContent = '⚠ العنوان التفصيلي مطلوب';   document.getElementById('custAddress').focus(); return; }
     errEl.textContent = '';
 
