@@ -4072,12 +4072,15 @@
         <div class="delivery-options">
           <div class="delivery-options-title"><i class="fas fa-truck"></i> ${cfg.title || 'هل تفضل التوصيل مع'}</div>
           <div class="delivery-options-list">
-            ${cfg.options.map((opt, i) => `
+            ${cfg.options.map((opt, i) => {
+              const fee = _computeDeliveryFee(opt);
+              return `
               <label class="delivery-option" id="deliveryOpt${i}">
                 <input type="radio" name="deliveryOption" value="${i}" onchange="selectDeliveryOption(${i})">
                 <span class="delivery-option-label">${opt.label}</span>
-                <span class="delivery-option-fee">${(Number(opt.fee) > 0) ? ('+' + opt.fee + ' درهم') : 'مجاناً'}</span>
-              </label>`).join('')}
+                <span class="delivery-option-fee" id="deliveryOptFee${i}">${fee > 0 ? ('+' + fee + ' درهم') : 'مجاناً'}</span>
+              </label>`;
+            }).join('')}
           </div>
         </div>`;
     }).catch(() => {});
@@ -4165,6 +4168,56 @@
     if (inp)  inp.value = Math.max(0, parseFloat(inp.value) || 0);
     if (card) card.classList.toggle('has-qty', parseFloat(inp?.value) > 0);
     updateMenuOrderPreview();
+    _refreshDeliveryFeeDisplay();
+  }
+
+  // Sum of quantities for كيلو-priced items currently selected — used for
+  // quantity-tiered delivery fees (e.g. Al Rokn Al Masry's 5kg threshold).
+  function _computeSelectedKg() {
+    const items = window._opMenuItems || [];
+    let kg = 0;
+    items.forEach((item, i) => {
+      if ((item.unit || 'كيلو') !== 'كيلو') return;
+      kg += parseFloat(document.getElementById('miQty' + i)?.value) || 0;
+    });
+    return kg;
+  }
+
+  // Resolve the actual AED fee for a delivery option — flat, or computed
+  // from the quantity-tiered rule configured in admin. The rule (threshold
+  // + two prices) stays fixed in code; the numbers are all admin-editable.
+  function _computeDeliveryFee(opt) {
+    if (!opt) return 0;
+    if (opt.feeMode === 'tiered' && opt.tieredRule) {
+      const kg = _computeSelectedKg();
+      const { thresholdKg, feeBelowThreshold, feeAtOrAboveThreshold } = opt.tieredRule;
+      return kg >= Number(thresholdKg) ? Number(feeAtOrAboveThreshold) : Number(feeBelowThreshold);
+    }
+    return Number(opt.fee) || 0;
+  }
+
+  // Refresh the displayed fee next to each delivery option (tiered fees
+  // change live as quantities change), and re-check whether the payment
+  // method chooser should be shown for the currently selected option.
+  function _refreshDeliveryFeeDisplay() {
+    (window._opDeliveryOptions || []).forEach((opt, i) => {
+      const el = document.getElementById('deliveryOptFee' + i);
+      if (!el) return;
+      const fee = _computeDeliveryFee(opt);
+      el.textContent = fee > 0 ? '+' + fee + ' درهم' : 'مجاناً';
+    });
+    if (window._opDeliveryChoice) {
+      const box = document.getElementById('paymentMethodBox');
+      const needsPayment = _computeDeliveryFee(window._opDeliveryChoice) > 0;
+      if (box && needsPayment && box.style.display === 'none') {
+        renderPaymentMethodBox();
+        box.style.display = '';
+      } else if (box && !needsPayment && box.style.display !== 'none') {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        window._opPaymentMethod = null;
+      }
+    }
   }
 
   // Prices are typed freely in admin (e.g. "35 درهم/كيلو"), not a clean
@@ -4201,6 +4254,8 @@
       preview.innerHTML = '';
       return;
     }
+    const deliveryFee = window._opDeliveryChoice ? _computeDeliveryFee(window._opDeliveryChoice) : null;
+    const grandTotal  = +(total + (deliveryFee || 0)).toFixed(2);
     preview.style.display = 'block';
     preview.innerHTML = `
       <div class="invoice-title">📋 فاتورتك التقريبية</div>
@@ -4210,13 +4265,18 @@
             <span class="invoice-row-name">${r.name} <span class="invoice-row-qty">× ${r.qty} ${r.unit}</span></span>
             <span class="invoice-row-total">${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}</span>
           </div>`).join('')}
+        ${deliveryFee != null ? `
+          <div class="invoice-row">
+            <span class="invoice-row-name">رسوم التوصيل</span>
+            <span class="invoice-row-total">${deliveryFee > 0 ? deliveryFee + ' درهم' : 'مجاناً'}</span>
+          </div>` : ''}
       </div>
       <div class="invoice-total-row">
         <span>الإجمالي التقريبي</span>
-        <span class="invoice-total-value">${total} درهم</span>
+        <span class="invoice-total-value">${grandTotal} درهم</span>
       </div>
       <div class="invoice-disclaimer">
-        * سعر تقديري للمنتجات فقط، من غير رسوم التوصيل${hasUnknownPrice ? ' — وفيه صنف السعر بتاعه هيتأكد مع التاجر' : ''}.
+        * سعر تقديري للمنتجات${deliveryFee != null ? ' ورسوم التوصيل' : '، من غير رسوم التوصيل'}${hasUnknownPrice ? ' — وفيه صنف السعر بتاعه هيتأكد مع التاجر' : ''}.
       </div>`;
   }
 
@@ -4248,9 +4308,11 @@
       el.classList.toggle('selected', i === idx);
     });
 
+    updateMenuOrderPreview(); // refresh invoice with this option's delivery fee
+
     // Show the payment method chooser only for paid (shipping company) delivery
     const box = document.getElementById('paymentMethodBox');
-    const needsPayment = Number(window._opDeliveryChoice?.fee) > 0;
+    const needsPayment = _computeDeliveryFee(window._opDeliveryChoice) > 0;
     if (needsPayment) {
       renderPaymentMethodBox();
       box.style.display = '';
@@ -4343,7 +4405,7 @@
       err.textContent = 'يرجى اختيار طريقة التوصيل المفضلة';
       return;
     }
-    if (Number(window._opDeliveryChoice?.fee) > 0 && !window._opPaymentMethod) {
+    if (_computeDeliveryFee(window._opDeliveryChoice) > 0 && !window._opPaymentMethod) {
       err.textContent = 'يرجى اختيار طريقة الدفع';
       return;
     }
@@ -4370,8 +4432,13 @@
     }
     err.textContent = '';
 
-    // Selected delivery option label only (no fee) — goes to its own column
-    const deliveryOption = window._opDeliveryChoice?.label || '';
+    // Selected delivery option + the actual fee charged (computed at the
+    // time of ordering — important to record as-is since tiered fees can
+    // change later in admin) — goes to its own column
+    const deliveryFeeCharged = _computeDeliveryFee(window._opDeliveryChoice);
+    const deliveryOption = window._opDeliveryChoice
+      ? `${window._opDeliveryChoice.label} — ${deliveryFeeCharged > 0 ? deliveryFeeCharged + ' درهم' : 'مجاناً'}`
+      : '';
 
     // Chosen payment method (cash / bank transfer) — goes to its own column
     const paymentLabels = { cash: 'كاش عند التوصيل', bank: 'تحويل بنكي' };

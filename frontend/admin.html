@@ -1391,6 +1391,8 @@ function toggleDeliveryOptionsUI(storeKey) {
 
 function addDeliveryOptionRow(storeKey, opt) {
   opt = opt || { label: '', fee: 0, requireVendorOrder: '', blockMsg: '' };
+  const isTiered = opt.feeMode === 'tiered';
+  const tr = opt.tieredRule || {};
   const list = document.getElementById('deliveryOptionsList-' + storeKey);
   if (!list) return;
   const row = document.createElement('div');
@@ -1401,29 +1403,60 @@ function addDeliveryOptionRow(storeKey, opt) {
     `<option value="${s.key}" data-name="${s.name}" ${opt.requireVendorOrder === s.key ? 'selected' : ''}>${s.name}</option>`
   ).join('');
 
+  const inputStyle = "flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.5rem .6rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.78rem;outline:none;box-sizing:border-box";
+
   row.innerHTML = `
     <div style="display:flex;gap:.6rem;align-items:center">
       <input type="text" placeholder="اسم الاختيار (مثال: الركن المصري)" value="${(opt.label||'').replace(/"/g,'&quot;')}"
         class="delivery-opt-label"
         style="flex:2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.55rem .7rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.85rem;outline:none;box-sizing:border-box;direction:rtl">
-      <input type="number" placeholder="قيمة التوصيل (درهم)" value="${Number(opt.fee)||0}" min="0" step="1"
-        class="delivery-opt-fee"
-        style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.55rem .7rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.85rem;outline:none;box-sizing:border-box">
       <button onclick="this.closest('.delivery-opt-row').remove()"
         style="background:none;border:none;color:rgba(255,80,80,.6);font-size:.95rem;cursor:pointer;padding:.3rem .5rem"
         title="حذف"><i class="fas fa-trash-alt"></i></button>
     </div>
     <div style="display:flex;gap:.6rem;align-items:center">
+      <select class="delivery-opt-feemode" onchange="onDeliveryFeeModeChange(this)"
+        style="${inputStyle};flex:1;cursor:pointer;direction:rtl">
+        <option value="flat"   ${!isTiered ? 'selected' : ''}>سعر ثابت</option>
+        <option value="tiered" ${isTiered  ? 'selected' : ''}>سعر حسب الكمية (كيلو)</option>
+      </select>
+      <input type="number" placeholder="قيمة التوصيل (درهم)" value="${Number(opt.fee)||0}" min="0" step="1"
+        class="delivery-opt-fee"
+        style="${inputStyle};flex:1;display:${isTiered ? 'none' : ''}">
+    </div>
+    <div class="delivery-opt-tiered-fields" style="display:${isTiered ? 'flex' : 'none'};gap:.6rem;align-items:center">
+      <div style="flex:1;display:flex;flex-direction:column;gap:.2rem">
+        <label style="font-size:.7rem;color:rgba(255,255,255,.4)">الحد (كيلو)</label>
+        <input type="number" min="0" step="0.5" value="${tr.thresholdKg ?? 5}" class="delivery-opt-threshold" style="${inputStyle}">
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:.2rem">
+        <label style="font-size:.7rem;color:rgba(255,255,255,.4)">لو أقل من الحد</label>
+        <input type="number" min="0" step="1" value="${tr.feeBelowThreshold ?? 0}" class="delivery-opt-fee-below" style="${inputStyle}">
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:.2rem">
+        <label style="font-size:.7rem;color:rgba(255,255,255,.4)">لو الحد أو أكتر</label>
+        <input type="number" min="0" step="1" value="${tr.feeAtOrAboveThreshold ?? 0}" class="delivery-opt-fee-atabove" style="${inputStyle}">
+      </div>
+    </div>
+    <div style="display:flex;gap:.6rem;align-items:center">
       <select class="delivery-opt-require" onchange="onDeliveryRequireChange(this)"
-        style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.5rem .6rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.78rem;outline:none;box-sizing:border-box;direction:rtl">
+        style="${inputStyle};direction:rtl">
         <option value="">— بدون شرط مسبق —</option>
         ${vendorOpts}
       </select>
       <input type="text" placeholder="رسالة المنع (اختياري)" value="${(opt.blockMsg||'').replace(/"/g,'&quot;')}"
         class="delivery-opt-msg"
-        style="flex:2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.5rem .6rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.78rem;outline:none;box-sizing:border-box;direction:rtl">
+        style="${inputStyle};flex:2;direction:rtl">
     </div>`;
   list.appendChild(row);
+}
+
+// Toggle flat-fee input vs the 3 tiered-rule inputs for this option row
+function onDeliveryFeeModeChange(sel) {
+  const row = sel.closest('.delivery-opt-row');
+  const isTiered = sel.value === 'tiered';
+  row.querySelector('.delivery-opt-fee').style.display = isTiered ? 'none' : '';
+  row.querySelector('.delivery-opt-tiered-fields').style.display = isTiered ? 'flex' : 'none';
 }
 
 // When admin picks a vendor that this option requires an active order from,
@@ -1442,12 +1475,24 @@ async function saveDeliveryOptions(storeKey) {
   const list = document.getElementById('deliveryOptionsList-' + storeKey);
   if (!chk) return;
 
-  const options = Array.from(list.querySelectorAll('.delivery-opt-row')).map(row => ({
-    label: row.querySelector('.delivery-opt-label').value.trim(),
-    fee:   Number(row.querySelector('.delivery-opt-fee').value) || 0,
-    requireVendorOrder: row.querySelector('.delivery-opt-require').value || '',
-    blockMsg: row.querySelector('.delivery-opt-msg').value.trim(),
-  })).filter(o => o.label);
+  const options = Array.from(list.querySelectorAll('.delivery-opt-row')).map(row => {
+    const isTiered = row.querySelector('.delivery-opt-feemode').value === 'tiered';
+    const opt = {
+      label: row.querySelector('.delivery-opt-label').value.trim(),
+      fee:   Number(row.querySelector('.delivery-opt-fee').value) || 0,
+      feeMode: isTiered ? 'tiered' : 'flat',
+      requireVendorOrder: row.querySelector('.delivery-opt-require').value || '',
+      blockMsg: row.querySelector('.delivery-opt-msg').value.trim(),
+    };
+    if (isTiered) {
+      opt.tieredRule = {
+        thresholdKg:          Number(row.querySelector('.delivery-opt-threshold').value) || 0,
+        feeBelowThreshold:    Number(row.querySelector('.delivery-opt-fee-below').value) || 0,
+        feeAtOrAboveThreshold:Number(row.querySelector('.delivery-opt-fee-atabove').value) || 0,
+      };
+    }
+    return opt;
+  }).filter(o => o.label);
 
   const prev = btn.innerHTML;
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
