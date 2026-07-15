@@ -4940,6 +4940,8 @@
   let _cdInterval   = null;
   let _cdEndTime    = null;
   let _pollInterval = null; // polls server to detect manual admin close
+  let _cdIntroTimer    = null;
+  let _cdIntroExpanded = false; // show the full bar for a few seconds on entry so its purpose is clear
 
   // Called on page boot — no API needed
   function loadOrderWindow() { return Promise.resolve(); }
@@ -5037,6 +5039,8 @@
     document.body.classList.remove('has-countdown', 'cd-is-compact');
     if (_cdInterval)   { clearInterval(_cdInterval);   _cdInterval   = null; }
     if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
+    if (_cdIntroTimer) { clearTimeout(_cdIntroTimer);  _cdIntroTimer = null; }
+    _cdIntroExpanded = false;
   }
 
   function startCountdown() {
@@ -5051,6 +5055,13 @@
     const dateEl = document.getElementById('cdDate');
     if (dateEl) dateEl.textContent = `${dayName}، ${datePart} | ${timePart}`;
 
+    // Show the full bar (with title + date) for the first 10s on entry so
+    // the customer understands what it's counting down to, then let the
+    // normal last-hour logic decide whether to stay expanded or shrink.
+    _cdIntroExpanded = true;
+    clearTimeout(_cdIntroTimer);
+    _cdIntroTimer = setTimeout(() => { _cdIntroExpanded = false; }, 10000);
+
     function tick() {
       const now  = new Date();
       const diff = _cdEndTime - now;
@@ -5061,8 +5072,9 @@
           const x = document.getElementById(id);
           if (x) x.textContent = '00';
         });
-        el.classList.remove('hidden', 'warning');
+        el.classList.remove('hidden', 'warning', 'compact');
         el.classList.add('urgent');
+        document.body.classList.remove('cd-is-compact');
         clearInterval(_cdInterval);
         if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
 
@@ -5096,10 +5108,12 @@
       if (diff < 30 * 60 * 1000)      el.classList.add('urgent');   // < 30 min
       else if (diff < 2 * 3600 * 1000) el.classList.add('warning');  // < 2 h
 
-      // Stay small/unobtrusive until the last hour, then expand to the full bar
+      // Stay small/unobtrusive until the last hour, then expand to the full
+      // bar — except during the first 10s on entry, which always shows full.
       const isLastHour = diff < 60 * 60 * 1000;
-      el.classList.toggle('compact', !isLastHour);
-      document.body.classList.toggle('cd-is-compact', !isLastHour);
+      const forceExpanded = _cdIntroExpanded || isLastHour;
+      el.classList.toggle('compact', !forceExpanded);
+      document.body.classList.toggle('cd-is-compact', !forceExpanded);
 
       el.classList.remove('hidden');
       document.body.classList.add('has-countdown');
