@@ -1396,6 +1396,18 @@
     .delivery-option-label { flex: 1; color: #fff; font-size: .9rem; font-weight: 700; }
     .delivery-option-fee { color: rgba(255,255,255,.55); font-size: .82rem; white-space: nowrap; }
 
+    /* Single delivery option — informational only, no click needed */
+    .delivery-option-info {
+      display: flex; align-items: center; gap: .6rem;
+      background: rgba(24,191,239,.08);
+      border: 1.5px solid rgba(24,191,239,.3);
+      border-radius: 10px;
+      padding: .7rem .9rem;
+      font-family: 'Cairo', sans-serif;
+    }
+    .delivery-option-info .delivery-option-label { color: #fff; font-size: .9rem; font-weight: 700; }
+    .delivery-option-info .delivery-option-fee { color: #18bfef; font-size: .85rem; font-weight: 700; }
+
     /* ══════════════════════════════
        Payment method chooser
     ══════════════════════════════ */
@@ -4068,6 +4080,24 @@
       const box = document.getElementById('deliveryOptionsBox');
       if (!box || !cfg?.enabled || !Array.isArray(cfg.options) || !cfg.options.length) return;
       window._opDeliveryOptions = cfg.options;
+      window._opDeliveryShowPayment = cfg.showPaymentMethod !== false;
+
+      if (cfg.options.length === 1) {
+        // A single option isn't a real choice — show it as plain info
+        // (no click needed) and apply it automatically.
+        const fee = _computeDeliveryFee(cfg.options[0]);
+        box.innerHTML = `
+          <div class="delivery-options">
+            <div class="delivery-options-title"><i class="fas fa-truck"></i> سعر التوصيل</div>
+            <div class="delivery-option-info">
+              <span class="delivery-option-label">${cfg.options[0].label}</span>
+              <span class="delivery-option-fee" id="deliveryOptFee0">${fee > 0 ? ('+' + fee + ' درهم') : 'مجاناً'}</span>
+            </div>
+          </div>`;
+        selectDeliveryOption(0);
+        return;
+      }
+
       box.innerHTML = `
         <div class="delivery-options">
           <div class="delivery-options-title"><i class="fas fa-truck"></i> ${cfg.title || 'هل تفضل التوصيل مع'}</div>
@@ -4208,7 +4238,7 @@
     });
     if (window._opDeliveryChoice) {
       const box = document.getElementById('paymentMethodBox');
-      const needsPayment = _computeDeliveryFee(window._opDeliveryChoice) > 0;
+      const needsPayment = window._opDeliveryShowPayment !== false && _computeDeliveryFee(window._opDeliveryChoice) > 0;
       if (box && needsPayment && box.style.display === 'none') {
         renderPaymentMethodBox();
         box.style.display = '';
@@ -4311,8 +4341,9 @@
     updateMenuOrderPreview(); // refresh invoice with this option's delivery fee
 
     // Show the payment method chooser only for paid (shipping company) delivery
+    // — and only for stores that want it at all (see "إظهار اختيار طريقة الدفع" in admin).
     const box = document.getElementById('paymentMethodBox');
-    const needsPayment = _computeDeliveryFee(window._opDeliveryChoice) > 0;
+    const needsPayment = window._opDeliveryShowPayment !== false && _computeDeliveryFee(window._opDeliveryChoice) > 0;
     if (needsPayment) {
       renderPaymentMethodBox();
       box.style.display = '';
@@ -4405,7 +4436,7 @@
       err.textContent = 'يرجى اختيار طريقة التوصيل المفضلة';
       return;
     }
-    if (_computeDeliveryFee(window._opDeliveryChoice) > 0 && !window._opPaymentMethod) {
+    if (window._opDeliveryShowPayment !== false && _computeDeliveryFee(window._opDeliveryChoice) > 0 && !window._opPaymentMethod) {
       err.textContent = 'يرجى اختيار طريقة الدفع';
       return;
     }

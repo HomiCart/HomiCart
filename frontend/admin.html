@@ -923,6 +923,13 @@ async function renderStorePage(storeKey) {
           <span style="font-size:.85rem;color:rgba(255,255,255,.7)">إظهار اختيار طريقة التوصيل للعميل</span>
         </div>
         <div id="deliveryFields-${storeKey}" style="display:none">
+          <div class="toggle-wrap" style="margin-bottom:.9rem">
+            <label class="toggle">
+              <input type="checkbox" id="deliveryShowPayment-${storeKey}" checked>
+              <span class="toggle-slider"></span>
+            </label>
+            <span style="font-size:.85rem;color:rgba(255,255,255,.7)">إظهار اختيار طريقة الدفع (كاش/تحويل) لو التوصيل مدفوع</span>
+          </div>
           <div style="font-size:.75rem;color:rgba(255,255,255,.35);margin-bottom:.4rem">عنوان السؤال</div>
           <input type="text" id="deliveryTitle-${storeKey}" placeholder="هل تفضل التوصيل مع"
             style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.6rem .8rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.88rem;outline:none;box-sizing:border-box;direction:rtl;margin-bottom:.9rem">
@@ -1371,8 +1378,10 @@ async function loadDeliveryOptions(storeKey) {
     const cfg = res?.config || { enabled: false, title: '', options: [] };
     const chk = document.getElementById('deliveryEnabled-' + storeKey);
     const titleEl = document.getElementById('deliveryTitle-' + storeKey);
+    const showPayChk = document.getElementById('deliveryShowPayment-' + storeKey);
     if (chk) chk.checked = !!cfg.enabled;
     if (titleEl) titleEl.value = cfg.title || '';
+    if (showPayChk) showPayChk.checked = cfg.showPaymentMethod !== false;
     const list = document.getElementById('deliveryOptionsList-' + storeKey);
     if (list) {
       list.innerHTML = '';
@@ -1472,6 +1481,7 @@ async function saveDeliveryOptions(storeKey) {
   const btn  = document.getElementById('saveDeliveryBtn-' + storeKey);
   const chk  = document.getElementById('deliveryEnabled-' + storeKey);
   const titleEl = document.getElementById('deliveryTitle-' + storeKey);
+  const showPayChk = document.getElementById('deliveryShowPayment-' + storeKey);
   const list = document.getElementById('deliveryOptionsList-' + storeKey);
   if (!chk) return;
 
@@ -1501,6 +1511,7 @@ async function saveDeliveryOptions(storeKey) {
       store: storeKey,
       enabled: chk.checked,
       title: titleEl.value.trim() || 'هل تفضل التوصيل مع',
+      showPaymentMethod: showPayChk ? showPayChk.checked : true,
       options: JSON.stringify(options),
     }, 12000);
     if (res?.success) toast('✓ تم حفظ خيارات التوصيل', 'success');
