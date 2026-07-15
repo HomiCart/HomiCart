@@ -1742,6 +1742,22 @@
     .order-countdown.warning { border-color: rgba(255,165,0,.65); box-shadow: 0 6px 28px rgba(0,0,0,.5), 0 0 14px rgba(255,165,0,.18); }
     /* Extra bottom space so the floating widget never covers buttons */
     body.has-countdown { padding-bottom: 7rem; }
+    body.has-countdown.cd-is-compact { padding-bottom: 3.4rem; }
+
+    /* Compact mode — more than an hour left: small, unobtrusive pill.
+       Automatically expands back to the full bar in the last hour. */
+    .order-countdown.compact { padding: .4rem .7rem; border-radius: 14px; }
+    .order-countdown.compact .cd-title,
+    .order-countdown.compact .cd-unit-label,
+    .order-countdown.compact .cd-date-row { display: none; }
+    .order-countdown.compact .cd-inner { gap: 0; }
+    .order-countdown.compact .cd-icon { font-size: .85rem; }
+    .order-countdown.compact .cd-digits { gap: .18rem; }
+    .order-countdown.compact .cd-flip {
+      font-size: .76rem; font-weight: 700; padding: .1rem .32rem; min-width: 1.3rem;
+      border-radius: 5px;
+    }
+    .order-countdown.compact .cd-colon { font-size: .76rem; }
     .cd-inner {
       display: flex; flex-direction: column; gap: .35rem;
     }
@@ -5018,7 +5034,7 @@
   function hideCountdown() {
     const el = document.getElementById('orderCountdown');
     if (el) el.classList.add('hidden');
-    document.body.classList.remove('has-countdown');
+    document.body.classList.remove('has-countdown', 'cd-is-compact');
     if (_cdInterval)   { clearInterval(_cdInterval);   _cdInterval   = null; }
     if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
   }
@@ -5079,6 +5095,11 @@
       el.classList.remove('warning','urgent');
       if (diff < 30 * 60 * 1000)      el.classList.add('urgent');   // < 30 min
       else if (diff < 2 * 3600 * 1000) el.classList.add('warning');  // < 2 h
+
+      // Stay small/unobtrusive until the last hour, then expand to the full bar
+      const isLastHour = diff < 60 * 60 * 1000;
+      el.classList.toggle('compact', !isLastHour);
+      document.body.classList.toggle('cd-is-compact', !isLastHour);
 
       el.classList.remove('hidden');
       document.body.classList.add('has-countdown');
