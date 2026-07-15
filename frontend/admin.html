@@ -949,6 +949,13 @@ async function renderStorePage(storeKey) {
           كل عنصر مفعّل يظهر للعميل مع خانة للكمية — الطلب بيتجمع أوتوماتيك من الكميات المحددة
         </div>
         <div id="menuItemsList-${storeKey}" style="display:flex;flex-direction:column;gap:.55rem"></div>
+        <div style="margin-top:1rem;padding-top:.9rem;border-top:1px solid rgba(255,255,255,.08)">
+          <div style="font-size:.78rem;color:rgba(255,255,255,.55);margin-bottom:.4rem">
+            ملاحظة على فاتورة العميل (اختياري) — تظهر تحت الإجمالي التقريبي، مثلاً توضيح إن الأسعار تقديرية بسبب اختلاف الوزن الفعلي
+          </div>
+          <textarea id="menuInvoiceNote-${storeKey}" rows="2" placeholder="مثال: الأسعار تقديرية والسعر النهائي حسب الوزن الفعلي وقت التسليم"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.55rem .7rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.82rem;outline:none;box-sizing:border-box;direction:rtl;resize:vertical"></textarea>
+        </div>
         <div style="display:flex;gap:.6rem;margin-top:.7rem">
           <button class="btn btn-outline" onclick="addMenuItemRow('${storeKey}')" style="flex:1;justify-content:center">
             <i class="fas fa-plus"></i> إضافة منتج
@@ -1531,7 +1538,10 @@ async function loadMenuItems(storeKey) {
     const items = res?.items || [];
     if (!list) return;
     list.innerHTML = '';
-    items.forEach(item => item.isDivider ? addMenuDividerRow(storeKey, item) : addMenuItemRow(storeKey, item));
+    const noteEl = document.getElementById('menuInvoiceNote-' + storeKey);
+    if (noteEl) noteEl.value = items.find(i => i.isInvoiceNote)?.text || '';
+    items.filter(i => !i.isInvoiceNote)
+         .forEach(item => item.isDivider ? addMenuDividerRow(storeKey, item) : addMenuItemRow(storeKey, item));
   } catch(e) {
     if (list) list.innerHTML = `<div style="font-size:.8rem;color:#ff8060;padding:.5rem">
       ❌ تعذر تحميل قائمة المنتجات: ${e.message}
@@ -1660,6 +1670,11 @@ async function saveMenuItems(storeKey) {
       step:    Number(row.querySelector('.menu-item-step').value) || 0.5,
     };
   }).filter(i => i && (i.isDivider || i.name));
+
+  const noteEl = document.getElementById('menuInvoiceNote-' + storeKey);
+  const noteText = noteEl ? noteEl.value.trim() : '';
+  if (noteText) items.push({ isInvoiceNote: true, text: noteText });
+
   const prev = btn.innerHTML;
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
   try {

@@ -1568,6 +1568,14 @@
       margin-top: .45rem; font-size: .72rem;
       color: rgba(255,255,255,.4); line-height: 1.5;
     }
+    .invoice-store-note {
+      margin-top: .6rem; font-size: .78rem; font-weight: 600;
+      color: #f5c842; line-height: 1.6;
+      background: rgba(245,200,66,.1);
+      border: 1px solid rgba(245,200,66,.3);
+      border-radius: 8px;
+      padding: .5rem .7rem;
+    }
     .menu-items-footer {
       display: flex; justify-content: space-between; align-items: center;
       margin-top: .7rem;
@@ -4129,8 +4137,11 @@
     }).catch(() => {});
 
     // Load menu items in background
+    window._opInvoiceNote = '';
     _callScript('getMenuItems', { store: _noteStore }, 6000).then(res => {
-      const items = (res?.items || []).filter(i => i.isDivider || (i.enabled !== false && i.name));
+      const all = res?.items || [];
+      window._opInvoiceNote = all.find(i => i.isInvoiceNote)?.text || '';
+      const items = all.filter(i => !i.isInvoiceNote && (i.isDivider || (i.enabled !== false && i.name)));
       window._opMenuItems = items;
       if (!items.length) return;
       renderMenuItemsBox(items);
@@ -4319,7 +4330,8 @@
       </div>
       <div class="invoice-disclaimer">
         * سعر تقديري للمنتجات${deliveryFee != null ? ' ورسوم التوصيل' : '، من غير رسوم التوصيل'}${hasUnknownPrice ? ' — وفيه صنف السعر بتاعه هيتأكد مع التاجر' : ''}.
-      </div>`;
+      </div>
+      ${window._opInvoiceNote ? `<div class="invoice-store-note">⚠️ ${window._opInvoiceNote}</div>` : ''}`;
   }
 
   function buildMenuOrderLines() {
