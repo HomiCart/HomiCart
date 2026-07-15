@@ -2108,6 +2108,9 @@
       <h2>اختار من المتاجر المشتركة معنا</h2>
       <div class="teal-rule"></div>
     </div>
+    <button type="button" class="cust-menu-preview-btn" onclick="openGlobalMyOrders()" style="max-width:320px">
+      <i class="fas fa-list-alt"></i> بياناتي وطلباتي
+    </button>
     <div class="stores-grid" id="storesContainer"></div>
   </div>
 
@@ -4677,6 +4680,104 @@
         </div>
       </div>`;
 
+    await _loadOrdersIntoList(customer.phone);
+  }
+
+  // ── Global "بياناتي وطلباتي" — reachable from the store list page,
+  // no need to pick a vendor first. Same phone works for every vendor.
+  async function openGlobalMyOrders() {
+    showPage('menuPage');
+    document.getElementById('storeName').textContent    = '';
+    document.getElementById('storeEyebrow').textContent  = '';
+    document.getElementById('menuTitle').textContent     = 'بياناتي وطلباتي';
+
+    const saved = _getActiveCustomer();
+    if (saved.phone) { _renderGlobalMyOrders(saved); return; }
+
+    document.getElementById('menuContainer').innerHTML = `
+      <div class="my-orders-wrap">
+        <div class="cust-field" style="max-width:420px;margin:0 auto">
+          <label class="cust-label">أدخل رقم هاتفك لعرض بياناتك وكل طلباتك</label>
+          <input type="tel" id="globalOrdersPhone" class="cust-input" placeholder="05XXXXXXXX"
+            inputmode="numeric" maxlength="10"
+            oninput="onGlobalOrdersPhoneInput()"
+            onkeydown="custBlockNonDigits(event)"
+            onpaste="custHandlePaste(event)">
+          <div id="globalOrdersPhoneHint" style="font-size:.78rem;margin-top:.3rem;min-height:1rem;color:rgba(255,255,255,.35)"></div>
+        </div>
+      </div>`;
+    setTimeout(() => document.getElementById('globalOrdersPhone')?.focus(), 100);
+  }
+
+  let _globalOrdersLookupTimer = null;
+  function onGlobalOrdersPhoneInput() {
+    const el = document.getElementById('globalOrdersPhone');
+    const clean = (el.value || '').replace(/\D/g, '').substring(0, 10);
+    if (el.value !== clean) el.value = clean;
+    const hint = document.getElementById('globalOrdersPhoneHint');
+    clearTimeout(_globalOrdersLookupTimer);
+    if (_isCustPhoneValid(clean)) {
+      if (hint) { hint.textContent = '✅ جاري البحث...'; hint.style.color = '#28a745'; }
+      _globalOrdersLookupTimer = setTimeout(() => _lookupGlobalOrdersPhone(clean), 600);
+    } else if (hint) {
+      hint.textContent = clean.length ? (clean.length + ' / 10 رقم') : '';
+      hint.style.color = 'rgba(255,255,255,.35)';
+    }
+  }
+
+  async function _lookupGlobalOrdersPhone(phone) {
+    const hint = document.getElementById('globalOrdersPhoneHint');
+    try {
+      const res = await _callScript('getCustomer', { phone }, 15000);
+      if (res.success && res.customer) {
+        const c = res.customer;
+        const data = {
+          phone, name: c.name || '', area: c.area || '', address: c.address || '',
+          whatsapp: c.whatsapp || phone, customerId: c.id || '',
+          latitude: c.latitude || '', longitude: c.longitude || '',
+        };
+        // Remember for the rest of this visit regardless of "تذكرني" —
+        // same session identity used everywhere else in the app.
+        _saveSessionCustomer(data);
+        _renderGlobalMyOrders(data);
+      } else if (hint) {
+        hint.textContent = '❌ الرقم ده لسه معملش أي طلب قبل كده';
+        hint.style.color = '#ff6b6b';
+      }
+    } catch(e) {
+      if (hint) { hint.textContent = 'تعذر الاتصال، حاول تاني'; hint.style.color = '#ff6b6b'; }
+    }
+  }
+
+  async function _renderGlobalMyOrders(customer) {
+    document.getElementById('menuContainer').innerHTML = `
+      <div class="my-orders-wrap">
+        <div class="cust-info-card" style="margin-bottom:1.2rem">
+          <div class="cust-info-row"><span class="cust-info-label">الاسم</span><span>${customer.name || '-'}</span></div>
+          <div class="cust-info-row"><span class="cust-info-label">الهاتف</span><span>${customer.phone || '-'}</span></div>
+          <div class="cust-info-row"><span class="cust-info-label">المنطقة</span><span>${customer.area || '-'}</span></div>
+          <div class="cust-info-row"><span class="cust-info-label">العنوان</span><span>${customer.address || '-'}</span></div>
+        </div>
+        <div class="my-orders-title">
+          <i class="fas fa-list-alt" style="color:#18bfef"></i>
+          طلباتي وتعديلاتها
+        </div>
+        <div class="my-orders-list" id="myOrdersList">
+          <div class="no-orders-msg"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
+        </div>
+        <div style="margin-top:1.5rem">
+          <button class="btn-op-cancel" style="width:100%;justify-content:center" onclick="returnToHome()">
+            <i class="fas fa-home"></i>&nbsp;الصفحة الرئيسية
+          </button>
+        </div>
+      </div>`;
+    await _loadOrdersIntoList(customer.phone);
+  }
+
+  // Fetches orders from every vendor for one phone number and renders them,
+  // grouped by vendor, into #myOrdersList. Shared by showMyOrders() (single
+  // vendor's "طلباتي" button) and openGlobalMyOrders() (store list entry).
+  async function _loadOrdersIntoList(phone) {
     const list = document.getElementById('myOrdersList');
     if (!list) return;
 
@@ -4692,7 +4793,7 @@
 
       const results = await Promise.all(
         storeEntries.map(se =>
-          _callScript('getOrdersByPhone', { phone: customer.phone, sheet: se.sheetName }, 20000)
+          _callScript('getOrdersByPhone', { phone, sheet: se.sheetName }, 20000)
             .then(r => ({ store: se, orders: r.orders || [] }))
             .catch(() => ({ store: se, orders: [] }))
         )
