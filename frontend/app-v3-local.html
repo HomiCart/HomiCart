@@ -4080,7 +4080,6 @@
       const box = document.getElementById('deliveryOptionsBox');
       if (!box || !cfg?.enabled || !Array.isArray(cfg.options) || !cfg.options.length) return;
       window._opDeliveryOptions = cfg.options;
-      window._opDeliveryShowPayment = cfg.showPaymentMethod !== false;
 
       if (cfg.options.length === 1) {
         // A single option isn't a real choice — show it as plain info
@@ -4238,7 +4237,7 @@
     });
     if (window._opDeliveryChoice) {
       const box = document.getElementById('paymentMethodBox');
-      const needsPayment = window._opDeliveryShowPayment !== false && _computeDeliveryFee(window._opDeliveryChoice) > 0;
+      const needsPayment = window._opDeliveryChoice?.requiresPaymentMethod !== false && _computeDeliveryFee(window._opDeliveryChoice) > 0;
       if (box && needsPayment && box.style.display === 'none') {
         renderPaymentMethodBox();
         box.style.display = '';
@@ -4341,9 +4340,9 @@
     updateMenuOrderPreview(); // refresh invoice with this option's delivery fee
 
     // Show the payment method chooser only for paid (shipping company) delivery
-    // — and only for stores that want it at all (see "إظهار اختيار طريقة الدفع" in admin).
+    // — and only for options that want it at all (see per-option checkbox in admin).
     const box = document.getElementById('paymentMethodBox');
-    const needsPayment = window._opDeliveryShowPayment !== false && _computeDeliveryFee(window._opDeliveryChoice) > 0;
+    const needsPayment = window._opDeliveryChoice?.requiresPaymentMethod !== false && _computeDeliveryFee(window._opDeliveryChoice) > 0;
     if (needsPayment) {
       renderPaymentMethodBox();
       box.style.display = '';
@@ -4436,7 +4435,7 @@
       err.textContent = 'يرجى اختيار طريقة التوصيل المفضلة';
       return;
     }
-    if (window._opDeliveryShowPayment !== false && _computeDeliveryFee(window._opDeliveryChoice) > 0 && !window._opPaymentMethod) {
+    if (window._opDeliveryChoice?.requiresPaymentMethod !== false && _computeDeliveryFee(window._opDeliveryChoice) > 0 && !window._opPaymentMethod) {
       err.textContent = 'يرجى اختيار طريقة الدفع';
       return;
     }
