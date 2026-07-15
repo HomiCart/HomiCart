@@ -1447,14 +1447,23 @@
     }
     .menu-item-row {
       display: flex; flex-direction: column; align-items: stretch; gap: .55rem;
-      padding: .7rem .6rem;
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 12px;
-      background: rgba(255,255,255,.02);
+      padding: .8rem .7rem;
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 14px;
+      background: linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,.015));
       font-family: 'Cairo', sans-serif;
-      transition: background .15s, border-color .15s;
+      box-shadow: 0 6px 16px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
+      transition: background .15s, border-color .15s, transform .15s, box-shadow .15s;
     }
-    .menu-item-row.has-qty { background: rgba(24,191,239,.09); border-color: rgba(24,191,239,.32); }
+    .menu-item-row:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 22px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.08);
+    }
+    .menu-item-row.has-qty {
+      background: linear-gradient(160deg, rgba(24,191,239,.18), rgba(24,191,239,.05));
+      border-color: rgba(24,191,239,.4);
+      box-shadow: 0 6px 18px rgba(24,191,239,.18), inset 0 1px 0 rgba(255,255,255,.08);
+    }
     .menu-item-info {
       min-width: 0;
     }
@@ -1511,15 +1520,20 @@
     .menu-items-divider {
       grid-column: 1 / -1;
       display: flex; align-items: center; gap: .6rem;
-      margin: .6rem 0 .2rem;
+      margin: .9rem 0 .3rem;
     }
+    .menu-items-divider:first-child { margin-top: 0; }
     .menu-items-divider span {
-      font-family: 'Cairo', sans-serif; font-size: .74rem; font-weight: 700;
-      color: rgba(255,255,255,.4); white-space: nowrap;
+      font-family: 'Alexandria', sans-serif; font-size: .8rem; font-weight: 800;
+      color: #18bfef; white-space: nowrap;
+      background: rgba(24,191,239,.12);
+      border: 1px solid rgba(24,191,239,.3);
+      padding: .3rem .9rem;
+      border-radius: 20px;
     }
     .menu-items-divider::before, .menu-items-divider::after {
       content: ''; flex: 1; height: 1px;
-      background: rgba(255,255,255,.09);
+      background: rgba(24,191,239,.25);
     }
     .menu-order-preview {
       margin-top: .75rem;
@@ -4116,7 +4130,7 @@
 
     // Load menu items in background
     _callScript('getMenuItems', { store: _noteStore }, 6000).then(res => {
-      const items = (res?.items || []).filter(i => i.enabled !== false && i.name);
+      const items = (res?.items || []).filter(i => i.isDivider || (i.enabled !== false && i.name));
       window._opMenuItems = items;
       if (!items.length) return;
       renderMenuItemsBox(items);
@@ -4128,12 +4142,11 @@
     const box = document.getElementById('menuItemsBox');
     if (!box) return;
 
-    let lastCat = null;
     let rows = '';
     items.forEach((item, i) => {
-      if (item.category && item.category !== lastCat) {
-        lastCat = item.category;
-        rows += `<div class="menu-items-divider"><span>${item.category}</span></div>`;
+      if (item.isDivider) {
+        rows += `<div class="menu-items-divider"><span>${item.category || ''}</span></div>`;
+        return;
       }
       rows += `
         <div class="menu-item-row" id="miCard${i}">

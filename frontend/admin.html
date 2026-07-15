@@ -949,9 +949,14 @@ async function renderStorePage(storeKey) {
           كل عنصر مفعّل يظهر للعميل مع خانة للكمية — الطلب بيتجمع أوتوماتيك من الكميات المحددة
         </div>
         <div id="menuItemsList-${storeKey}" style="display:flex;flex-direction:column;gap:.55rem"></div>
-        <button class="btn btn-outline" onclick="addMenuItemRow('${storeKey}')" style="margin-top:.7rem;width:100%;justify-content:center">
-          <i class="fas fa-plus"></i> إضافة منتج
-        </button>
+        <div style="display:flex;gap:.6rem;margin-top:.7rem">
+          <button class="btn btn-outline" onclick="addMenuItemRow('${storeKey}')" style="flex:1;justify-content:center">
+            <i class="fas fa-plus"></i> إضافة منتج
+          </button>
+          <button class="btn btn-outline" onclick="addMenuDividerRow('${storeKey}')" style="flex:1;justify-content:center;color:#18bfef;border-color:rgba(24,191,239,.4)">
+            <i class="fas fa-grip-lines"></i> إضافة فاصل قسم
+          </button>
+        </div>
       </div>
 
       <!-- Orders Table -->
@@ -1526,7 +1531,7 @@ async function loadMenuItems(storeKey) {
     const items = res?.items || [];
     if (!list) return;
     list.innerHTML = '';
-    items.forEach(item => addMenuItemRow(storeKey, item));
+    items.forEach(item => item.isDivider ? addMenuDividerRow(storeKey, item) : addMenuItemRow(storeKey, item));
   } catch(e) {
     if (list) list.innerHTML = `<div style="font-size:.8rem;color:#ff8060;padding:.5rem">
       ❌ تعذر تحميل قائمة المنتجات: ${e.message}
@@ -1575,6 +1580,37 @@ function addMenuItemRow(storeKey, item) {
   list.appendChild(row);
 }
 
+// A divider marks the start of a new section (e.g. "لحوم بلدي") in the
+// customer-facing menu list — it isn't a product, just a heading. Drag it
+// above whichever products it should group (order in this list = order on
+// the site).
+function addMenuDividerRow(storeKey, item) {
+  item = item || { category: '' };
+  const list = document.getElementById('menuItemsList-' + storeKey);
+  if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'menu-divider-row';
+  row.draggable = true;
+  row.style.cssText = 'display:flex;gap:.5rem;align-items:center;background:rgba(24,191,239,.08);border:1.5px dashed rgba(24,191,239,.4);border-radius:10px;padding:.55rem .7rem;transition:opacity .15s';
+  row.innerHTML = `
+    <span class="menu-item-drag-handle" title="اسحب لإعادة الترتيب"
+      style="cursor:grab;color:#18bfef;flex-shrink:0;padding:0 .15rem;font-size:.85rem">
+      <i class="fas fa-grip-vertical"></i>
+    </span>
+    <i class="fas fa-grip-lines" style="color:#18bfef;flex-shrink:0"></i>
+    <input type="text" class="menu-divider-label" placeholder="اسم القسم، مثال: لحوم بلدي"
+      value="${(item.category||'').replace(/"/g,'&quot;')}"
+      style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(24,191,239,.25);border-radius:8px;padding:.45rem .65rem;color:#18bfef;font-family:'Cairo',sans-serif;font-weight:700;font-size:.85rem;outline:none;box-sizing:border-box;direction:rtl">
+    <button onclick="this.closest('.menu-divider-row').remove()"
+      style="background:none;border:none;color:rgba(255,80,80,.55);font-size:.9rem;cursor:pointer;padding:.3rem .4rem;flex-shrink:0" title="حذف الفاصل">
+      <i class="fas fa-trash-alt"></i>
+    </button>`;
+  row.addEventListener('dragstart', onMenuItemDragStart);
+  row.addEventListener('dragover', onMenuItemDragOver);
+  row.addEventListener('dragend', onMenuItemDragEnd);
+  list.appendChild(row);
+}
+
 // ── Drag & drop reordering for product rows ──
 let _draggedMenuItemRow = null;
 
@@ -1609,13 +1645,21 @@ async function saveMenuItems(storeKey) {
   const btn  = document.getElementById('saveMenuBtn-' + storeKey);
   const list = document.getElementById('menuItemsList-' + storeKey);
   if (!list) return;
-  const items = Array.from(list.querySelectorAll('.menu-item-row')).map(row => ({
-    name:    row.querySelector('.menu-item-name').value.trim(),
-    unit:    row.querySelector('.menu-item-unit').value.trim() || 'كيلو',
-    price:   row.querySelector('.menu-item-price').value.trim(),
-    enabled: row.querySelector('.menu-item-enabled').checked,
-    step:    Number(row.querySelector('.menu-item-step').value) || 0.5,
-  })).filter(i => i.name);
+  // Walk DOM order (not querySelectorAll on one class) so dividers stay
+  // interleaved with products exactly as arranged via drag-and-drop.
+  const items = Array.from(list.children).map(row => {
+    if (row.classList.contains('menu-divider-row')) {
+      const category = row.querySelector('.menu-divider-label').value.trim();
+      return category ? { isDivider: true, category } : null;
+    }
+    return {
+      name:    row.querySelector('.menu-item-name').value.trim(),
+      unit:    row.querySelector('.menu-item-unit').value.trim() || 'كيلو',
+      price:   row.querySelector('.menu-item-price').value.trim(),
+      enabled: row.querySelector('.menu-item-enabled').checked,
+      step:    Number(row.querySelector('.menu-item-step').value) || 0.5,
+    };
+  }).filter(i => i && (i.isDivider || i.name));
   const prev = btn.innerHTML;
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
   try {
