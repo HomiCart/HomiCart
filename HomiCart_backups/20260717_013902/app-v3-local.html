@@ -3807,8 +3807,7 @@
         const btn = document.getElementById('opSaveBtn');
         const lbl = document.getElementById('opSaveTxt');
         const err = document.getElementById('opError');
-        _prefillOrderForEdit(items);
-        if (ta) ta.focus();
+        if (ta)  { ta.value = items; ta.focus(); }
         if (lbl)   lbl.textContent = 'حفظ التعديلات';
         if (btn)   btn.disabled = false;
         if (err) { err.textContent = `✏️ تعديل الطلب: ${orderId}`; err.style.color = '#18bfef'; }
@@ -4390,68 +4389,6 @@
     return lines;
   }
 
-  // Reverse of _formatQtyForOrder: "نصف كيلو" -> 0.5, "1.5 كيلو" -> 1.5, ...
-  function _parseQtyFromOrderText(text) {
-    if (/^نصف\s*كيلو/.test(text)) return 0.5;
-    const m = text.match(/^([\d.]+)/);
-    return m ? parseFloat(m[1]) : null;
-  }
-
-  // Editing an existing order used to dump its whole previous text into the
-  // free-text notes box while the quantity cards above stayed at zero — so
-  // the invoice/delivery-fee calc only ever saw whatever was just clicked,
-  // not the customer's real total, and saving re-appended the old text as a
-  // second block ("---") instead of actually merging it. This parses the
-  // previous order's lines back onto their matching quantity cards (so the
-  // fee/invoice recompute against the true combined quantity), and leaves
-  // only genuinely free-typed lines (no matching menu item) in the notes box.
-  function _prefillOrderForEdit(itemsText) {
-    const menuItems = window._opMenuItems || [];
-    const byName = {};
-    menuItems.forEach((it, i) => { if (!it.isDivider) byName[it.name] = i; });
-
-    const matchedQty = {};
-    const matchedNote = {};
-    const leftoverLines = [];
-
-    (itemsText || '').split('\n').forEach(rawLine => {
-      const line = rawLine.trim();
-      if (!line || line === '---') return;
-      const sepIdx = line.indexOf(' — ');
-      if (sepIdx === -1) { leftoverLines.push(rawLine); return; }
-      const name = line.slice(0, sepIdx).trim();
-      const idx  = byName[name];
-      if (idx === undefined) { leftoverLines.push(rawLine); return; }
-
-      let rest = line.slice(sepIdx + 3).trim();
-      const noteMatch = rest.match(/\s*\(([^)]*)\)\s*$/);
-      if (noteMatch) rest = rest.slice(0, noteMatch.index).trim();
-
-      const qty = _parseQtyFromOrderText(rest);
-      if (qty == null || isNaN(qty)) { leftoverLines.push(rawLine); return; }
-
-      matchedQty[idx] = (matchedQty[idx] || 0) + qty;
-      if (noteMatch && noteMatch[1]) matchedNote[idx] = noteMatch[1];
-    });
-
-    Object.keys(matchedQty).forEach(idxStr => {
-      const idx  = +idxStr;
-      const qty  = matchedQty[idx];
-      const inp  = document.getElementById('miQty'  + idx);
-      const note = document.getElementById('miNote' + idx);
-      const card = document.getElementById('miCard'  + idx);
-      if (inp)  inp.value = qty;
-      if (note && matchedNote[idx]) note.value = matchedNote[idx];
-      if (card) card.classList.toggle('has-qty', qty > 0);
-    });
-
-    const ta = document.getElementById('opItemsInput');
-    if (ta) ta.value = leftoverLines.join('\n').trim();
-
-    updateMenuOrderPreview();
-    _refreshDeliveryFeeDisplay();
-  }
-
   /* ── Show a prominent popup alert ─────────────────────────── */
   function showOrderAlert(msg) {
     document.getElementById('orderAlertMsg').textContent = msg;
@@ -4898,8 +4835,7 @@
         const btn = document.getElementById('opSaveBtn');
         const lbl = document.getElementById('opSaveTxt');
         const err = document.getElementById('opError');
-        _prefillOrderForEdit(items);
-        if (ta) ta.focus();
+        if (ta)  { ta.value = items; ta.focus(); }
         if (lbl) lbl.textContent = 'حفظ التعديلات';
         if (btn) btn.disabled = false;
         if (err) { err.textContent = `✏️ تعديل الطلب: ${orderId}`; err.style.color = '#18bfef'; }
@@ -4955,8 +4891,7 @@
       const ta  = document.getElementById('opItemsInput');
       const btn = document.getElementById('opSaveBtn');
       const lbl = document.getElementById('opSaveTxt');
-      _prefillOrderForEdit(items);
-      if (ta) ta.focus();
+      if (ta)  { ta.value = items; ta.focus(); }
       if (btn)   btn.disabled = false;
       if (lbl)   lbl.textContent = 'حفظ التعديلات';
       // Show edit indicator
@@ -4989,8 +4924,7 @@
         const ta  = document.getElementById('opItemsInput');
         const btn = document.getElementById('opSaveBtn');
         const lbl = document.getElementById('opSaveTxt');
-        if (pending.items) _prefillOrderForEdit(pending.items);
-        if (ta) ta.focus();
+        if (ta && pending.items) { ta.value = pending.items; ta.focus(); }
         if (btn) btn.disabled = false;
         if (lbl) lbl.textContent = 'حفظ التعديلات'; // different label for edit mode
       }, 400);
