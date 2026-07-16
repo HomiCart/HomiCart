@@ -4581,17 +4581,6 @@
     const deliveryFeeNow = window._opDeliveryChoice ? _computeDeliveryFee(window._opDeliveryChoice) : 0;
     const invoiceTotal   = +(invoiceCalc.total + deliveryFeeNow).toFixed(2);
 
-    // Itemized breakdown — same rows shown in the on-screen invoice preview
-    // (name × qty unit — price), so exports can show exactly what the
-    // customer saw instead of just the final total.
-    const invoiceLines = invoiceCalc.rows.map(r =>
-      `${r.name} × ${r.qty} ${r.unit} — ${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}`
-    );
-    if (window._opDeliveryChoice) {
-      invoiceLines.push(`رسوم التوصيل — ${deliveryFeeNow > 0 ? deliveryFeeNow + ' درهم' : 'مجاناً'}`);
-    }
-    const invoiceBreakdown = invoiceLines.join('\n');
-
     // Fire the request — 30 second timeout
     let serverOrderId = null;
     try {
@@ -4604,7 +4593,6 @@
           deliveryOption : deliveryOption,
           paymentMethod  : paymentMethod,
           invoiceTotal   : invoiceTotal,
-          invoiceBreakdown: invoiceBreakdown,
           sheet   : store.sheetName,
         }, 30000);
         if (result.success) serverOrderId = result.newOrderId || window._editingOrderId;
@@ -4631,7 +4619,6 @@
           deliveryOption : deliveryOption,
           paymentMethod  : paymentMethod,
           invoiceTotal   : invoiceTotal,
-          invoiceBreakdown: invoiceBreakdown,
           store       : store.sheetName,   // ← primary: used by _validSheet
           sheet       : store.sheetName,   // ← fallback for older code
           vendor      : store.cfg?.name || store.storeKey,
