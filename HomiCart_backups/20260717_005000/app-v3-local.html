@@ -4582,16 +4582,13 @@
     const invoiceTotal   = +(invoiceCalc.total + deliveryFeeNow).toFixed(2);
 
     // Itemized breakdown — same rows shown in the on-screen invoice preview
-    // (name × qty unit, then price on its own line), so exports can show
-    // exactly what the customer saw instead of just the final total.
-    const invoiceLines = [];
-    invoiceCalc.rows.forEach(r => {
-      invoiceLines.push(`${r.name} × ${r.qty} ${r.unit}`);
-      invoiceLines.push(r.lineTotal != null ? `${r.lineTotal} درهم` : 'يُحدد لاحقاً');
-    });
+    // (name × qty unit — price), so exports can show exactly what the
+    // customer saw instead of just the final total.
+    const invoiceLines = invoiceCalc.rows.map(r =>
+      `${r.name} × ${r.qty} ${r.unit} — ${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}`
+    );
     if (window._opDeliveryChoice) {
-      invoiceLines.push('رسوم التوصيل');
-      invoiceLines.push(deliveryFeeNow > 0 ? `${deliveryFeeNow} درهم` : 'مجاناً');
+      invoiceLines.push(`رسوم التوصيل — ${deliveryFeeNow > 0 ? deliveryFeeNow + ' درهم' : 'مجاناً'}`);
     }
     const invoiceBreakdown = invoiceLines.join('\n');
 
