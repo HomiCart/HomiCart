@@ -795,6 +795,13 @@
     }
     .cust-input:focus { border-color: #18bfef; background: rgba(24,191,239,.06); }
     .cust-input[readonly] { opacity: .6; cursor: not-allowed; }
+    /* <select> options render in the browser's own popup, which ignores the
+       translucent rgba() background above — without this they show as
+       near-invisible white-on-white text. */
+    select.cust-input option {
+      background: #0d1825;
+      color: #fff;
+    }
     .cust-textarea { resize: vertical; min-height: 72px; }
     .cust-lookup-status {
       font-family: 'Cairo', sans-serif;
