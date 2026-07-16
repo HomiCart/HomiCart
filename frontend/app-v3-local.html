@@ -4549,6 +4549,14 @@
 
     const isEditing = !!window._editingOrderId;
 
+    // Grand total (menu-priced items + delivery fee) — recorded with the
+    // order so exports can show it alongside the route number. Manually
+    // typed free-text items aren't priced, so this only reflects whatever
+    // was picked from "اختار من القائمة".
+    const invoiceCalc   = buildMenuOrderInvoice();
+    const deliveryFeeNow = window._opDeliveryChoice ? _computeDeliveryFee(window._opDeliveryChoice) : 0;
+    const invoiceTotal   = +(invoiceCalc.total + deliveryFeeNow).toFixed(2);
+
     // Fire the request — 30 second timeout
     let serverOrderId = null;
     try {
@@ -4560,6 +4568,7 @@
           items   : items,
           deliveryOption : deliveryOption,
           paymentMethod  : paymentMethod,
+          invoiceTotal   : invoiceTotal,
           sheet   : store.sheetName,
         }, 30000);
         if (result.success) serverOrderId = result.newOrderId || window._editingOrderId;
@@ -4585,6 +4594,7 @@
           orderText   : items,
           deliveryOption : deliveryOption,
           paymentMethod  : paymentMethod,
+          invoiceTotal   : invoiceTotal,
           store       : store.sheetName,   // ← primary: used by _validSheet
           sheet       : store.sheetName,   // ← fallback for older code
           vendor      : store.cfg?.name || store.storeKey,

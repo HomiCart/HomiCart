@@ -1233,11 +1233,13 @@ async function confirmNewBatch() {
     const bRes = await api('startNewBatch', { store: _newBatchStore }, 20000);
     if (!bRes.success) throw new Error(bRes.message || 'فشل إنشاء الدورة');
 
-    // 2. Set order window (start + end)
+    // 2. Set order window (start + end) — send as unambiguous UTC ISO so the
+    // backend's Date parsing always lands on the same instant the admin
+    // picked, regardless of the Apps Script server's own timezone quirks.
     await api('setStoreOrderWindow', {
       store: _newBatchStore,
-      start: start.replace('T',' ') + ':00',
-      end:   end.replace('T',' ')   + ':00'
+      start: new Date(start).toISOString(),
+      end:   new Date(end).toISOString()
     }, 15000);
 
     const msg = bRes.autoClosedOrders > 0 ? ` — ${bRes.autoClosedOrders} طلب تحول لـ جاري التحضير` : '';
@@ -1303,7 +1305,7 @@ async function saveWindow(storeKey) {
   if (!start || !end) { toast('يرجى تحديد وقت الفتح والإغلاق', 'error'); return; }
   if (new Date(end) <= new Date(start)) { toast('وقت الإغلاق يجب أن يكون بعد وقت الفتح', 'error'); return; }
   try {
-    const res = await api('setStoreOrderWindow', { store: storeKey, start: start.replace('T',' ') + ':00', end: end.replace('T',' ') + ':00' });
+    const res = await api('setStoreOrderWindow', { store: storeKey, start: new Date(start).toISOString(), end: new Date(end).toISOString() });
     if (res.success) { toast('تم حفظ النافذة بنجاح ✓', 'success'); loadStoreWindow(storeKey); }
     else toast('خطأ: ' + res.message, 'error');
   } catch(e) { toast('تعذر الحفظ: ' + e.message, 'error'); }
@@ -1995,7 +1997,10 @@ async function confirmExtend() {
   const batchId  = document.getElementById('extendBatchSelect').value;
   if (!newDate || !newTime) { alert('يرجى تحديد تاريخ ووقت الإغلاق'); return; }
   if (!batchId) { alert('يرجى اختيار الدورة أولاً'); return; }
-  const newEnd = newDate + ' ' + newTime + ':00';
+  // Build as unambiguous UTC ISO (same fix as saveWindow/confirmNewBatch) so
+  // the backend's Date parsing lands on the instant the admin actually picked.
+  const newEndReadable = newDate + ' ' + newTime;
+  const newEnd = new Date(newDate + 'T' + newTime).toISOString();
   const btn = document.getElementById('extendConfirmBtn');
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التمديد...';
@@ -2009,7 +2014,7 @@ async function confirmExtend() {
         if (winStart) {
           await api('setStoreOrderWindow', {
             store: _extendStore,
-            start: winStart.replace('T',' ') + ':00',
+            start: new Date(winStart).toISOString(),
             end:   newEnd
           });
         }
@@ -2017,7 +2022,7 @@ async function confirmExtend() {
 
       closeExtendModal();
       const rev = res.revertedOrders > 0 ? ` — ${res.revertedOrders} طلب رجع لـ "جديد"` : '';
-      toast('✓ تم التمديد حتى ' + newEnd + rev, 'success');
+      toast('✓ تم التمديد حتى ' + newEndReadable + rev, 'success');
       loadStoreWindow(_extendStore);   // ← refreshes the closing time input
       loadBatchStatus(_extendStore);
       loadStoreOrders(_extendStore);
