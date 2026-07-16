@@ -3798,22 +3798,22 @@
     _showStep('stepCurrentOrder', false);
 
     await selectStore(store.folder, store.name, store.tag);
-    await new Promise(r => setTimeout(r, 200));
 
-    // Wait for the actual menu-items/delivery-options fetch to land before
-    // prefilling — a fixed short delay isn't reliable against a live network
-    // call to Apps Script (it can take well over a second).
-    await orderNow(store.folder);
-
-    const ta  = document.getElementById('opItemsInput');
-    const btn = document.getElementById('opSaveBtn');
-    const lbl = document.getElementById('opSaveTxt');
-    const err = document.getElementById('opError');
-    _prefillOrderForEdit(items);
-    if (ta) ta.focus();
-    if (lbl)   lbl.textContent = 'حفظ التعديلات';
-    if (btn)   btn.disabled = false;
-    if (err) { err.textContent = `✏️ تعديل الطلب: ${orderId}`; err.style.color = '#18bfef'; }
+    setTimeout(() => {
+      orderNow(store.folder);
+      // Pre-fill textarea after the order panel renders
+      setTimeout(() => {
+        const ta  = document.getElementById('opItemsInput');
+        const btn = document.getElementById('opSaveBtn');
+        const lbl = document.getElementById('opSaveTxt');
+        const err = document.getElementById('opError');
+        _prefillOrderForEdit(items);
+        if (ta) ta.focus();
+        if (lbl)   lbl.textContent = 'حفظ التعديلات';
+        if (btn)   btn.disabled = false;
+        if (err) { err.textContent = `✏️ تعديل الطلب: ${orderId}`; err.style.color = '#18bfef'; }
+      }, 400);
+    }, 200);
   }
 
   function _confirmNewOrder() {
@@ -4125,7 +4125,7 @@
     window._opDeliveryChoice = null;
     window._opPaymentMethod  = null;
     window._opMenuItems      = [];
-    const deliveryOptionsPromise = _callScript('getDeliveryOptions', { store: _noteStore }, 6000).then(res => {
+    _callScript('getDeliveryOptions', { store: _noteStore }, 6000).then(res => {
       const cfg = res?.config;
       const box = document.getElementById('deliveryOptionsBox');
       if (!box || !cfg?.enabled || !Array.isArray(cfg.options) || !cfg.options.length) return;
@@ -4166,7 +4166,7 @@
 
     // Load menu items in background
     window._opInvoiceNote = '';
-    const menuItemsPromise = _callScript('getMenuItems', { store: _noteStore }, 6000).then(res => {
+    _callScript('getMenuItems', { store: _noteStore }, 6000).then(res => {
       const all = res?.items || [];
       window._opInvoiceNote = all.find(i => i.isInvoiceNote)?.text || '';
       const items = all.filter(i => !i.isInvoiceNote && (i.isDivider || (i.enabled !== false && i.name)));
@@ -4174,12 +4174,6 @@
       if (!items.length) return;
       renderMenuItemsBox(items);
     }).catch(() => {});
-
-    // Callers that need to act only once menu items + delivery options have
-    // actually loaded (e.g. prefilling quantity cards when editing an order)
-    // can await this instead of guessing with a fixed setTimeout — the real
-    // network calls above can take much longer than a few hundred ms.
-    return Promise.all([deliveryOptionsPromise, menuItemsPromise]);
   }
 
   /* ── Render customer-facing menu items picker ─────────────── */
@@ -4897,19 +4891,20 @@
     window._pendingStore   = { folder: matchedStore.folder, name: matchedStore.name, tag: matchedStore.tag || '' };
 
     await selectStore(matchedStore.folder, matchedStore.name, matchedStore.tag || '');
-    await new Promise(r => setTimeout(r, 200));
-
-    await orderNow(matchedStore.folder);
-
-    const ta  = document.getElementById('opItemsInput');
-    const btn = document.getElementById('opSaveBtn');
-    const lbl = document.getElementById('opSaveTxt');
-    const err = document.getElementById('opError');
-    _prefillOrderForEdit(items);
-    if (ta) ta.focus();
-    if (lbl) lbl.textContent = 'حفظ التعديلات';
-    if (btn) btn.disabled = false;
-    if (err) { err.textContent = `✏️ تعديل الطلب: ${orderId}`; err.style.color = '#18bfef'; }
+    setTimeout(() => {
+      orderNow(matchedStore.folder);
+      setTimeout(() => {
+        const ta  = document.getElementById('opItemsInput');
+        const btn = document.getElementById('opSaveBtn');
+        const lbl = document.getElementById('opSaveTxt');
+        const err = document.getElementById('opError');
+        _prefillOrderForEdit(items);
+        if (ta) ta.focus();
+        if (lbl) lbl.textContent = 'حفظ التعديلات';
+        if (btn) btn.disabled = false;
+        if (err) { err.textContent = `✏️ تعديل الطلب: ${orderId}`; err.style.color = '#18bfef'; }
+      }, 400);
+    }, 200);
   }
 
   async function cancelOrderByCustomer(orderId, sheetName, btn) {
@@ -4950,29 +4945,31 @@
     return { New: 'جديد', Preparing: 'جاري التحضير', Delivered: 'تم التوصيل', Cancelled: 'ملغي' }[s] || s;
   }
 
-  async function loadOrderForEdit(orderId, items) {
+  function loadOrderForEdit(orderId, items) {
     window._editingOrderId = orderId;
     _opSaved = false;
     const store = window._opStore;
     if (!store) return;
-    await orderNow(store.storeKey);
-    const ta  = document.getElementById('opItemsInput');
-    const btn = document.getElementById('opSaveBtn');
-    const lbl = document.getElementById('opSaveTxt');
-    _prefillOrderForEdit(items);
-    if (ta) ta.focus();
-    if (btn)   btn.disabled = false;
-    if (lbl)   lbl.textContent = 'حفظ التعديلات';
-    // Show edit indicator
-    const err = document.getElementById('opError');
-    if (err) {
-      err.textContent = `✏️ تعديل الطلب: ${orderId}`;
-      err.style.color = '#18bfef';
-    }
+    orderNow(store.storeKey);
+    setTimeout(() => {
+      const ta  = document.getElementById('opItemsInput');
+      const btn = document.getElementById('opSaveBtn');
+      const lbl = document.getElementById('opSaveTxt');
+      _prefillOrderForEdit(items);
+      if (ta) ta.focus();
+      if (btn)   btn.disabled = false;
+      if (lbl)   lbl.textContent = 'حفظ التعديلات';
+      // Show edit indicator
+      const err = document.getElementById('opError');
+      if (err) {
+        err.textContent = `✏️ تعديل الطلب: ${orderId}`;
+        err.style.color = '#18bfef';
+      }
+    }, 400);
   }
 
   /* ── Edit order — reopen same order for editing (updates same row) ── */
-  async function editOrder() {
+  function editOrder() {
     const pending = JSON.parse(localStorage.getItem('homiCart_pendingOrder') || '{}');
 
     // Check window + status
@@ -4987,14 +4984,16 @@
 
     const store = window._opStore;
     if (store) {
-      await orderNow(store.storeKey);
-      const ta  = document.getElementById('opItemsInput');
-      const btn = document.getElementById('opSaveBtn');
-      const lbl = document.getElementById('opSaveTxt');
-      if (pending.items) _prefillOrderForEdit(pending.items);
-      if (ta) ta.focus();
-      if (btn) btn.disabled = false;
-      if (lbl) lbl.textContent = 'حفظ التعديلات'; // different label for edit mode
+      orderNow(store.storeKey);
+      setTimeout(() => {
+        const ta  = document.getElementById('opItemsInput');
+        const btn = document.getElementById('opSaveBtn');
+        const lbl = document.getElementById('opSaveTxt');
+        if (pending.items) _prefillOrderForEdit(pending.items);
+        if (ta) ta.focus();
+        if (btn) btn.disabled = false;
+        if (lbl) lbl.textContent = 'حفظ التعديلات'; // different label for edit mode
+      }, 400);
     }
   }
 
