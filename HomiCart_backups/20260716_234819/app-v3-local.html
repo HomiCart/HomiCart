@@ -4362,14 +4362,18 @@
   }
 
   // Workers reading the exported sheet sometimes misread "0.5" as "5" —
-  // spell out exactly-half-kilo as "نصف كيلو". Other quantities (1.5, 2.5,
-  // ...) are read fine as plain decimals, so they're left untouched. Only
-  // applies to the كيلو unit; other units (جرام، قطعة، ...) keep their
-  // plain numeric quantity.
+  // spell out half-kilo quantities in words so "1.5" reads as "1 كيلو ونصف"
+  // instead of a bare decimal. Only applies to the كيلو unit; other units
+  // (جرام، قطعة، ...) keep their plain numeric quantity.
   function _formatQtyForOrder(qty, unit) {
     const u = unit || 'كيلو';
-    if (u === 'كيلو' && Math.abs(qty - 0.5) < 0.01) {
-      return 'نصف كيلو';
+    if (u === 'كيلو') {
+      const whole = Math.floor(qty);
+      const frac  = +(qty - whole).toFixed(2);
+      if (Math.abs(frac - 0.5) < 0.01) {
+        return whole === 0 ? 'نصف كيلو' : `${whole} كيلو ونصف`;
+      }
+      return `${qty} كيلو`;
     }
     return `${qty} ${u}`;
   }
