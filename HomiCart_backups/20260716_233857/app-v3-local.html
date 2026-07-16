@@ -4361,23 +4361,6 @@
       ${window._opInvoiceNote ? `<div class="invoice-store-note">⚠️ ${window._opInvoiceNote}</div>` : ''}`;
   }
 
-  // Workers reading the exported sheet sometimes misread "0.5" as "5" —
-  // spell out half-kilo quantities in words so "1.5" reads as "1 كيلو ونصف"
-  // instead of a bare decimal. Only applies to the كيلو unit; other units
-  // (جرام، قطعة، ...) keep their plain numeric quantity.
-  function _formatQtyForOrder(qty, unit) {
-    const u = unit || 'كيلو';
-    if (u === 'كيلو') {
-      const whole = Math.floor(qty);
-      const frac  = +(qty - whole).toFixed(2);
-      if (Math.abs(frac - 0.5) < 0.01) {
-        return whole === 0 ? 'نصف كيلو' : `${whole} كيلو ونصف`;
-      }
-      return `${qty} كيلو`;
-    }
-    return `${qty} ${u}`;
-  }
-
   function buildMenuOrderLines() {
     const items = window._opMenuItems || [];
     const lines = [];
@@ -4385,7 +4368,7 @@
       const qty  = parseFloat(document.getElementById('miQty' + i)?.value) || 0;
       const note = (document.getElementById('miNote' + i)?.value || '').trim();
       if (qty > 0) {
-        let line = `${item.name} — ${_formatQtyForOrder(qty, item.unit)}`;
+        let line = `${item.name} — ${qty} ${item.unit || 'كيلو'}`;
         if (note) line += ` (${note})`;
         lines.push(line);
       }
