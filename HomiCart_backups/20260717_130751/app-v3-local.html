@@ -3794,7 +3794,6 @@
 
     // Set edit state BEFORE navigating — do NOT use goToOrderPage (it resets _editingOrderId)
     window._editingOrderId = orderId;
-    window._opPendingEditItems = items; // survives any duplicate/late render — see renderMenuItemsBox
     _opSaved = false;
     _showStep('stepCurrentOrder', false);
 
@@ -4009,11 +4008,6 @@
     if (!cfg) return;
     window._opStore = { storeKey, cfg, sheetName: SHEET_NAMES[storeKey] || storeKey };
     _opSaved = false; _opTempId = null;
-
-    // Starting a genuinely new (non-edit) order must never carry over a
-    // previous edit session's pending prefill data — otherwise a stray late
-    // render could stamp an old order's quantities onto a brand-new one.
-    if (!window._editingOrderId) window._opPendingEditItems = null;
 
     // Build thumbnail HTML from already-loaded images
     const menuImgs     = window._menuImages     || [];
@@ -4232,15 +4226,6 @@
           </button>
         </div>
       </div>`;
-
-    // orderNow() can end up fetching menu items more than once for the same
-    // panel (e.g. a stray duplicate call racing the one being awaited by the
-    // edit flow) — whichever fetch resolves LAST wins and rebuilds these
-    // cards at zero, silently wiping out a correct prefill that already ran.
-    // Re-applying here, on every render, makes the prefill immune to that:
-    // no matter how many times (or in what order) this box gets rebuilt,
-    // it always ends up reflecting the order actually being edited.
-    if (window._opPendingEditItems) _prefillOrderForEdit(window._opPendingEditItems);
   }
 
   function clearAllMenuQty() {
@@ -4909,7 +4894,6 @@
     if (!matchedStore) { alert('تعذر فتح متجر ' + storeName); return; }
 
     window._editingOrderId = orderId;
-    window._opPendingEditItems = items; // survives any duplicate/late render — see renderMenuItemsBox
     window._pendingStore   = { folder: matchedStore.folder, name: matchedStore.name, tag: matchedStore.tag || '' };
 
     await selectStore(matchedStore.folder, matchedStore.name, matchedStore.tag || '');
@@ -4968,7 +4952,6 @@
 
   async function loadOrderForEdit(orderId, items) {
     window._editingOrderId = orderId;
-    window._opPendingEditItems = items; // survives any duplicate/late render — see renderMenuItemsBox
     _opSaved = false;
     const store = window._opStore;
     if (!store) return;
@@ -5000,7 +4983,6 @@
 
     // Set editing state — saveOrder will call updateOrderItems instead of submitOrder
     window._editingOrderId = pending.orderId || null;
-    window._opPendingEditItems = pending.items || null; // survives any duplicate/late render — see renderMenuItemsBox
     _opSaved = false;
 
     const store = window._opStore;
