@@ -1407,8 +1407,6 @@ function addDeliveryOptionRow(storeKey, opt) {
   opt = opt || { label: '', fee: 0, requireVendorOrder: '', blockMsg: '' };
   const isTiered = opt.feeMode === 'tiered';
   const tr = opt.tieredRule || {};
-  const basis = tr.basis === 'value' ? 'value' : 'qty';
-  const threshold = tr.threshold ?? tr.thresholdKg ?? 5; // thresholdKg = old field name, kept for back-compat
   const list = document.getElementById('deliveryOptionsList-' + storeKey);
   if (!list) return;
   const row = document.createElement('div');
@@ -1434,34 +1432,24 @@ function addDeliveryOptionRow(storeKey, opt) {
       <select class="delivery-opt-feemode" onchange="onDeliveryFeeModeChange(this)"
         style="${inputStyle};flex:1;cursor:pointer;direction:rtl">
         <option value="flat"   ${!isTiered ? 'selected' : ''}>سعر ثابت</option>
-        <option value="tiered" ${isTiered  ? 'selected' : ''}>سعر متدرّج (حسب الكمية أو قيمة الفاتورة)</option>
+        <option value="tiered" ${isTiered  ? 'selected' : ''}>سعر حسب الكمية (كيلو)</option>
       </select>
       <input type="number" placeholder="قيمة التوصيل (درهم)" value="${Number(opt.fee)||0}" min="0" step="1"
         class="delivery-opt-fee"
         style="${inputStyle};flex:1;display:${isTiered ? 'none' : ''}">
     </div>
-    <div class="delivery-opt-tiered-fields" style="display:${isTiered ? 'flex' : 'none'};flex-direction:column;gap:.6rem">
+    <div class="delivery-opt-tiered-fields" style="display:${isTiered ? 'flex' : 'none'};gap:.6rem;align-items:center">
       <div style="flex:1;display:flex;flex-direction:column;gap:.2rem">
-        <label style="font-size:.7rem;color:rgba(255,255,255,.4)">الحد يتحدد على أساس</label>
-        <select class="delivery-opt-tiered-basis" onchange="onDeliveryTieredBasisChange(this)"
-          style="${inputStyle};cursor:pointer;direction:rtl">
-          <option value="qty"   ${basis==='qty'   ? 'selected' : ''}>الكمية (كيلو)</option>
-          <option value="value" ${basis==='value' ? 'selected' : ''}>قيمة الفاتورة (درهم)</option>
-        </select>
+        <label style="font-size:.7rem;color:rgba(255,255,255,.4)">الحد (كيلو)</label>
+        <input type="number" min="0" step="0.5" value="${tr.thresholdKg ?? 5}" class="delivery-opt-threshold" style="${inputStyle}">
       </div>
-      <div style="display:flex;gap:.6rem;align-items:center">
-        <div style="flex:1;display:flex;flex-direction:column;gap:.2rem">
-          <label class="delivery-opt-threshold-label" style="font-size:.7rem;color:rgba(255,255,255,.4)">${basis==='value' ? 'الحد (قيمة الفاتورة بالدرهم)' : 'الحد (كيلو)'}</label>
-          <input type="number" min="0" step="0.5" value="${threshold}" class="delivery-opt-threshold" style="${inputStyle}">
-        </div>
-        <div style="flex:1;display:flex;flex-direction:column;gap:.2rem">
-          <label style="font-size:.7rem;color:rgba(255,255,255,.4)">لو أقل من الحد</label>
-          <input type="number" min="0" step="1" value="${tr.feeBelowThreshold ?? 0}" class="delivery-opt-fee-below" style="${inputStyle}">
-        </div>
-        <div style="flex:1;display:flex;flex-direction:column;gap:.2rem">
-          <label style="font-size:.7rem;color:rgba(255,255,255,.4)">لو الحد أو أكتر</label>
-          <input type="number" min="0" step="1" value="${tr.feeAtOrAboveThreshold ?? 0}" class="delivery-opt-fee-atabove" style="${inputStyle}">
-        </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:.2rem">
+        <label style="font-size:.7rem;color:rgba(255,255,255,.4)">لو أقل من الحد</label>
+        <input type="number" min="0" step="1" value="${tr.feeBelowThreshold ?? 0}" class="delivery-opt-fee-below" style="${inputStyle}">
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:.2rem">
+        <label style="font-size:.7rem;color:rgba(255,255,255,.4)">لو الحد أو أكتر</label>
+        <input type="number" min="0" step="1" value="${tr.feeAtOrAboveThreshold ?? 0}" class="delivery-opt-fee-atabove" style="${inputStyle}">
       </div>
     </div>
     <div style="display:flex;gap:.6rem;align-items:center">
@@ -1482,20 +1470,12 @@ function addDeliveryOptionRow(storeKey, opt) {
   list.appendChild(row);
 }
 
-// Toggle flat-fee input vs the tiered-rule inputs for this option row
+// Toggle flat-fee input vs the 3 tiered-rule inputs for this option row
 function onDeliveryFeeModeChange(sel) {
   const row = sel.closest('.delivery-opt-row');
   const isTiered = sel.value === 'tiered';
   row.querySelector('.delivery-opt-fee').style.display = isTiered ? 'none' : '';
   row.querySelector('.delivery-opt-tiered-fields').style.display = isTiered ? 'flex' : 'none';
-}
-
-// Relabel the threshold field when admin switches between "by quantity" and
-// "by invoice value" — same input, different unit/meaning.
-function onDeliveryTieredBasisChange(sel) {
-  const row   = sel.closest('.delivery-opt-row');
-  const label = row.querySelector('.delivery-opt-threshold-label');
-  if (label) label.textContent = sel.value === 'value' ? 'الحد (قيمة الفاتورة بالدرهم)' : 'الحد (كيلو)';
 }
 
 // When admin picks a vendor that this option requires an active order from,
@@ -1526,8 +1506,7 @@ async function saveDeliveryOptions(storeKey) {
     };
     if (isTiered) {
       opt.tieredRule = {
-        basis:                row.querySelector('.delivery-opt-tiered-basis').value || 'qty',
-        threshold:            Number(row.querySelector('.delivery-opt-threshold').value) || 0,
+        thresholdKg:          Number(row.querySelector('.delivery-opt-threshold').value) || 0,
         feeBelowThreshold:    Number(row.querySelector('.delivery-opt-fee-below').value) || 0,
         feeAtOrAboveThreshold:Number(row.querySelector('.delivery-opt-fee-atabove').value) || 0,
       };

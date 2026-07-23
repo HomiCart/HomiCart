@@ -4286,20 +4286,14 @@
   }
 
   // Resolve the actual AED fee for a delivery option — flat, or computed
-  // from the tiered rule configured in admin, measured either by selected
-  // quantity (kg) or by the items subtotal (invoice value before delivery,
-  // so there's no circular dependency on the fee itself). The rule
-  // (threshold + two prices) stays fixed in code; the numbers/basis are
-  // all admin-editable.
+  // from the quantity-tiered rule configured in admin. The rule (threshold
+  // + two prices) stays fixed in code; the numbers are all admin-editable.
   function _computeDeliveryFee(opt) {
     if (!opt) return 0;
     if (opt.feeMode === 'tiered' && opt.tieredRule) {
-      const { feeBelowThreshold, feeAtOrAboveThreshold } = opt.tieredRule;
-      const threshold = opt.tieredRule.threshold ?? opt.tieredRule.thresholdKg ?? 0; // thresholdKg = old field name
-      const measure = opt.tieredRule.basis === 'value'
-        ? buildMenuOrderInvoice().total
-        : _computeSelectedKg();
-      return measure >= Number(threshold) ? Number(feeAtOrAboveThreshold) : Number(feeBelowThreshold);
+      const kg = _computeSelectedKg();
+      const { thresholdKg, feeBelowThreshold, feeAtOrAboveThreshold } = opt.tieredRule;
+      return kg >= Number(thresholdKg) ? Number(feeAtOrAboveThreshold) : Number(feeBelowThreshold);
     }
     return Number(opt.fee) || 0;
   }
