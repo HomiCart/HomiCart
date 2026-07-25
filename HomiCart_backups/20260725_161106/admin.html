@@ -963,9 +963,6 @@ async function renderStorePage(storeKey) {
           <button class="btn btn-outline" onclick="addMenuDividerRow('${storeKey}')" style="flex:1;justify-content:center;color:#18bfef;border-color:rgba(24,191,239,.4)">
             <i class="fas fa-grip-lines"></i> إضافة فاصل قسم
           </button>
-          <button class="btn btn-outline" onclick="addMenuOfferRow('${storeKey}')" style="flex:1;justify-content:center;color:#ffc400;border-color:rgba(255,196,0,.4)">
-            <i class="fas fa-gift"></i> إضافة عرض
-          </button>
         </div>
       </div>
 
@@ -1567,9 +1564,7 @@ async function loadMenuItems(storeKey) {
     const noteEl = document.getElementById('menuInvoiceNote-' + storeKey);
     if (noteEl) noteEl.value = items.find(i => i.isInvoiceNote)?.text || '';
     items.filter(i => !i.isInvoiceNote)
-         .forEach(item => item.isDivider ? addMenuDividerRow(storeKey, item)
-                         : item.isOffer  ? addMenuOfferRow(storeKey, item)
-                         : addMenuItemRow(storeKey, item));
+         .forEach(item => item.isDivider ? addMenuDividerRow(storeKey, item) : addMenuItemRow(storeKey, item));
   } catch(e) {
     if (list) list.innerHTML = `<div style="font-size:.8rem;color:#ff8060;padding:.5rem">
       ❌ تعذر تحميل قائمة المنتجات: ${e.message}
@@ -1649,77 +1644,6 @@ function addMenuDividerRow(storeKey, item) {
   list.appendChild(row);
 }
 
-// An offer bundles several items under one title/price (e.g. "عرض العيلة"
-// = نص بانيه + نص لحمة + نص كبدة). It always renders in its own section
-// first on the customer site regardless of where it sits in this list —
-// its position here only controls its order relative to other offers.
-function addMenuOfferRow(storeKey, item) {
-  item = item || { name: '', price: '', enabled: true, offerItems: [''] };
-  const list = document.getElementById('menuItemsList-' + storeKey);
-  if (!list) return;
-  const row = document.createElement('div');
-  row.className = 'menu-offer-row';
-  row.draggable = true;
-  row.style.cssText = 'display:flex;flex-direction:column;gap:.5rem;background:rgba(255,196,0,.06);border:1.5px dashed rgba(255,196,0,.35);border-radius:10px;padding:.6rem .7rem;transition:opacity .15s';
-  const inputStyle = "background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.45rem .65rem;color:#fff;font-family:'Cairo',sans-serif;outline:none;box-sizing:border-box;direction:rtl";
-
-  row.innerHTML = `
-    <div style="display:flex;gap:.5rem;align-items:center">
-      <span class="menu-item-drag-handle" title="اسحب لإعادة الترتيب"
-        style="cursor:grab;color:rgba(255,196,0,.7);flex-shrink:0;padding:0 .15rem;font-size:.85rem">
-        <i class="fas fa-grip-vertical"></i>
-      </span>
-      <label class="toggle" style="flex-shrink:0" title="ظهور للعميل">
-        <input type="checkbox" class="menu-offer-enabled" ${item.enabled !== false ? 'checked' : ''}>
-        <span class="toggle-slider"></span>
-      </label>
-      <input type="text" class="menu-offer-name" placeholder="عنوان العرض، مثال: عرض العيلة"
-        value="${(item.name||'').replace(/"/g,'&quot;')}"
-        style="flex:2;${inputStyle};font-size:.85rem;min-width:0">
-      <input type="text" class="menu-offer-price" placeholder="سعر العرض"
-        value="${(item.price||'').replace(/"/g,'&quot;')}"
-        style="width:100px;font-size:.82rem;${inputStyle}">
-      <button onclick="this.closest('.menu-offer-row').remove()"
-        style="background:none;border:none;color:rgba(255,80,80,.55);font-size:.9rem;cursor:pointer;padding:.3rem .4rem;flex-shrink:0" title="حذف العرض">
-        <i class="fas fa-trash-alt"></i>
-      </button>
-    </div>
-    <div class="menu-offer-items-list" style="display:flex;flex-direction:column;gap:.35rem;padding-right:2.1rem"></div>
-    <button type="button" onclick="addOfferItemField(this)"
-      style="align-self:flex-start;margin-right:2.1rem;background:none;border:1px dashed rgba(255,196,0,.4);color:#ffc400;border-radius:8px;padding:.3rem .7rem;font-size:.74rem;cursor:pointer;font-family:'Cairo',sans-serif">
-      <i class="fas fa-plus"></i> إضافة بند
-    </button>`;
-
-  const itemsList = row.querySelector('.menu-offer-items-list');
-  const offerItems = (item.offerItems && item.offerItems.length) ? item.offerItems : [''];
-  offerItems.forEach(t => itemsList.appendChild(_buildOfferItemField(t)));
-
-  row.addEventListener('dragstart', onMenuItemDragStart);
-  row.addEventListener('dragover', onMenuItemDragOver);
-  row.addEventListener('dragend', onMenuItemDragEnd);
-  list.appendChild(row);
-}
-
-function _buildOfferItemField(value) {
-  const wrap = document.createElement('div');
-  wrap.className = 'menu-offer-item-row';
-  wrap.style.cssText = 'display:flex;gap:.4rem;align-items:center';
-  wrap.innerHTML = `
-    <input type="text" class="menu-offer-item-field" placeholder="بند، مثال: نص كيلو بانيه"
-      value="${(value||'').replace(/"/g,'&quot;')}"
-      style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:.35rem .6rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.78rem;outline:none;box-sizing:border-box;direction:rtl">
-    <button type="button" onclick="this.closest('.menu-offer-item-row').remove()"
-      style="background:none;border:none;color:rgba(255,80,80,.5);font-size:.8rem;cursor:pointer;padding:.2rem .3rem" title="حذف البند">
-      <i class="fas fa-times"></i>
-    </button>`;
-  return wrap;
-}
-
-function addOfferItemField(btn) {
-  const itemsList = btn.previousElementSibling; // .menu-offer-items-list, right before this button
-  itemsList.appendChild(_buildOfferItemField(''));
-}
-
 // ── Drag & drop reordering for product rows ──
 let _draggedMenuItemRow = null;
 
@@ -1761,21 +1685,6 @@ async function saveMenuItems(storeKey) {
       const category = row.querySelector('.menu-divider-label').value.trim();
       return category ? { isDivider: true, category } : null;
     }
-    if (row.classList.contains('menu-offer-row')) {
-      const name = row.querySelector('.menu-offer-name').value.trim();
-      if (!name) return null;
-      const offerItems = Array.from(row.querySelectorAll('.menu-offer-item-field'))
-        .map(inp => inp.value.trim()).filter(Boolean);
-      return {
-        isOffer:  true,
-        name,
-        price:    row.querySelector('.menu-offer-price').value.trim(),
-        enabled:  row.querySelector('.menu-offer-enabled').checked,
-        unit:     'عرض',
-        step:     1,
-        offerItems,
-      };
-    }
     return {
       name:    row.querySelector('.menu-item-name').value.trim(),
       unit:    row.querySelector('.menu-item-unit').value.trim() || 'كيلو',
@@ -1783,7 +1692,7 @@ async function saveMenuItems(storeKey) {
       enabled: row.querySelector('.menu-item-enabled').checked,
       step:    Number(row.querySelector('.menu-item-step').value) || 0.5,
     };
-  }).filter(i => i && (i.isDivider || i.isOffer || i.name));
+  }).filter(i => i && (i.isDivider || i.name));
 
   const noteEl = document.getElementById('menuInvoiceNote-' + storeKey);
   const noteText = noteEl ? noteEl.value.trim() : '';

@@ -1524,43 +1524,6 @@
       direction: rtl;
     }
     .menu-item-row.has-qty .menu-item-note-input { display: block; }
-    /* ── Offers — one per row, compact wrapped chips instead of stacked lines ── */
-    .menu-offers-list {
-      display: flex; flex-direction: column; gap: .6rem;
-    }
-    .menu-offer-card {
-      display: flex; flex-direction: column; gap: .5rem;
-      padding: .75rem .8rem;
-      border: 1px solid rgba(255,255,255,.09);
-      border-radius: 14px;
-      background: linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,.015));
-      font-family: 'Cairo', sans-serif;
-      box-shadow: 0 6px 16px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
-      transition: background .15s, border-color .15s;
-    }
-    .menu-offer-card.has-qty {
-      background: linear-gradient(160deg, rgba(24,191,239,.18), rgba(24,191,239,.05));
-      border-color: rgba(24,191,239,.4);
-      box-shadow: 0 6px 18px rgba(24,191,239,.18), inset 0 1px 0 rgba(255,255,255,.08);
-    }
-    .menu-offer-card.has-qty .menu-item-note-input { display: block; }
-    .menu-offer-top {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: .6rem; flex-wrap: wrap;
-    }
-    .menu-offer-name {
-      color: #fff; font-size: .92rem; font-weight: 700;
-    }
-    .menu-offer-chips {
-      display: flex; flex-wrap: wrap; gap: .35rem;
-    }
-    .menu-offer-chip {
-      font-size: .74rem; color: rgba(255,255,255,.75);
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.12);
-      padding: .2rem .6rem; border-radius: 20px;
-      white-space: nowrap;
-    }
     .menu-items-divider {
       grid-column: 1 / -1;
       display: flex; align-items: center; gap: .6rem;
@@ -4228,37 +4191,8 @@
     const box = document.getElementById('menuItemsBox');
     if (!box) return;
 
-    // Offers render in their own full-width section, always first — same
-    // underlying array/index as the regular items so qty/note DOM ids
-    // (miQty{i}/miNote{i}/miCard{i}) line up with buildMenuOrderLines() etc.
-    let offerRows = '';
     let rows = '';
     items.forEach((item, i) => {
-      if (item.isOffer) {
-        const chips = (item.offerItems || [])
-          .map(t => `<span class="menu-offer-chip">${t}</span>`).join('');
-        offerRows += `
-          <div class="menu-offer-card" id="miCard${i}">
-            <div class="menu-offer-top">
-              <div class="menu-offer-name">${item.name}</div>
-              <div class="menu-item-row-meta">
-                ${item.price ? `<span class="menu-item-card-price">${item.price}</span>` : ''}
-                <span class="menu-item-card-unit">${item.unit || 'عرض'}</span>
-              </div>
-            </div>
-            ${chips ? `<div class="menu-offer-chips">${chips}</div>` : ''}
-            <textarea class="menu-item-note-input" id="miNote${i}" rows="1"
-              placeholder="برجاء إضافة أي ملاحظات على التقطيع بدون أي تغيير أو إضافة في بنود العرض"></textarea>
-            <div class="menu-item-qty-row">
-              <button class="menu-item-qty-btn" onclick="stepMenuQty(${i},1)" type="button">+</button>
-              <input class="menu-item-qty-input" id="miQty${i}" type="number" min="0"
-                step="${item.step || 1}" value="0"
-                oninput="onMenuQtyChange(${i})" onchange="onMenuQtyChange(${i})">
-              <button class="menu-item-qty-btn" onclick="stepMenuQty(${i},-1)" type="button">−</button>
-            </div>
-          </div>`;
-        return;
-      }
       if (item.isDivider) {
         rows += `<div class="menu-items-divider"><span>${item.category || ''}</span></div>`;
         return;
@@ -4284,14 +4218,7 @@
         </div>`;
     });
 
-    const offersSection = offerRows ? `
-      <div class="menu-items-section">
-        <div class="menu-items-title"><i class="fas fa-gift"></i> عروض ${window._opStore?.cfg?.name || ''}</div>
-        <div class="menu-offers-list">${offerRows}</div>
-      </div>` : '';
-
     box.innerHTML = `
-      ${offersSection}
       <div class="menu-items-section">
         <div class="menu-items-title"><i class="fas fa-drumstick-bite"></i> اختار من القائمة</div>
         <div class="menu-items-list">${rows}</div>
@@ -4480,11 +4407,7 @@
       const qty  = parseFloat(document.getElementById('miQty' + i)?.value) || 0;
       const note = (document.getElementById('miNote' + i)?.value || '').trim();
       if (qty > 0) {
-        // Offers include their bundle contents inline so the vendor/export
-        // sheet shows exactly what's in the bundle, not just its title.
-        const contents = item.isOffer && item.offerItems?.length
-          ? ` (${item.offerItems.join('، ')})` : '';
-        let line = `${item.name}${contents} — ${_formatQtyForOrder(qty, item.unit)}`;
+        let line = `${item.name} — ${_formatQtyForOrder(qty, item.unit)}`;
         if (note) line += ` (${note})`;
         lines.push(line);
       }
