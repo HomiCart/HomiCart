@@ -1548,6 +1548,7 @@
       border-color: rgba(24,191,239,.4);
       box-shadow: 0 6px 18px rgba(24,191,239,.18), inset 0 1px 0 rgba(255,255,255,.08);
     }
+    .menu-offer-card.has-qty .menu-item-note-input { display: block; }
     .menu-offer-top {
       display: flex; align-items: center; justify-content: space-between;
       gap: .6rem; flex-wrap: wrap;
@@ -1564,21 +1565,6 @@
       border: 1px solid rgba(255,255,255,.12);
       padding: .2rem .6rem; border-radius: 20px;
       white-space: nowrap;
-    }
-    /* Always visible (not tied to qty > 0, unlike regular-item notes) —
-       it's an instruction about cutting/prep, not an optional add-on. */
-    .menu-offer-note-label {
-      font-size: .74rem; font-weight: 700; color: #ffc400;
-      line-height: 1.4;
-    }
-    .menu-offer-note-input {
-      width: 100%;
-      background: rgba(0,0,0,.18);
-      border: 1px solid rgba(255,255,255,.1);
-      border-radius: 8px;
-      color: rgba(255,255,255,.8); font-family: 'Cairo', sans-serif; font-size: .78rem;
-      padding: .3rem .6rem; outline: none; resize: none;
-      direction: rtl;
     }
     .menu-items-divider {
       grid-column: 1 / -1;
@@ -4266,9 +4252,8 @@
               </div>
             </div>
             ${chips ? `<div class="menu-offer-chips">${chips}</div>` : ''}
-            <div class="menu-offer-note-label">برجاء إضافة أي ملاحظات على التقطيع بدون أي تغيير أو إضافة في بنود العرض</div>
-            <textarea class="menu-offer-note-input" id="miNote${i}" rows="1"
-              placeholder="اكتب ملاحظتك هنا (اختياري)"></textarea>
+            <textarea class="menu-item-note-input" id="miNote${i}" rows="1"
+              placeholder="برجاء إضافة أي ملاحظات على التقطيع بدون أي تغيير أو إضافة في بنود العرض"></textarea>
             <div class="menu-item-qty-row">
               <button class="menu-item-qty-btn" onclick="stepMenuQty(${i},1)" type="button">+</button>
               <input class="menu-item-qty-input" id="miQty${i}" type="number" min="0"
