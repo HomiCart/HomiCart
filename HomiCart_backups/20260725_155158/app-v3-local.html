@@ -3806,10 +3806,12 @@
     // call to Apps Script (it can take well over a second).
     await orderNow(store.folder);
 
+    const ta  = document.getElementById('opItemsInput');
     const btn = document.getElementById('opSaveBtn');
     const lbl = document.getElementById('opSaveTxt');
     const err = document.getElementById('opError');
     _prefillOrderForEdit(items);
+    if (ta) ta.focus();
     if (lbl)   lbl.textContent = 'حفظ التعديلات';
     if (btn)   btn.disabled = false;
     if (err) { err.textContent = `✏️ تعديل الطلب: ${orderId}`; err.style.color = '#18bfef'; }
@@ -4076,10 +4078,9 @@
             </button>
           </div>
           <div id="menuItemsBox"></div>
-          <!-- Kept as a hidden field (not shown to the customer anymore) so
-               editing an older order that has leftover free-typed text
-               still round-trips that text instead of silently losing it. -->
-          <input type="hidden" id="opItemsInput" value="">
+          <textarea id="opItemsInput" class="order-items-ta"
+            placeholder="ملاحظات إضافية على الطلب (اختياري)"
+            rows="2"></textarea>
           <div id="deliveryOptionsBox"></div>
           <div id="paymentMethodBox" style="display:none"></div>
           <div id="opError" class="order-panel-err"></div>
@@ -4100,6 +4101,7 @@
     // Update back button to show it'll return to menu, not stores
     const backBtn = document.getElementById('backBtn');
     if (backBtn) backBtn.innerHTML = '<i class="fas fa-arrow-right"></i> رجوع للمنيو';
+    setTimeout(() => document.getElementById('opItemsInput')?.focus(), 350);
 
     // Load "إزاي اطلب العرض" note in background
     const _noteStore = SHEET_NAMES[storeKey] || storeKey;
@@ -4569,9 +4571,7 @@
 
   /* ── Submit order directly to Google Sheets ─────────── */
   async function saveOrder() {
-    // Compile menu-item quantities into the order text. opItemsInput is a
-    // hidden field now (no visible free-text box) — it only ever holds
-    // leftover text carried over from editing an older, pre-menu-cards order.
+    // Compile menu-item quantities + manual notes into one clean order text
     const menuLines = buildMenuOrderLines();
     const manualNotes = document.getElementById('opItemsInput').value.trim();
     const items = menuLines.length
@@ -4580,7 +4580,10 @@
 
     const err = document.getElementById('opError');
     if (!items) {
-      err.textContent = 'يرجى تحديد كمية لمنتج واحد على الأقل';
+      err.textContent = menuLines.length === 0
+        ? 'يرجى تحديد كمية لمنتج واحد على الأقل أو كتابة طلبك'
+        : 'يرجى كتابة الأصناف المطلوبة أولاً';
+      if (!menuLines.length) document.getElementById('opItemsInput').focus();
       return;
     }
     if (window._opDeliveryOptions?.length && !window._opDeliveryChoice) {
@@ -4920,10 +4923,12 @@
 
     await orderNow(matchedStore.folder);
 
+    const ta  = document.getElementById('opItemsInput');
     const btn = document.getElementById('opSaveBtn');
     const lbl = document.getElementById('opSaveTxt');
     const err = document.getElementById('opError');
     _prefillOrderForEdit(items);
+    if (ta) ta.focus();
     if (lbl) lbl.textContent = 'حفظ التعديلات';
     if (btn) btn.disabled = false;
     if (err) { err.textContent = `✏️ تعديل الطلب: ${orderId}`; err.style.color = '#18bfef'; }
@@ -4974,9 +4979,11 @@
     const store = window._opStore;
     if (!store) return;
     await orderNow(store.storeKey);
+    const ta  = document.getElementById('opItemsInput');
     const btn = document.getElementById('opSaveBtn');
     const lbl = document.getElementById('opSaveTxt');
     _prefillOrderForEdit(items);
+    if (ta) ta.focus();
     if (btn)   btn.disabled = false;
     if (lbl)   lbl.textContent = 'حفظ التعديلات';
     // Show edit indicator
@@ -5005,9 +5012,11 @@
     const store = window._opStore;
     if (store) {
       await orderNow(store.storeKey);
+      const ta  = document.getElementById('opItemsInput');
       const btn = document.getElementById('opSaveBtn');
       const lbl = document.getElementById('opSaveTxt');
       if (pending.items) _prefillOrderForEdit(pending.items);
+      if (ta) ta.focus();
       if (btn) btn.disabled = false;
       if (lbl) lbl.textContent = 'حفظ التعديلات'; // different label for edit mode
     }
