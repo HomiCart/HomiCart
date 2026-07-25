@@ -1125,17 +1125,14 @@
       border-bottom: 1px solid rgba(255,255,255,.06);
     }
     .ordering-images-label i { color: #18bfef; }
-    /* Menu/offer images are tall poster-style flyers, not product photos —
-       a small square-grid gallery cropped their content off (prices, item
-       names at the edges). Stacked full-width, uncropped, is a better fit. */
     .ordering-thumbs {
-      display: flex;
-      flex-direction: column;
-      gap: .8rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: .6rem;
     }
     .order-thumb {
       position: relative;
-      width: 100%;
+      aspect-ratio: 1;
       border-radius: 10px;
       overflow: hidden;
       cursor: pointer;
@@ -1145,16 +1142,10 @@
     }
     .order-thumb:hover {
       border-color: rgba(24,191,239,.45);
-      transform: scale(1.02);
+      transform: scale(1.04);
       box-shadow: 0 4px 16px rgba(0,0,0,.40);
     }
-    .order-thumb img {
-      width: 100%; height: auto; max-height: 340px;
-      object-fit: contain; display: block;
-    }
-    @media (max-width: 780px) {
-      .order-thumb img { max-height: 260px; }
-    }
+    .order-thumb img { width:100%; height:100%; object-fit:cover; }
     .order-thumb-zoom {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
@@ -1208,7 +1199,11 @@
     @media (max-width: 780px) {
       .ordering-layout { grid-template-columns: 1fr; }
       .ordering-images { position: static; }
+      .ordering-thumbs { grid-template-columns: repeat(4,1fr); }
       .ordering-form   { position: static; }
+    }
+    @media (max-width: 420px) {
+      .ordering-thumbs { grid-template-columns: repeat(3,1fr); }
     }
 
     /* ══════════════════════════════
