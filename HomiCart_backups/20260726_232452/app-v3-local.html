@@ -4542,14 +4542,7 @@
       const sepIdx = line.indexOf(' — ');
       if (sepIdx === -1) { leftoverLines.push(rawLine); return; }
       const name = line.slice(0, sepIdx).trim();
-      // Offers write their bundle contents right after the title, e.g.
-      // "العرض الاول (كيلو لحم قطع، كيلو مفروم)" (see buildMenuOrderLines) —
-      // byName only has the plain title, so strip that suffix before giving up.
-      let idx = byName[name];
-      if (idx === undefined) {
-        const strippedName = name.replace(/\s*\([^)]*\)\s*$/, '').trim();
-        idx = byName[strippedName];
-      }
+      const idx  = byName[name];
       if (idx === undefined) { leftoverLines.push(rawLine); return; }
 
       let rest = line.slice(sepIdx + 3).trim();
