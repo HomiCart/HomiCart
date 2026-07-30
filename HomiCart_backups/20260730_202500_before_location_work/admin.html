@@ -1,0 +1,2887 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>HomiCart — لوحة التحكم v2</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;600;700;800&family=Cairo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; background:#060b12; color:#fff; direction:rtl; font-family:'Cairo',sans-serif; }
+
+/* ── Layout ── */
+.admin-wrap { display:flex; min-height:100vh; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 220px; min-height:100vh;
+  background: rgba(255,255,255,.03);
+  border-left: 1px solid rgba(255,255,255,.07);
+  display:flex; flex-direction:column;
+  position:sticky; top:0; height:100vh; overflow-y:auto;
+  flex-shrink:0;
+}
+.sidebar-logo {
+  padding:1.4rem 1.2rem; border-bottom:1px solid rgba(255,255,255,.07);
+  display:flex; align-items:center; gap:.6rem;
+}
+.sidebar-logo span {
+  font-family:'Alexandria',sans-serif; font-size:1.1rem; font-weight:800;
+  background:linear-gradient(135deg,#18bfef,#0d9bcb); -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+.sidebar-logo i { color:#18bfef; font-size:1.2rem; }
+.sidebar-nav { flex:1; padding:.8rem 0; }
+.nav-section-label {
+  font-size:.68rem; font-weight:700; letter-spacing:.1em;
+  color:rgba(255,255,255,.3); padding:.6rem 1.2rem .3rem; text-transform:uppercase;
+}
+.nav-item {
+  display:flex; align-items:center; gap:.65rem;
+  padding:.7rem 1.2rem; cursor:pointer; font-size:.88rem;
+  color:rgba(255,255,255,.55); transition:all .2s; border-right:3px solid transparent;
+  user-select:none;
+}
+.nav-item:hover { color:#fff; background:rgba(255,255,255,.04); }
+.nav-item.active { color:#18bfef; background:rgba(24,191,239,.08); border-right-color:#18bfef; }
+.nav-item i { width:16px; text-align:center; }
+.store-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+/* ── Main ── */
+.main { flex:1; overflow-x:hidden; }
+
+/* ── Top bar ── */
+.topbar {
+  padding:1rem 2rem; border-bottom:1px solid rgba(255,255,255,.07);
+  display:flex; align-items:center; justify-content:space-between;
+  background:rgba(255,255,255,.02);
+}
+.topbar-title { font-family:'Alexandria',sans-serif; font-size:1.1rem; font-weight:700; }
+.topbar-right { display:flex; gap:.8rem; align-items:center; }
+.btn-refresh {
+  background:rgba(24,191,239,.1); border:1px solid rgba(24,191,239,.25);
+  color:#18bfef; padding:.45rem 1rem; border-radius:8px; cursor:pointer;
+  font-family:'Cairo',sans-serif; font-size:.82rem; font-weight:600;
+  display:flex; align-items:center; gap:.4rem; transition:all .2s;
+}
+.btn-refresh:hover { background:rgba(24,191,239,.18); }
+.last-refresh { font-size:.75rem; color:rgba(255,255,255,.3); }
+
+/* ── Page sections ── */
+.page { display:none; padding:1.8rem 2rem; }
+.page.active { display:block; }
+
+/* ── Stats grid ── */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem; margin-bottom:2rem; }
+.stat-card {
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+  border-radius:14px; padding:1.2rem 1.4rem;
+  display:flex; flex-direction:column; gap:.4rem;
+}
+.stat-icon { font-size:1.4rem; width:38px; height:38px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center; }
+.stat-value { font-family:'Alexandria',sans-serif; font-size:1.9rem; font-weight:800; }
+.stat-label { font-size:.78rem; color:rgba(255,255,255,.4); }
+.stat-card.teal  .stat-icon { background:rgba(24,191,239,.12); color:#18bfef; }
+.stat-card.amber .stat-icon { background:rgba(255,165,0,.12);  color:#ffa500; }
+.stat-card.green .stat-icon { background:rgba(40,200,100,.12); color:#28c864; }
+.stat-card.purple.stat-icon { background:rgba(150,80,255,.12); color:#9650ff; }
+
+/* ── Section headers ── */
+.section-head {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:1rem;
+}
+.section-title {
+  font-family:'Alexandria',sans-serif; font-size:1rem; font-weight:700;
+  display:flex; align-items:center; gap:.5rem;
+}
+.section-title i { color:#18bfef; }
+
+/* ── Order Window Panel ── */
+.window-panel {
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+  border-radius:14px; padding:1.4rem; margin-bottom:1.5rem;
+}
+.window-row { display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end; }
+.window-field { display:flex; flex-direction:column; gap:.4rem; flex:1; min-width:200px; }
+.window-field label { font-size:.8rem; color:rgba(255,255,255,.55); font-weight:600; }
+.window-field input[type="datetime-local"] {
+  background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.12);
+  border-radius:9px; padding:.6rem .9rem; color:#fff; font-size:.9rem;
+  outline:none; transition:border-color .2s; font-family:'Cairo',sans-serif;
+}
+.window-field input:focus { border-color:#18bfef; }
+.window-status {
+  display:flex; align-items:center; gap:.5rem; font-size:.82rem;
+  padding:.5rem .9rem; border-radius:8px; font-weight:600;
+}
+.window-status.open   { background:rgba(40,200,100,.1);  color:#28c864; }
+.window-status.closed { background:rgba(255,80,80,.1);   color:#ff6060; }
+.window-status.before { background:rgba(255,165,0,.1);   color:#ffa500; }
+
+/* ── Buttons ── */
+.btn { display:inline-flex; align-items:center; gap:.45rem; padding:.6rem 1.2rem;
+  border-radius:9px; cursor:pointer; font-family:'Cairo',sans-serif;
+  font-size:.85rem; font-weight:600; border:none; transition:all .2s; }
+.btn-primary { background:linear-gradient(135deg,#18bfef,#0d9bcb); color:#fff; box-shadow:0 3px 14px rgba(24,191,239,.25); }
+.btn-primary:hover { filter:brightness(1.1); }
+.btn-amber   { background:linear-gradient(135deg,#f5a623,#e08c00); color:#fff; box-shadow:0 3px 14px rgba(245,166,35,.25); }
+.btn-amber:hover { filter:brightness(1.1); }
+.btn-green   { background:linear-gradient(135deg,#28c864,#1a9d4a); color:#fff; box-shadow:0 3px 14px rgba(40,200,100,.25); }
+.btn-green:hover { filter:brightness(1.1); }
+.btn-outline { background:transparent; border:1.5px solid rgba(255,255,255,.2); color:rgba(255,255,255,.7); }
+.btn-outline:hover { border-color:#18bfef; color:#18bfef; }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+
+/* ── Orders table ── */
+.table-wrap { overflow-x:auto; border-radius:14px; border:1px solid rgba(255,255,255,.08); }
+table { width:100%; border-collapse:collapse; font-size:.84rem; }
+thead th {
+  background:rgba(255,255,255,.05); padding:.75rem 1rem; text-align:right;
+  font-family:'Alexandria',sans-serif; font-size:.78rem; font-weight:700;
+  color:rgba(255,255,255,.55); white-space:nowrap; border-bottom:1px solid rgba(255,255,255,.08);
+}
+tbody tr { border-bottom:1px solid rgba(255,255,255,.05); transition:background .15s; }
+tbody tr:hover { background:rgba(255,255,255,.03); }
+tbody td { padding:.7rem 1rem; vertical-align:middle; }
+.td-id { font-family:monospace; font-size:.78rem; color:#18bfef; }
+.td-items { max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:rgba(255,255,255,.75); }
+.td-date { font-size:.76rem; color:rgba(255,255,255,.4); white-space:nowrap; }
+
+/* Status badges */
+.badge {
+  display:inline-flex; align-items:center; gap:.3rem;
+  padding:.22rem .7rem; border-radius:50px; font-size:.73rem; font-weight:700;
+}
+.badge-New        { background:rgba(24,191,239,.15); color:#18bfef; }
+.badge-Preparing  { background:rgba(255,165,0,.15);  color:#ffa500; }
+.badge-Delivered  { background:rgba(40,200,100,.15); color:#28c864; }
+.badge-Cancelled  { background:rgba(255,80,80,.15);  color:#ff6060; }
+
+/* Status select in table */
+.status-select {
+  background:transparent; border:1px solid rgba(255,255,255,.15);
+  border-radius:6px; color:#fff; padding:.2rem .5rem; font-size:.78rem;
+  cursor:pointer; outline:none;
+}
+.status-select option { background:#0d1a28; }
+select option { background:#0d1a28; color:#fff; }
+
+/* ── Bulk actions bar ── */
+.bulk-bar {
+  display:flex; gap:.8rem; flex-wrap:wrap; align-items:center;
+  padding:1rem 1.4rem; background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.08); border-radius:12px; margin-bottom:1rem;
+}
+.bulk-bar span { font-size:.82rem; color:rgba(255,255,255,.5); }
+
+/* ── Store bar chart ── */
+.store-bars { display:flex; flex-direction:column; gap:.8rem; margin-top:1rem; }
+.store-bar-row { display:flex; align-items:center; gap:.8rem; }
+.store-bar-label { width:130px; font-size:.82rem; color:rgba(255,255,255,.65); flex-shrink:0; text-align:left; }
+.store-bar-track { flex:1; height:8px; background:rgba(255,255,255,.07); border-radius:50px; overflow:hidden; }
+.store-bar-fill  { height:100%; border-radius:50px; transition:width .8s ease; }
+.store-bar-count { width:35px; text-align:right; font-size:.82rem; color:rgba(255,255,255,.5); }
+
+/* ── Toast ── */
+.toast-wrap { position:fixed; top:1.2rem; left:1.2rem; z-index:9999; display:flex; flex-direction:column; gap:.5rem; }
+.toast {
+  background:rgba(20,30,45,.97); border:1px solid rgba(255,255,255,.1);
+  border-radius:10px; padding:.7rem 1.1rem; font-size:.84rem;
+  display:flex; align-items:center; gap:.55rem;
+  animation:toastIn .3s ease; min-width:220px;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+.toast.success { border-color:rgba(40,200,100,.3); color:#28c864; }
+.toast.error   { border-color:rgba(255,80,80,.3);  color:#ff6060; }
+.toast.info    { border-color:rgba(24,191,239,.3);  color:#18bfef; }
+@keyframes toastIn { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:translateX(0)} }
+
+/* ── Loading overlay ── */
+.loading-overlay {
+  position:fixed; inset:0; background:rgba(6,11,18,.85);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:9998; gap:1rem; backdrop-filter:blur(4px);
+}
+.loading-overlay .spin { font-size:2.5rem; color:#18bfef; animation:spin 1s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.loading-overlay p { color:rgba(255,255,255,.6); font-size:.9rem; }
+
+/* ── Empty state ── */
+.empty-state { text-align:center; padding:3rem 1rem; color:rgba(255,255,255,.3); }
+.empty-state i { font-size:2.5rem; margin-bottom:.8rem; display:block; }
+
+/* ── Sidebar inline visibility toggle ── */
+.nav-vis-toggle {
+  position: relative; width: 32px; height: 18px;
+  cursor: pointer; flex-shrink: 0; margin-right: .1rem;
+}
+.nav-vis-toggle input { opacity:0; width:0; height:0; }
+.nvt-slider {
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,.12);
+  border-radius: 50px;
+  border: 1px solid rgba(255,255,255,.15);
+  transition: .25s;
+}
+.nvt-slider::before {
+  content:''; position:absolute;
+  width: 12px; height: 12px;
+  left: 2px; top: 50%; transform: translateY(-50%);
+  background: #fff; border-radius: 50%;
+  transition: .25s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+.nav-vis-toggle input:checked + .nvt-slider { background:#18bfef; border-color:#18bfef; }
+.nav-vis-toggle input:checked + .nvt-slider::before { left: calc(100% - 14px); }
+
+/* ── Store Visibility Toggle ── */
+.vis-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:.6rem .2rem; border-bottom:1px solid rgba(255,255,255,.06);
+}
+.vis-row:last-child { border-bottom:none; }
+.vis-store-info { display:flex; align-items:center; gap:.7rem; }
+.vis-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.vis-name { font-family:'Alexandria',sans-serif; font-size:.92rem; font-weight:700; color:#fff; }
+.vis-status { font-family:'Cairo',sans-serif; font-size:.72rem; margin-top:.15rem; }
+.vis-status.on  { color:#34d399; }
+.vis-status.off { color:rgba(255,255,255,.35); }
+/* Toggle switch */
+.toggle-wrap { display:flex; align-items:center; gap:.6rem; }
+.toggle-label { font-size:.78rem; color:rgba(255,255,255,.45); min-width:2.5rem; text-align:center; }
+.toggle { position:relative; width:46px; height:26px; cursor:pointer; }
+.toggle input { opacity:0; width:0; height:0; }
+.toggle-slider {
+  position:absolute; inset:0; background:rgba(255,255,255,.12);
+  border-radius:50px; transition:.3s;
+  border:1.5px solid rgba(255,255,255,.15);
+}
+.toggle-slider::before {
+  content:''; position:absolute; width:18px; height:18px;
+  left:3px; top:50%; transform:translateY(-50%);
+  background:#fff; border-radius:50%; transition:.3s;
+  box-shadow:0 1px 4px rgba(0,0,0,.4);
+}
+.toggle input:checked + .toggle-slider { background:#18bfef; border-color:#18bfef; box-shadow:0 0 10px rgba(24,191,239,.4); }
+.toggle input:checked + .toggle-slider::before { left:calc(100% - 21px); }
+
+/* ── Responsive ── */
+@media(max-width:700px) {
+  .sidebar { width:60px; }
+  .sidebar-logo span, .nav-item span, .nav-section-label { display:none; }
+  .page { padding:1rem; }
+  .topbar { padding:.8rem 1rem; }
+}
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay" class="loading-overlay" style="display:none"></div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="admin-wrap">
+
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <i class="fas fa-shopping-bag"></i>
+      <span>HomiCart</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">عام</div>
+      <div class="nav-item active" onclick="switchPage('overview')">
+        <i class="fas fa-chart-pie"></i><span>نظرة عامة</span>
+      </div>
+
+      <div class="nav-section-label" style="margin-top:.5rem;display:flex;align-items:center;justify-content:space-between;padding-left:.8rem">
+        <span>المتاجر</span>
+        <button onclick="openAddStoreModal()" title="إضافة متجر" style="background:rgba(24,191,239,.18);border:none;color:#18bfef;border-radius:50%;width:20px;height:20px;font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+      <div id="storesNav"></div>
+    </nav>
+  </aside>
+
+  <!-- ══ MAIN ══ -->
+  <div class="main">
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="topbar-title" id="topbarTitle">📊 نظرة عامة</div>
+      <div class="topbar-right">
+        <span class="last-refresh" id="lastRefresh"></span>
+        <button class="btn-refresh" onclick="refreshAll()">
+          <i class="fas fa-sync-alt"></i> تحديث
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ OVERVIEW PAGE ══ -->
+    <div id="page-overview" class="page active">
+
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card teal">
+          <div class="stat-icon"><i class="fas fa-receipt"></i></div>
+          <div class="stat-value" id="st-total">—</div>
+          <div class="stat-label">إجمالي الطلبات</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(24,191,239,.2)">
+          <div class="stat-icon" style="background:rgba(24,191,239,.12);color:#18bfef"><i class="fas fa-star"></i></div>
+          <div class="stat-value" id="st-new">—</div>
+          <div class="stat-label">طلبات جديدة</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-icon"><i class="fas fa-fire"></i></div>
+          <div class="stat-value" id="st-preparing">—</div>
+          <div class="stat-label">جاري التحضير</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+          <div class="stat-value" id="st-delivered">—</div>
+          <div class="stat-label">تم التوصيل</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(255,80,80,.2)">
+          <div class="stat-icon" style="background:rgba(255,80,80,.1);color:#ff6060"><i class="fas fa-times-circle"></i></div>
+          <div class="stat-value" id="st-cancelled">—</div>
+          <div class="stat-label">ملغية</div>
+        </div>
+      </div>
+
+      <!-- GitHub Token Setup -->
+      <div id="ghTokenSection" style="display:none;background:rgba(255,165,0,.07);border:1px solid rgba(255,165,0,.25);border-radius:14px;padding:1rem 1.4rem;margin-bottom:1.5rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
+          <div>
+            <div style="font-size:.85rem;font-weight:700;color:#ffa500"><i class="fas fa-key"></i> GitHub Token — مطلوب لإنشاء فولدرات المتاجر الجديدة</div>
+            <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:.2rem">أنشئ Personal Access Token من GitHub → Settings → Developer settings</div>
+          </div>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <input id="ghTokenInput" type="password" placeholder="ghp_xxxxxxxxxxxx" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,165,0,.3);border-radius:8px;padding:.5rem .8rem;color:#fff;font-family:monospace;font-size:.8rem;outline:none;width:200px">
+            <button onclick="saveGitHubToken()" style="background:#ffa500;border:none;color:#000;font-weight:700;font-size:.8rem;padding:.5rem .9rem;border-radius:8px;cursor:pointer">حفظ</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ MULTI-VENDOR DELIVERY CARD ══ -->
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,165,0,.2);border-radius:14px;padding:1.4rem;margin-bottom:1.5rem;border-top:3px solid #f59e0b">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem">
+          <div>
+            <div style="font-family:'Alexandria',sans-serif;font-size:1rem;font-weight:800;color:#fff;display:flex;align-items:center;gap:.5rem">
+              <span>🚚</span> تجميع التوصيل — أكثر من تاجر
+            </div>
+            <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin-top:.3rem">
+              اجمع أوردرات تجار مختلفين في مسار توصيل واحد — كل عميل يأخذ رقم توصيل موحد
+            </div>
+          </div>
+          <button onclick="openMultiVendorModal()"
+            style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none;color:#fff;font-family:'Alexandria',sans-serif;font-size:.9rem;font-weight:800;padding:.7rem 1.4rem;border-radius:10px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:.5rem">
+            <i class="fas fa-route"></i> بدء التجميع
+          </button>
+        </div>
+      </div>
+
+      <div class="section-head">
+        <div class="section-title"><i class="fas fa-store"></i> الطلبات حسب المتجر</div>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:1.4rem">
+        <div class="store-bars" id="storeBars">
+          <div class="empty-state" style="color:rgba(255,255,255,.35)">اضغط <b style="color:#18bfef">تحديث</b> لتحميل البيانات</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ STORE PAGES (generated dynamically) ══ -->
+    <div id="storePagesContainer"></div>
+
+  </div><!-- /main -->
+</div><!-- /admin-wrap -->
+
+<script>
+// ════════════════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════════════════
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRW2K-GbHfawvZMpxk5ExfyYg5EIhFpUgTy-nHaMjtNR1ZiWn-9BuZpRSWACTEGLqNlA/exec';
+
+// Dynamic — populated from API on init, cached in localStorage
+const ADMIN_STORES_CACHE_KEY = 'homiCart_adminStoresCache';
+let STORES = [];
+try {
+  const cached = localStorage.getItem(ADMIN_STORES_CACHE_KEY);
+  if (cached) STORES = JSON.parse(cached);
+} catch(e) {}
+
+// ════════════════════════════════════════════════════════
+//  API HELPER
+// ════════════════════════════════════════════════════════
+async function api(action, data={}, timeout=25000) {
+  const clean = {};
+  Object.entries(data).forEach(([k,v]) => { if(v!=='' && v!=null) clean[k]=v; });
+  const params = new URLSearchParams({ action, ...clean });
+  const url = `${APPS_SCRIPT_URL}?${params}`;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    const res  = await fetch(url, { redirect:'follow', signal:ctrl.signal });
+    clearTimeout(t);
+    const text = await res.text();
+    return JSON.parse(text);
+  } catch(e) {
+    clearTimeout(t);
+    throw new Error(e.name==='AbortError' ? 'انتهت مهلة الاتصال' : e.message);
+  }
+}
+
+async function apiPost(action, data={}, timeout=25000) {
+  const payload = JSON.stringify({ action, ...data });
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      signal: ctrl.signal,
+      headers: { 'Content-Type': 'text/plain' },
+      body: payload
+    });
+    clearTimeout(t);
+    const text = await res.text();
+    return JSON.parse(text);
+  } catch(e) {
+    clearTimeout(t);
+    throw new Error(e.name==='AbortError' ? 'انتهت مهلة الاتصال' : e.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════════════════════
+function switchPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const page = document.getElementById('page-' + id);
+  if (page) page.classList.add('active');
+
+  const clickedNav = [...document.querySelectorAll('.nav-item')]
+    .find(n => n.getAttribute('onclick')?.includes(id));
+  if (clickedNav) clickedNav.classList.add('active');
+
+  const titles = { overview:'📊 نظرة عامة', 'store-AlRoknAlMasry':'🔴 الركن المصري', 'store-AlFayoumi':'🟡 الفيومي' };
+  document.getElementById('topbarTitle').textContent = titles[id] || id;
+
+  if (id.startsWith('store-')) {
+    const storeKey = id.replace('store-','');
+    renderStorePage(storeKey);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════
+function toast(msg, type='info') {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  const icons = { success:'fa-check-circle', error:'fa-times-circle', info:'fa-info-circle' };
+  el.innerHTML = `<i class="fas ${icons[type]||'fa-info-circle'}"></i> ${msg}`;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ════════════════════════════════════════════════════════
+//  OVERVIEW — load stats
+// ════════════════════════════════════════════════════════
+async function loadOverview() {
+  const sb = document.getElementById('storeBars');
+  sb.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+  try {
+    const res = await api('getAdminStats', {}, 20000);
+    if (!res || !res.success) throw new Error(res?.message || 'فشل الاستجابة');
+    const s = res.stats;
+    document.getElementById('st-total').textContent     = s.total     ?? 0;
+    document.getElementById('st-new').textContent       = s.new       ?? 0;
+    document.getElementById('st-preparing').textContent = s.preparing ?? 0;
+    document.getElementById('st-delivered').textContent = s.delivered ?? 0;
+    document.getElementById('st-cancelled').textContent = s.cancelled ?? 0;
+    // Build color/name maps dynamically from current STORES list
+    const colorMap = {}, nameMap = {};
+    STORES.forEach(st => { colorMap[st.key] = st.color; nameMap[st.key] = st.name; });
+
+    // Only show bars for stores that still exist in STORES list
+    const activeEntries = Object.entries(s.perStore || {})
+      .filter(([k]) => STORES.some(st => st.key === k));
+    const max = Math.max(1, ...activeEntries.map(([,v]) => v));
+
+    sb.innerHTML = activeEntries.map(([k,v]) =>
+        `<div class="store-bar-row">
+           <div class="store-bar-label">${nameMap[k] || k}</div>
+           <div class="store-bar-track"><div class="store-bar-fill" style="width:${Math.round(v/max*100)}%;background:${colorMap[k]||'#18bfef'}"></div></div>
+           <div class="store-bar-count">${v}</div>
+         </div>`).join('')
+      || '<div class="empty-state">لا توجد طلبات</div>';
+  } catch(e) {
+    sb.innerHTML = `<div class="empty-state" style="color:#ff8060">
+      ❌ ${e.message}<br>
+      <small style="opacity:.6">اضغط "تحديث" للمحاولة مجدداً</small>
+    </div>`;
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  DYNAMIC STORES LIST
+// ════════════════════════════════════════════════════════
+async function loadStoresList() {
+  try {
+    const res = await api('getStoresList', {}, 15000);
+    if (res?.success && Array.isArray(res.stores) && res.stores.length) {
+      STORES = res.stores;
+      try { localStorage.setItem(ADMIN_STORES_CACHE_KEY, JSON.stringify(STORES)); } catch(e) {}
+    }
+  } catch(e) { /* use cached STORES from localStorage */ }
+  renderStoresSidebar();
+  renderStorePages();
+}
+
+function renderStoresSidebar() {
+  const nav = document.getElementById('storesNav');
+  if (!nav) return;
+  nav.innerHTML = STORES.map(s => `
+    <div class="nav-item" onclick="switchPage('store-${s.key}')">
+      <span class="store-dot" style="background:${s.color}"></span>
+      <span style="flex:1">${s.name}</span>
+      <label class="nav-vis-toggle" title="إظهار / إخفاء" onclick="event.stopPropagation()">
+        <input type="checkbox" id="nav-vis-${s.key}" checked onchange="toggleStoreVisibility('${s.key}', this.checked)">
+        <span class="nvt-slider"></span>
+      </label>
+      <button onclick="event.stopPropagation();openEditStoreModal('${s.key}')"
+        title="تعديل بيانات المتجر"
+        style="background:none;border:none;color:rgba(24,191,239,.55);font-size:.72rem;cursor:pointer;padding:0 .3rem;line-height:1;transition:color .2s"
+        onmouseover="this.style.color='#18bfef'" onmouseout="this.style.color='rgba(24,191,239,.55)'">
+        <i class="fas fa-pen"></i>
+      </button>
+      <button onclick="event.stopPropagation();confirmDeleteStore('${s.key}','${s.name}')"
+        title="حذف المتجر"
+        style="background:none;border:none;color:rgba(255,80,80,.45);font-size:.72rem;cursor:pointer;padding:0 0 0 .3rem;line-height:1;transition:color .2s"
+        onmouseover="this.style.color='#ff5555'" onmouseout="this.style.color='rgba(255,80,80,.45)'">
+        <i class="fas fa-trash-alt"></i>
+      </button>
+    </div>`).join('');
+}
+
+async function confirmDeleteStore(key, name) {
+  if (!confirm(`حذف متجر "${name}"؟\n\nسيتم:\n• حذفه من القائمة\n• حذف شيت Google Sheets\n• حذف فولدر الصور من GitHub\n\nهذا الإجراء لا يمكن التراجع عنه!`)) return;
+  const btn = document.querySelector(`[onclick*="confirmDeleteStore('${key}'"]`);
+  if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  try {
+    const res = await api('deleteStore', { store: key }, 30000);
+    if (!res?.success) throw new Error(res?.message || 'فشل');
+    let msg = `✓ تم حذف ${name}`;
+    if (res.sheetResult === 'deleted')  msg += ' | ✓ شيت محذوف';
+    if (res.sheetResult === 'not_found') msg += ' | شيت غير موجود';
+    if ((res.githubResult||'').startsWith('deleted')) msg += ' | ✓ فولدرات GitHub محذوفة';
+    if (res.githubResult === 'no_token') msg += ' | ⚠️ GitHub Token غير مضبوط';
+    toast(msg, 'success');
+    await loadStoresList();
+    switchPage('overview');
+  } catch(e) {
+    alert('❌ خطأ في الحذف: ' + e.message);
+  }
+}
+
+function renderStorePages() {
+  const container = document.getElementById('storePagesContainer');
+  if (!container) return;
+  container.innerHTML = STORES.map(s =>
+    `<div id="page-store-${s.key}" class="page"></div>`
+  ).join('');
+}
+
+// ── Add / Edit Store Modal ──
+let _editingStoreKey = null;
+
+function openAddStoreModal() {
+  _editingStoreKey = null;
+  document.getElementById('as-key').disabled = false;
+  document.getElementById('as-key-hint').style.display = '';
+  document.getElementById('addStoreModalTitle').innerHTML = '<i class="fas fa-store" style="color:#18bfef;margin-left:.5rem"></i>إضافة متجر جديد';
+  document.getElementById('as-submit-btn').innerHTML = '<i class="fas fa-plus"></i> إضافة المتجر';
+  document.getElementById('addStoreModal').style.display = 'flex';
+  document.getElementById('as-name').focus();
+}
+
+function openEditStoreModal(key) {
+  const s = STORES.find(x => x.key === key);
+  if (!s) return;
+  _editingStoreKey = key;
+  document.getElementById('as-name').value      = s.name || '';
+  document.getElementById('as-key').value       = s.key  || '';
+  document.getElementById('as-key').disabled    = true;
+  document.getElementById('as-key-hint').style.display = 'none';
+  document.getElementById('as-tag').value       = s.tag  || '';
+  document.getElementById('as-icon').value      = s.icon || '🛒';
+  document.getElementById('as-city').value      = s.city || '';
+  document.getElementById('as-itemlabel').value = s.itemLabel || '';
+  document.getElementById('as-color').value     = s.color || '#18bfef';
+  document.getElementById('addStoreModalTitle').innerHTML = '<i class="fas fa-pen" style="color:#18bfef;margin-left:.5rem"></i>تعديل بيانات المتجر';
+  document.getElementById('as-submit-btn').innerHTML = '<i class="fas fa-save"></i> حفظ التعديلات';
+  document.getElementById('addStoreModal').style.display = 'flex';
+  document.getElementById('as-name').focus();
+}
+
+function closeAddStoreModal() {
+  document.getElementById('addStoreModal').style.display = 'none';
+  ['as-name','as-key','as-tag','as-city','as-itemlabel'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('as-icon').value = '🛒';
+  document.getElementById('as-color').value = '#18bfef';
+  document.getElementById('as-key').disabled = false;
+  document.getElementById('as-key-hint').style.display = '';
+  _editingStoreKey = null;
+}
+
+async function submitAddStore() {
+  const isEdit    = !!_editingStoreKey;
+  const name      = document.getElementById('as-name').value.trim();
+  const key       = isEdit ? _editingStoreKey : document.getElementById('as-key').value.trim().replace(/\s+/g,'');
+  const tag       = document.getElementById('as-tag').value.trim();
+  const icon      = document.getElementById('as-icon').value.trim() || '🛒';
+  const city      = document.getElementById('as-city').value.trim() || 'الإمارات';
+  const itemLabel = document.getElementById('as-itemlabel').value.trim() || 'منتج';
+  const color     = document.getElementById('as-color').value;
+
+  if (!name) { alert('اسم المتجر مطلوب'); return; }
+  if (!key)  { alert('المعرّف الإنجليزي مطلوب (انجليزي بدون مسافات)'); return; }
+
+  const btn = document.getElementById('as-submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = isEdit
+    ? '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...'
+    : '<i class="fas fa-spinner fa-spin"></i> جاري الإنشاء...';
+
+  try {
+    const res = await api('saveStore', { key, name, color, tag, icon, city, itemLabel }, 20000);
+    if (!res?.success) throw new Error(res?.message || 'فشل الحفظ');
+
+    if (isEdit) {
+      toast(`✓ تم تحديث بيانات ${name}`, 'success');
+    } else {
+      toast(`✓ تمت إضافة ${name} بنجاح`, 'success');
+      if (res.githubResult === 'no_token') toast('⚠️ فولدرات GitHub: أضف GitHub Token من إعدادات الأدمن', 'info');
+    }
+    closeAddStoreModal();
+    await loadStoresList();
+    await loadVisibility();
+    switchPage('store-' + key);
+  } catch(e) {
+    alert('❌ خطأ: ' + e.message + (isEdit ? '' : '\n\nتأكدي من:\n• إعادة نشر Apps Script (New Deployment)\n• الاتصال بالإنترنت'));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = isEdit ? '<i class="fas fa-save"></i> حفظ التعديلات' : '<i class="fas fa-plus"></i> إضافة المتجر';
+  }
+}
+
+async function saveGitHubToken() {
+  const token = document.getElementById('ghTokenInput').value.trim();
+  if (!token) { alert('أدخل الـ Token'); return; }
+  try {
+    const res = await api('setGitHubToken', { token }, 10000);
+    if (!res?.success) throw new Error(res?.message || 'فشل');
+    toast('✓ تم حفظ GitHub Token — لن يُطلب منك مرة أخرى', 'success');
+    document.getElementById('ghTokenInput').value = '';
+    document.getElementById('ghTokenSection').style.display = 'none';
+  } catch(e) { alert('❌ ' + e.message); }
+}
+
+// ════════════════════════════════════════════════════════
+//  STORE VISIBILITY MANAGER
+// ════════════════════════════════════════════════════════
+async function loadVisibility() {
+  try {
+    const res = await api('getStoreVisibility', {}, 10000);
+    const vis = res?.visibility || {};
+    STORES.forEach(s => {
+      const cb = document.getElementById('nav-vis-' + s.key);
+      if (cb) cb.checked = vis[s.key] !== false; // default = visible
+    });
+  } catch(e) { /* keep defaults (all checked) on failure */ }
+}
+
+async function toggleStoreVisibility(storeKey, visible) {
+  const storeName = STORES.find(s => s.key === storeKey)?.name || storeKey;
+  const cb = document.getElementById('nav-vis-' + storeKey);
+  try {
+    const res = await api('setStoreVisibility', { store: storeKey, visible: visible ? 'true' : 'false' }, 12000);
+    if (!res?.success) throw new Error(res?.message || 'فشل');
+    toast(visible ? `✓ ${storeName} — ظاهر للعملاء` : `${storeName} — مخفي عن العملاء`, visible ? 'success' : 'info');
+  } catch(e) {
+    // Revert checkbox on failure
+    if (cb) cb.checked = !visible;
+    toast('❌ فشل الحفظ: ' + e.message, 'error');
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  STORE PAGE
+// ════════════════════════════════════════════════════════
+let _storeOrdersCache = {};
+
+async function renderStorePage(storeKey) {
+  const store = STORES.find(s => s.key === storeKey);
+  if (!store) return;
+  const container = document.getElementById('page-store-' + storeKey);
+
+  container.innerHTML = `
+    <div style="max-width:1100px">
+
+      <!-- Hidden inputs — used by confirmExtend to sync window time -->
+      <input type="hidden" id="win-start-${storeKey}">
+      <input type="hidden" id="win-end-${storeKey}">
+
+      <!-- Batch Control -->
+      
+      
+
+      <div class="section-head" style="margin-bottom:.8rem;margin-top:.5rem">
+        <div style="display:flex;flex-direction:column;gap:.3rem">
+          <div class="section-title"><i class="fas fa-layer-group"></i> الدورة الحالية (Batch)</div>
+          <div id="winStatus-${storeKey}" style="font-size:.78rem;color:rgba(255,255,255,.4);display:flex;align-items:center;gap:.5rem">
+            <i class="fas fa-circle" style="font-size:.45rem"></i> جاري التحقق...
+          </div>
+        </div>
+        <div id="batchStatus-${storeKey}" style="font-size:.8rem;color:rgba(255,255,255,.4)">جاري التحقق...</div>
+      </div>
+
+
+      <div class="window-panel" style="margin-bottom:1.5rem">
+
+        <!-- Batch dropdown row -->
+        <div style="display:flex;align-items:flex-end;gap:.8rem;flex-wrap:wrap;margin-bottom:1rem">
+          <div style="flex:1;min-width:240px">
+            <div style="font-size:.75rem;color:rgba(255,255,255,.45);margin-bottom:.4rem">
+              <i class="fas fa-layer-group" style="color:#18bfef;margin-left:.3rem"></i>
+              اختر دورة أو ابدأ جديدة
+            </div>
+            <select id="batchDropdown-${storeKey}" onchange="onBatchSelect('${storeKey}')"
+              style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.2);border-radius:9px;padding:.65rem 1rem;color:#fff;font-size:.85rem;outline:none;cursor:pointer">
+              <option value="__loading__">⏳ جاري التحميل...</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+            <button class="btn btn-primary" id="applyBatchBtn-${storeKey}" onclick="applyBatchSelection('${storeKey}')">
+              <i class="fas fa-plus-circle"></i> بدء / تفعيل
+            </button>
+            <button class="btn btn-outline" onclick="openExtendModal('${storeKey}')">
+              <i class="fas fa-clock"></i> تمديد
+            </button>
+            <button class="btn" style="background:rgba(255,80,80,.15);border:1px solid rgba(255,80,80,.3);color:#ff6060" onclick="closeBatchAdmin('${storeKey}')">
+              <i class="fas fa-lock"></i> إغلاق
+            </button>
+          </div>
+        </div>
+
+        <!-- Selected batch info -->
+        <div id="batchInfoInline-${storeKey}" style="font-size:.78rem;color:rgba(255,255,255,.4);min-height:1.2rem"></div>
+
+      
+
+      <!-- ══ Processing Pipeline Card ══ -->
+      <div style="margin-top:1.8rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:1.5rem 1.6rem;border-top:3px solid #f59e0b">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:.5rem">
+          <span style="font-family:'Alexandria',sans-serif;font-size:1rem;font-weight:800;color:#fff">🚀 معالجة الأوردرات دفعة واحدة</span>
+          <span id="proc-badge-${storeKey}" style="background:rgba(245,158,11,.15);color:#f59e0b;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px">—</span>
+        </div>
+        <p style="font-size:12px;color:rgba(255,255,255,.35);margin-bottom:1rem;line-height:1.7">
+          يملّي الـ Workspace ← يرتّب المسار ← يفرز ← يولّد روابط Maps ← يحوّل الحالة لـ <strong style="color:#f59e0b">جاري التحضير</strong>
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:.9rem">
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:11px;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Latitude</label>
+            <input type="number" id="proc-lat-${storeKey}" step="any" value="24.5144395" placeholder="24.5144395"
+              style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none">
+          </div>
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:11px;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Longitude</label>
+            <input type="number" id="proc-lng-${storeKey}" step="any" value="54.375908" placeholder="54.375908"
+              style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none">
+          </div>
+          <button onclick="procGetLocation('${storeKey}')"
+            style="padding:8px 13px;background:#17a2b8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap">
+            📱 موقعي
+          </button>
+        </div>
+        <!-- Batch Selector for Pipeline -->
+        <div style="margin-bottom:.9rem">
+          <label style="font-size:11px;color:rgba(255,255,255,.45);display:block;margin-bottom:4px">
+            <i class="fas fa-layer-group" style="color:#f59e0b;margin-left:.3rem"></i>
+            اختر الدورة (Batch) المراد معالجة أوردراتها
+          </label>
+          <select id="proc-batch-${storeKey}" onchange="onProcBatchChange('${storeKey}')"
+            style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(245,158,11,.3);border-radius:9px;padding:.65rem 1rem;color:#fff;font-size:.88rem;outline:none;cursor:pointer;margin-bottom:.5rem">
+            <option value="">⏳ جاري تحميل الدورات...</option>
+          </select>
+          <div id="proc-batch-info-${storeKey}" style="font-size:.75rem;color:rgba(255,255,255,.35);min-height:1rem"></div>
+        </div>
+        <div id="proc-warn-${storeKey}" style="display:none;background:rgba(255,150,0,.1);border:1px solid rgba(255,150,0,.35);border-radius:9px;padding:10px 14px;margin-bottom:.9rem;font-size:12px;color:#ffa500;line-height:1.7">
+          <div style="font-weight:700;margin-bottom:.4rem"><i class="fas fa-exclamation-triangle"></i> تحذير — توجد أوردرات بحالة مختلفة في هذه الدورة:</div>
+          <div id="proc-warn-list-${storeKey}"></div>
+          <div style="margin-top:.5rem;font-size:.75rem;color:rgba(255,255,255,.4)">عدّل حالتها من الجدول ثم أعد المحاولة.</div>
+        </div>
+        <button id="proc-btn-${storeKey}" onclick="runProcessPipeline('${storeKey}')" disabled
+          style="width:100%;padding:13px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:800;font-family:'Cairo',sans-serif;opacity:.5">
+          🚀 معالجة أوردرات الدورة المختارة
+        </button>
+        <div id="proc-prog-${storeKey}" style="display:none;margin-top:10px;background:rgba(255,255,255,.08);border-radius:50px;height:7px;overflow:hidden">
+          <div id="proc-fill-${storeKey}" style="height:100%;width:0%;background:linear-gradient(90deg,#18bfef,#f59e0b);border-radius:50px;transition:width .6s ease"></div>
+        </div>
+        <div id="proc-status-${storeKey}" style="margin-top:7px;font-size:12px;color:rgba(255,255,255,.4);min-height:16px;text-align:center"></div>
+        <div id="proc-results-${storeKey}" style="display:none;margin-top:14px">
+          <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+            <button onclick="procCopyWhatsapp('${storeKey}')"
+              style="flex:1;padding:10px;background:#25d366;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">
+              📋 نسخ للواتساب
+            </button>
+            <button onclick="procPrint('${storeKey}')"
+              style="flex:1;padding:10px;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">
+              📄 طباعة / PDF
+            </button>
+          </div>
+          <div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:6px">📌 روابط المسار</div>
+          <div id="proc-links-${storeKey}"></div>
+        </div>
+      </div></div>
+
+      <!-- Bulk Actions -->
+      <div class="bulk-bar">
+        <span><i class="fas fa-magic"></i> إجراءات جماعية:</span>
+        <button class="btn btn-green" onclick="bulkMarkDelivered('${storeKey}')">
+          <i class="fas fa-check-double"></i> التحضير → تم التوصيل
+        </button>
+      </div>
+
+      <!-- How to Order Note -->
+      <div class="section-head" style="margin-bottom:.6rem">
+        <div class="section-title"><i class="fas fa-info-circle" style="color:#18bfef"></i> نص "إزاي اطلب العرض"</div>
+        <button class="btn btn-outline" id="saveNoteBtn-${storeKey}" onclick="saveStoreNote('${storeKey}')">
+          <i class="fas fa-save"></i> حفظ
+        </button>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(24,191,239,.15);border-radius:12px;padding:1rem;margin-bottom:1.5rem">
+        <div style="font-size:.75rem;color:rgba(255,255,255,.35);margin-bottom:.5rem">
+          يظهر للعملاء تحت صور المنيو بعنوان "إزاي اطلب العرض" — اكتب الخطوات أو التعليمات بالصيغة اللي تحبها
+        </div>
+        <textarea id="storeNote-${storeKey}" rows="4" placeholder="مثال:&#10;١- اختار من المنيو اللي فوق&#10;٢- اكتب الكميات في خانة الطلب&#10;٣- اضغط سجل الطلب"
+          style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.7rem .9rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.88rem;outline:none;resize:vertical;box-sizing:border-box;direction:rtl;line-height:1.7"></textarea>
+      </div>
+
+      <!-- Admin Note (separate note block, admin-controlled show/hide) -->
+      <div class="section-head" style="margin-bottom:.6rem">
+        <div class="section-title"><i class="fas fa-bullhorn" style="color:#f59e0b"></i> ملاحظة الأدمن للعملاء</div>
+        <button class="btn btn-outline" id="saveAdminNoteBtn-${storeKey}" onclick="saveAdminNote('${storeKey}')">
+          <i class="fas fa-save"></i> حفظ
+        </button>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(245,158,11,.2);border-radius:12px;padding:1rem;margin-bottom:1.5rem">
+        <div class="toggle-wrap" style="margin-bottom:.8rem">
+          <label class="toggle">
+            <input type="checkbox" id="adminNoteEnabled-${storeKey}" onchange="toggleAdminNoteUI('${storeKey}')">
+            <span class="toggle-slider"></span>
+          </label>
+          <span style="font-size:.85rem;color:rgba(255,255,255,.7)">إظهار الملاحظة للعميل في صفحة الطلب</span>
+        </div>
+        <div id="adminNoteFields-${storeKey}" style="display:none">
+          <div style="font-size:.75rem;color:rgba(255,255,255,.35);margin-bottom:.4rem">عنوان الملاحظة</div>
+          <input type="text" id="adminNoteTitle-${storeKey}" placeholder="مثال: تنويه هام"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.6rem .8rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.88rem;outline:none;box-sizing:border-box;direction:rtl;margin-bottom:.9rem">
+          <div style="font-size:.75rem;color:rgba(255,255,255,.35);margin-bottom:.4rem">نص الملاحظة</div>
+          <textarea id="adminNoteText-${storeKey}" rows="4" placeholder="اكتب أي ملاحظة عايز توصلها للعملاء"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.7rem .9rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.88rem;outline:none;resize:vertical;box-sizing:border-box;direction:rtl;line-height:1.7"></textarea>
+        </div>
+      </div>
+
+      <!-- Delivery Options -->
+      <div class="section-head" style="margin-bottom:.6rem">
+        <div class="section-title"><i class="fas fa-truck" style="color:#18bfef"></i> خيارات التوصيل</div>
+        <button class="btn btn-outline" id="saveDeliveryBtn-${storeKey}" onclick="saveDeliveryOptions('${storeKey}')">
+          <i class="fas fa-save"></i> حفظ
+        </button>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(24,191,239,.15);border-radius:12px;padding:1rem;margin-bottom:1.5rem">
+        <div class="toggle-wrap" style="margin-bottom:.8rem">
+          <label class="toggle">
+            <input type="checkbox" id="deliveryEnabled-${storeKey}" onchange="toggleDeliveryOptionsUI('${storeKey}')">
+            <span class="toggle-slider"></span>
+          </label>
+          <span style="font-size:.85rem;color:rgba(255,255,255,.7)">إظهار اختيار طريقة التوصيل للعميل</span>
+        </div>
+        <div id="deliveryFields-${storeKey}" style="display:none">
+          <div style="font-size:.75rem;color:rgba(255,255,255,.35);margin-bottom:.4rem">عنوان السؤال</div>
+          <input type="text" id="deliveryTitle-${storeKey}" placeholder="هل تفضل التوصيل مع"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.6rem .8rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.88rem;outline:none;box-sizing:border-box;direction:rtl;margin-bottom:.9rem">
+
+          <div style="font-size:.75rem;color:rgba(255,255,255,.35);margin-bottom:.4rem">الاختيارات (الاسم + قيمة التوصيل بالدرهم)</div>
+          <div id="deliveryOptionsList-${storeKey}"></div>
+          <button class="btn btn-outline" onclick="addDeliveryOptionRow('${storeKey}')" style="margin-top:.5rem">
+            <i class="fas fa-plus"></i> إضافة اختيار
+          </button>
+        </div>
+      </div>
+
+      <!-- Menu Items -->
+      <div class="section-head" style="margin-bottom:.6rem">
+        <div class="section-title"><i class="fas fa-boxes" style="color:#18bfef"></i> قائمة المنتجات</div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-outline" onclick="toggleAllMenuItems('${storeKey}',true)" title="تشغيل الكل" style="font-size:.78rem;padding:.35rem .65rem"><i class="fas fa-toggle-on"></i> تشغيل الكل</button>
+          <button class="btn btn-outline" onclick="toggleAllMenuItems('${storeKey}',false)" title="إيقاف الكل" style="font-size:.78rem;padding:.35rem .65rem;color:rgba(255,100,100,.8)"><i class="fas fa-toggle-off"></i> إيقاف الكل</button>
+          <button class="btn btn-outline" id="saveMenuBtn-${storeKey}" onclick="saveMenuItems('${storeKey}')"><i class="fas fa-save"></i> حفظ</button>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(24,191,239,.15);border-radius:12px;padding:1rem;margin-bottom:1.5rem">
+        <div style="font-size:.75rem;color:rgba(255,255,255,.35);margin-bottom:.8rem">
+          كل عنصر مفعّل يظهر للعميل مع خانة للكمية — الطلب بيتجمع أوتوماتيك من الكميات المحددة
+        </div>
+        <div id="menuItemsList-${storeKey}" style="display:flex;flex-direction:column;gap:.55rem"></div>
+        <div style="margin-top:1rem;padding-top:.9rem;border-top:1px solid rgba(255,255,255,.08)">
+          <div style="font-size:.78rem;color:rgba(255,255,255,.55);margin-bottom:.4rem">
+            ملاحظة على فاتورة العميل (اختياري) — تظهر تحت الإجمالي التقريبي، مثلاً توضيح إن الأسعار تقديرية بسبب اختلاف الوزن الفعلي
+          </div>
+          <textarea id="menuInvoiceNote-${storeKey}" rows="2" placeholder="مثال: الأسعار تقديرية والسعر النهائي حسب الوزن الفعلي وقت التسليم"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.55rem .7rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.82rem;outline:none;box-sizing:border-box;direction:rtl;resize:vertical"></textarea>
+        </div>
+        <div style="display:flex;gap:.6rem;margin-top:.7rem">
+          <button class="btn btn-outline" onclick="addMenuItemRow('${storeKey}')" style="flex:1;justify-content:center">
+            <i class="fas fa-plus"></i> إضافة منتج
+          </button>
+          <button class="btn btn-outline" onclick="addMenuDividerRow('${storeKey}')" style="flex:1;justify-content:center;color:#18bfef;border-color:rgba(24,191,239,.4)">
+            <i class="fas fa-grip-lines"></i> إضافة فاصل قسم
+          </button>
+          <button class="btn btn-outline" onclick="addMenuOfferRow('${storeKey}')" style="flex:1;justify-content:center;color:#ffc400;border-color:rgba(255,196,0,.4)">
+            <i class="fas fa-gift"></i> إضافة عرض
+          </button>
+        </div>
+      </div>
+
+      <!-- Orders Table -->
+      <div class="section-head">
+        <div class="section-title"><i class="fas fa-list-alt"></i> الطلبات</div>
+        <button class="btn btn-outline" onclick="loadStoreOrders('${storeKey}')">
+          <i class="fas fa-sync-alt"></i> تحديث
+        </button>
+      </div>
+      <div class="table-wrap" id="table-${storeKey}">
+        <div class="empty-state"><i class="fas fa-spinner fa-spin"></i><br>جاري التحميل...</div>
+      </div>
+    </div>
+
+    `;
+
+  // Load data
+  loadStoreWindow(storeKey);
+  loadStoreOrders(storeKey);
+  loadBatchDropdown(storeKey);
+  loadProcBatchDropdown(storeKey);
+  loadStoreNote(storeKey);
+  loadAdminNote(storeKey);
+  loadDeliveryOptions(storeKey);
+  loadMenuItems(storeKey);
+  startBatchWatcher(storeKey);  // auto-close when time expires
+}
+
+// ── Batch functions ──
+let _batchData  = {}; // cache: storeKey → batches array
+let _windowData = {}; // cache: storeKey → last getStoreOrderWindow() result
+
+// Single source of truth for "is this store's batch actually open right now":
+// requires batch_status === 'active' AND the current time to be inside
+// [start, end]. Updates both the top-right نشطة/مغلقة badge and the
+// آخر إغلاق / فتح الدورة / غلق الدورة summary together, so they never
+// contradict each other like the separate badges used to.
+function renderBatchHeader(storeKey) {
+  const statusEl = document.getElementById('batchStatus-' + storeKey);
+  const winEl    = document.getElementById('winStatus-'   + storeKey);
+  const win      = _windowData[storeKey];
+  const batches  = _batchData[storeKey] || [];
+  if (!statusEl && !winEl) return;
+
+  const fmt = d => d.toLocaleDateString('ar-AE',{day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('ar-AE',{hour:'2-digit',minute:'2-digit'});
+
+  let isLiveOpen = false;
+  if (win && win.success && win.start && win.end) {
+    const now = new Date(), start = new Date(win.start), end = new Date(win.end);
+    isLiveOpen = win.batchStatus === 'active' && now >= start && now <= end;
+  }
+
+  if (statusEl) {
+    statusEl.innerHTML = isLiveOpen
+      ? '<span style="color:#28c864"><i class="fas fa-circle" style="font-size:.5rem"></i> نشطة</span>'
+      : '<span style="color:#ff6060"><i class="fas fa-circle" style="font-size:.5rem"></i> مغلقة</span>';
+  }
+
+  if (winEl) {
+    if (!win || !win.success || !win.start) {
+      winEl.innerHTML = '<i class="fas fa-circle" style="font-size:.45rem"></i> لم يُحدد وقت بعد';
+      return;
+    }
+    const start = new Date(win.start), end = new Date(win.end), now = new Date();
+
+    // آخر إغلاق: نهاية أقرب دورة سابقة غير نشطة (من قائمة الدورات المحمّلة)
+    const lastClosed = batches.find(b => !b.isActive && b.lastOrder);
+    const lastCloseHtml = lastClosed
+      ? `<span style="color:rgba(255,255,255,.45)">آخر إغلاق:</span> ${fmt(new Date(lastClosed.lastOrder))}`
+      : '';
+
+    const openLabel  = now < start ? 'تفتح الدورة الجديدة' : 'فُتحت الدورة';
+    const closeLabel = 'تُغلق الدورة';
+    const parts = [
+      lastCloseHtml,
+      `<span style="color:#28c864">${openLabel}:</span> ${fmt(start)}`,
+      `<span style="color:#ff6060">${closeLabel}:</span> ${fmt(end)}`
+    ].filter(Boolean);
+
+    winEl.innerHTML = '<i class="fas fa-circle" style="font-size:.45rem;color:' + (isLiveOpen ? '#28c864' : '#ffa500') + '"></i> ' + parts.join(' &nbsp;|&nbsp; ');
+  }
+}
+
+async function loadBatchDropdown(storeKey) {
+  const sel      = document.getElementById('batchDropdown-' + storeKey);
+  const statusEl = document.getElementById('batchStatus-'   + storeKey);
+  if (!sel) return;
+
+  sel.innerHTML = '<option value="__loading__">⏳ جاري التحميل...</option>';
+  try {
+    const res = await api('getPreviousBatches', { store: storeKey });
+    const batches = res.batches || [];
+    _batchData[storeKey] = batches;
+
+    // Build options: "new batch" + all previous batches
+    sel.innerHTML =
+      '<option value="__new__">➕ بدء دورة جديدة</option>' +
+      batches.map(b => {
+        const short  = b.batchId.split('-').slice(-1)[0]; // timestamp suffix
+        const active = b.isActive ? ' ★' : '';
+        const date   = (b.firstOrder || '').substring(0, 10);
+        return `<option value="${b.batchId}">${active} ${short} — ${date} (${b.total} طلب)</option>`;
+      }).join('');
+
+    // Pre-select: main dropdown selection → batch with Preparing orders → active batch
+    const mainSel = document.getElementById('batchDropdown-' + storeKey);
+    const mainVal = mainSel?.value;
+    const withPreparing = batches.find(b => b.preparing > 0);
+    const active        = batches.find(b => b.isActive);
+
+    if (mainVal && mainVal !== '__new__' && mainVal !== '__loading__') {
+      sel.value = mainVal;
+    } else if (withPreparing) {
+      sel.value = withPreparing.batchId;
+    } else if (active) {
+      sel.value = active.batchId;
+    } else {
+      sel.value = '__new__';
+    }
+
+    onBatchSelect(storeKey);
+
+    // Status badge is derived from the time window (renderBatchHeader),
+    // not just whether a batch is flagged active — keeps it consistent
+    // with the open/close dates shown right below it.
+    renderBatchHeader(storeKey);
+  } catch(e) {
+    sel.innerHTML = '<option value="__new__">➕ بدء دورة جديدة</option>';
+    console.warn('loadBatchDropdown', e.message);
+  }
+}
+
+// Also keep old function name as alias for compatibility
+function loadBatchStatus(storeKey) { loadBatchDropdown(storeKey); }
+
+function onBatchSelect(storeKey) {
+  const sel    = document.getElementById('batchDropdown-'  + storeKey);
+  const infoEl = document.getElementById('batchInfoInline-'+ storeKey);
+  const btn    = document.getElementById('applyBatchBtn-'  + storeKey);
+  if (!sel) return;
+
+  const val = sel.value;
+
+  // Show 'بدء دورة جديدة' only when __new__ is selected; hide for existing batches
+  if (btn) {
+    if (val === '__new__') {
+      btn.innerHTML = '<i class="fas fa-plus-circle"></i> بدء دورة جديدة';
+      btn.style.background = 'linear-gradient(135deg,#18bfef,#0d9bcb)';
+      btn.style.display = '';
+    } else {
+      btn.style.display = 'none'; // تفعيل هذه الدورة - removed
+    }
+  }
+
+  if (!infoEl) return;
+  if (val === '__new__' || val === '__loading__') {
+    // Reset status badge to current active batch status
+    const statusEl = document.getElementById('batchStatus-' + storeKey);
+    if (statusEl && val === '__new__') statusEl.innerHTML = '<span style="color:#18bfef">● دورة جديدة</span>';
+    infoEl.innerHTML = val === '__new__'
+      ? '<i class="fas fa-info-circle" style="color:#18bfef;margin-left:.3rem"></i> سيتم إنشاء BatchID جديد — الدورة القديمة تُغلق تلقائياً'
+      : '';
+    return;
+  }
+
+  const batches = _batchData[storeKey] || [];
+  const b = batches.find(x => x.batchId === val);
+  if (!b) return;
+
+  // Update status badge based on selected batch
+  const statusEl = document.getElementById('batchStatus-' + storeKey);
+  if (statusEl) {
+    if (b.isActive) {
+      statusEl.innerHTML = '<span style="color:#28c864">● نشطة</span>';
+    } else {
+      statusEl.innerHTML = '<span style="color:rgba(255,255,255,.4)">● مغلقة</span>';
+    }
+  }
+
+  // Show/hide reactivate button
+  if (btn) {
+    if (!b.isActive) {
+      btn.innerHTML = '<i class="fas fa-redo"></i> إعادة تفعيل';
+      btn.style.background = 'rgba(255,165,0,.2)';
+      btn.style.border = '1px solid rgba(255,165,0,.4)';
+      btn.style.color = '#ffa500';
+      btn.style.display = '';
+    }
+  }
+
+  infoEl.innerHTML =
+    `<span style="font-family:monospace;color:#18bfef;font-size:.75rem">${b.batchId}</span>` +
+    ` &nbsp;|&nbsp; ${(b.firstOrder||'').substring(0,16)} ← → ${(b.lastOrder||'').substring(0,16)}` +
+    ` &nbsp;|&nbsp; <span style="color:#18bfef">${b.new} جديد</span>` +
+    ` / <span style="color:#ffa500">${b.preparing} تحضير</span>` +
+    ` / <span style="color:#28c864">${b.delivered} توصيل</span>` +
+    (b.isActive ? ' &nbsp;<span style="color:#28c864">★ نشطة حالياً</span>' : ' &nbsp;<span style="color:#ffa500">⟳ مغلقة</span>');
+}
+
+async function applyBatchSelection(storeKey) {
+  const sel = document.getElementById('batchDropdown-' + storeKey);
+  const val = sel?.value;
+  if (!val || val === '__loading__') return;
+
+  if (val === '__new__') {
+    // Start new batch
+    await startNewBatch(storeKey);
+  } else {
+    // Reactivate selected existing batch
+    if (!confirm('تفعيل الدورة:\n' + val + '\n\nسيتم تعيينها كالدورة النشطة بدون تغيير الطلبات.')) return;
+    try {
+      const res = await api('reactivateBatch', { store: storeKey, batchId: val });
+      if (res.success) {
+        toast('✓ تم تفعيل الدورة: ' + val.split('-').slice(-1)[0], 'success');
+        loadBatchDropdown(storeKey);
+      } else { toast('خطأ: ' + res.message, 'error'); }
+    } catch(e) { toast('تعذر: ' + e.message, 'error'); }
+  }
+}
+
+let _newBatchStore = null;
+
+function startNewBatch(storeKey) {
+  _newBatchStore = storeKey;
+  // Default: open now, close in 24h
+  const now  = new Date();
+  const end  = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const pad  = n => String(n).padStart(2,'0');
+  const fmt  = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  document.getElementById('nb-start').value = fmt(now);
+  document.getElementById('nb-end').value   = fmt(end);
+  updateNewBatchPreview();
+  document.getElementById('newBatchModal').style.display = 'flex';
+}
+
+function closeNewBatchModal() {
+  document.getElementById('newBatchModal').style.display = 'none';
+  _newBatchStore = null;
+}
+
+function updateNewBatchPreview() {
+  const s = document.getElementById('nb-start').value;
+  const e = document.getElementById('nb-end').value;
+  const p = document.getElementById('nb-preview');
+  if (!s || !e || !p) return;
+  const ds = new Date(s), de = new Date(e);
+  if (isNaN(ds) || isNaN(de)) return;
+  const diffH = Math.round((de - ds) / 3600000);
+  const fmt = d => d.toLocaleDateString('ar-AE',{weekday:'long',day:'numeric',month:'long'}) + ' الساعة ' + d.toLocaleTimeString('ar-AE',{hour:'2-digit',minute:'2-digit'});
+  p.innerHTML = de > ds
+    ? `<span style="color:#28c864">تُفتح:</span> ${fmt(ds)}<br><span style="color:#ff6060">تُغلق:</span> ${fmt(de)} <span style="color:rgba(255,255,255,.4)">(${diffH} ساعة)</span>`
+    : `<span style="color:#ff6060">⚠️ وقت الإغلاق قبل وقت الفتح</span>`;
+}
+
+async function confirmNewBatch() {
+  if (!_newBatchStore) return;
+  const start = document.getElementById('nb-start').value;
+  const end   = document.getElementById('nb-end').value;
+  if (!start || !end) { alert('يرجى تحديد وقت الفتح والإغلاق'); return; }
+  if (new Date(end) <= new Date(start)) { alert('وقت الإغلاق يجب أن يكون بعد وقت الفتح'); return; }
+
+  const btn = document.getElementById('nb-confirm-btn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري البدء...';
+
+  try {
+    // 1. Start new batch
+    const bRes = await api('startNewBatch', { store: _newBatchStore }, 20000);
+    if (!bRes.success) throw new Error(bRes.message || 'فشل إنشاء الدورة');
+
+    // 2. Set order window (start + end) — send as unambiguous UTC ISO so the
+    // backend's Date parsing always lands on the same instant the admin
+    // picked, regardless of the Apps Script server's own timezone quirks.
+    await api('setStoreOrderWindow', {
+      store: _newBatchStore,
+      start: new Date(start).toISOString(),
+      end:   new Date(end).toISOString()
+    }, 15000);
+
+    const msg = bRes.autoClosedOrders > 0 ? ` — ${bRes.autoClosedOrders} طلب تحول لـ جاري التحضير` : '';
+    toast(`✓ دورة جديدة بدأت${msg}`, 'success');
+    closeNewBatchModal();
+    loadStoreWindow(_newBatchStore);
+    loadBatchStatus(_newBatchStore);
+    loadBatchDropdown(_newBatchStore);
+    loadProcBatchDropdown(_newBatchStore);
+    loadStoreOrders(_newBatchStore);
+  } catch(e) {
+    alert('❌ ' + e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> بدء الدورة';
+  }
+}
+
+async function reactivateBatch(storeKey) {
+  if (!confirm('تمديد الدورة الحالية؟\n\nسيتم إعادة تفعيل نفس الـ BatchID بدون تغييره.')) return;
+  try {
+    const res = await api('reactivateBatch', { store: storeKey });
+    if (res.success) { toast('✓ تم تفعيل الدورة: ' + res.batchId, 'success'); loadBatchStatus(storeKey); }
+    else toast('خطأ: ' + res.message, 'error');
+  } catch(e) { toast('تعذر: ' + e.message, 'error'); }
+}
+
+async function closeBatchAdmin(storeKey) {
+  if (!confirm('إغلاق الدورة الحالية؟\n\nجميع الطلبات "جديدة" ستتحول إلى "جاري التحضير".')) return;
+  try {
+    const res = await api('closeBatch', { store: storeKey });
+    if (res.success) {
+      toast(`✓ تم الإغلاق — ${res.ordersUpdated} طلب تحول لـ "جاري التحضير"`, 'success');
+      loadBatchStatus(storeKey);
+      loadStoreOrders(storeKey);
+    } else toast('خطأ: ' + res.message, 'error');
+  } catch(e) { toast('تعذر: ' + e.message, 'error'); }
+}
+
+// ── Load order window for store ──
+async function loadStoreWindow(storeKey) {
+  try {
+    const res = await api('getStoreOrderWindow', { store: storeKey });
+    _windowData[storeKey] = res;
+
+    if (res.success && res.start) {
+      // Store in hidden inputs for confirmExtend to read
+      const startInput = document.getElementById('win-start-' + storeKey);
+      const endInput   = document.getElementById('win-end-'   + storeKey);
+      if (startInput) startInput.value = _toDatetimeLocal(res.start);
+      if (endInput)   endInput.value   = _toDatetimeLocal(res.end);
+    }
+
+    // Combined with whatever _batchData already has — shows آخر إغلاق /
+    // فتح الدورة / غلق الدورة and the live نشطة/مغلقة badge together.
+    renderBatchHeader(storeKey);
+  } catch(e) { console.warn('loadStoreWindow', e.message); }
+}
+
+// ── Save order window for store ──
+async function saveWindow(storeKey) {
+  const start = document.getElementById('win-start-' + storeKey)?.value;
+  const end   = document.getElementById('win-end-'   + storeKey)?.value;
+  if (!start || !end) { toast('يرجى تحديد وقت الفتح والإغلاق', 'error'); return; }
+  if (new Date(end) <= new Date(start)) { toast('وقت الإغلاق يجب أن يكون بعد وقت الفتح', 'error'); return; }
+  try {
+    const res = await api('setStoreOrderWindow', { store: storeKey, start: new Date(start).toISOString(), end: new Date(end).toISOString() });
+    if (res.success) { toast('تم حفظ النافذة بنجاح ✓', 'success'); loadStoreWindow(storeKey); }
+    else toast('خطأ: ' + res.message, 'error');
+  } catch(e) { toast('تعذر الحفظ: ' + e.message, 'error'); }
+}
+
+// ── Store Note (إزاي اطلب العرض) ──
+async function loadStoreNote(storeKey) {
+  try {
+    const res = await api('getStoreNote', { store: storeKey }, 15000);
+    if (res?.success) {
+      const ta = document.getElementById('storeNote-' + storeKey);
+      if (ta) ta.value = res.note || '';
+    }
+  } catch(e) { /* silent */ }
+}
+
+async function saveStoreNote(storeKey) {
+  const ta  = document.getElementById('storeNote-' + storeKey);
+  const btn = document.getElementById('saveNoteBtn-' + storeKey);
+  if (!ta) return;
+  const prev = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  try {
+    const res = await api('setStoreNote', { store: storeKey, note: ta.value }, 12000);
+    if (res?.success) toast('✓ تم حفظ النص', 'success');
+    else throw new Error(res?.message || 'فشل');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  btn.disabled = false; btn.innerHTML = prev;
+}
+
+// ── Admin Note (ملاحظة أدمن مستقلة عن نص إزاي اطلب العرض) ──
+async function loadAdminNote(storeKey) {
+  try {
+    const res = await api('getAdminNote', { store: storeKey }, 15000);
+    const cfg = res?.config || { enabled: false, title: '', text: '' };
+    const chk     = document.getElementById('adminNoteEnabled-' + storeKey);
+    const titleEl = document.getElementById('adminNoteTitle-' + storeKey);
+    const textEl  = document.getElementById('adminNoteText-' + storeKey);
+    if (chk)     chk.checked = !!cfg.enabled;
+    if (titleEl) titleEl.value = cfg.title || '';
+    if (textEl)  textEl.value = cfg.text || '';
+    toggleAdminNoteUI(storeKey);
+  } catch(e) { /* silent */ }
+}
+
+function toggleAdminNoteUI(storeKey) {
+  const chk    = document.getElementById('adminNoteEnabled-' + storeKey);
+  const fields = document.getElementById('adminNoteFields-' + storeKey);
+  if (fields) fields.style.display = chk?.checked ? '' : 'none';
+}
+
+async function saveAdminNote(storeKey) {
+  const btn     = document.getElementById('saveAdminNoteBtn-' + storeKey);
+  const chk     = document.getElementById('adminNoteEnabled-' + storeKey);
+  const titleEl = document.getElementById('adminNoteTitle-' + storeKey);
+  const textEl  = document.getElementById('adminNoteText-' + storeKey);
+  if (!chk) return;
+  const prev = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  try {
+    const res = await api('setAdminNote', {
+      store: storeKey,
+      enabled: chk.checked,
+      title: titleEl.value.trim() || 'ملاحظة من الأدمن',
+      text: textEl.value,
+    }, 12000);
+    if (res?.success) toast('✓ تم حفظ الملاحظة', 'success');
+    else throw new Error(res?.message || 'فشل');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  btn.disabled = false; btn.innerHTML = prev;
+}
+
+// ── Delivery Options (هل تفضل التوصيل مع...) ──
+async function loadDeliveryOptions(storeKey) {
+  try {
+    const res = await api('getDeliveryOptions', { store: storeKey }, 15000);
+    const cfg = res?.config || { enabled: false, title: '', options: [] };
+    const chk = document.getElementById('deliveryEnabled-' + storeKey);
+    const titleEl = document.getElementById('deliveryTitle-' + storeKey);
+    if (chk) chk.checked = !!cfg.enabled;
+    if (titleEl) titleEl.value = cfg.title || '';
+    const list = document.getElementById('deliveryOptionsList-' + storeKey);
+    if (list) {
+      list.innerHTML = '';
+      (cfg.options && cfg.options.length ? cfg.options : [{label:'', fee:0}])
+        .forEach(opt => addDeliveryOptionRow(storeKey, opt));
+    }
+    toggleDeliveryOptionsUI(storeKey);
+  } catch(e) { /* silent */ }
+}
+
+function toggleDeliveryOptionsUI(storeKey) {
+  const chk    = document.getElementById('deliveryEnabled-' + storeKey);
+  const fields = document.getElementById('deliveryFields-' + storeKey);
+  if (fields) fields.style.display = chk?.checked ? '' : 'none';
+}
+
+function addDeliveryOptionRow(storeKey, opt) {
+  opt = opt || { label: '', fee: 0, requireVendorOrder: '', blockMsg: '' };
+  const isTiered = opt.feeMode === 'tiered';
+  const tr = opt.tieredRule || {};
+  const basis = tr.basis === 'value' ? 'value' : 'qty';
+  const threshold = tr.threshold ?? tr.thresholdKg ?? 5; // thresholdKg = old field name, kept for back-compat
+  const list = document.getElementById('deliveryOptionsList-' + storeKey);
+  if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'delivery-opt-row';
+  row.style = 'display:flex;flex-direction:column;gap:.45rem;margin-bottom:.7rem;padding:.6rem;background:rgba(255,255,255,.03);border-radius:8px';
+
+  const vendorOpts = STORES.filter(s => s.key !== storeKey).map(s =>
+    `<option value="${s.key}" data-name="${s.name}" ${opt.requireVendorOrder === s.key ? 'selected' : ''}>${s.name}</option>`
+  ).join('');
+
+  const inputStyle = "flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.5rem .6rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.78rem;outline:none;box-sizing:border-box";
+
+  row.innerHTML = `
+    <div style="display:flex;gap:.6rem;align-items:center">
+      <input type="text" placeholder="اسم الاختيار (مثال: الركن المصري)" value="${(opt.label||'').replace(/"/g,'&quot;')}"
+        class="delivery-opt-label"
+        style="flex:2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.55rem .7rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.85rem;outline:none;box-sizing:border-box;direction:rtl">
+      <button onclick="this.closest('.delivery-opt-row').remove()"
+        style="background:none;border:none;color:rgba(255,80,80,.6);font-size:.95rem;cursor:pointer;padding:.3rem .5rem"
+        title="حذف"><i class="fas fa-trash-alt"></i></button>
+    </div>
+    <div style="display:flex;gap:.6rem;align-items:center">
+      <select class="delivery-opt-feemode" onchange="onDeliveryFeeModeChange(this)"
+        style="${inputStyle};flex:1;cursor:pointer;direction:rtl">
+        <option value="flat"   ${!isTiered ? 'selected' : ''}>سعر ثابت</option>
+        <option value="tiered" ${isTiered  ? 'selected' : ''}>سعر متدرّج (حسب الكمية أو قيمة الفاتورة)</option>
+      </select>
+      <input type="number" placeholder="قيمة التوصيل (درهم)" value="${Number(opt.fee)||0}" min="0" step="1"
+        class="delivery-opt-fee"
+        style="${inputStyle};flex:1;display:${isTiered ? 'none' : ''}">
+    </div>
+    <div class="delivery-opt-tiered-fields" style="display:${isTiered ? 'flex' : 'none'};flex-direction:column;gap:.6rem">
+      <div style="flex:1;display:flex;flex-direction:column;gap:.2rem">
+        <label style="font-size:.7rem;color:rgba(255,255,255,.4)">الحد يتحدد على أساس</label>
+        <select class="delivery-opt-tiered-basis" onchange="onDeliveryTieredBasisChange(this)"
+          style="${inputStyle};cursor:pointer;direction:rtl">
+          <option value="qty"   ${basis==='qty'   ? 'selected' : ''}>الكمية (كيلو)</option>
+          <option value="value" ${basis==='value' ? 'selected' : ''}>قيمة الفاتورة (درهم)</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:.6rem;align-items:center">
+        <div style="flex:1;display:flex;flex-direction:column;gap:.2rem">
+          <label class="delivery-opt-threshold-label" style="font-size:.7rem;color:rgba(255,255,255,.4)">${basis==='value' ? 'الحد (قيمة الفاتورة بالدرهم)' : 'الحد (كيلو)'}</label>
+          <input type="number" min="0" step="0.5" value="${threshold}" class="delivery-opt-threshold" style="${inputStyle}">
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:.2rem">
+          <label style="font-size:.7rem;color:rgba(255,255,255,.4)">لو أقل من الحد</label>
+          <input type="number" min="0" step="1" value="${tr.feeBelowThreshold ?? 0}" class="delivery-opt-fee-below" style="${inputStyle}">
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:.2rem">
+          <label style="font-size:.7rem;color:rgba(255,255,255,.4)">لو الحد أو أكتر</label>
+          <input type="number" min="0" step="1" value="${tr.feeAtOrAboveThreshold ?? 0}" class="delivery-opt-fee-atabove" style="${inputStyle}">
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:.6rem;align-items:center">
+      <select class="delivery-opt-require" onchange="onDeliveryRequireChange(this)"
+        style="${inputStyle};direction:rtl">
+        <option value="">— بدون شرط مسبق —</option>
+        ${vendorOpts}
+      </select>
+      <input type="text" placeholder="رسالة المنع (اختياري)" value="${(opt.blockMsg||'').replace(/"/g,'&quot;')}"
+        class="delivery-opt-msg"
+        style="${inputStyle};flex:2;direction:rtl">
+    </div>
+    <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.2rem 0">
+      <input type="checkbox" class="delivery-opt-needs-payment" ${opt.requiresPaymentMethod === false ? '' : 'checked'}
+        style="width:16px;height:16px;cursor:pointer">
+      <span style="font-size:.76rem;color:rgba(255,255,255,.55)">يحتاج اختيار طريقة الدفع (كاش/تحويل) لو التوصيل مدفوع</span>
+    </label>`;
+  list.appendChild(row);
+}
+
+// Toggle flat-fee input vs the tiered-rule inputs for this option row
+function onDeliveryFeeModeChange(sel) {
+  const row = sel.closest('.delivery-opt-row');
+  const isTiered = sel.value === 'tiered';
+  row.querySelector('.delivery-opt-fee').style.display = isTiered ? 'none' : '';
+  row.querySelector('.delivery-opt-tiered-fields').style.display = isTiered ? 'flex' : 'none';
+}
+
+// Relabel the threshold field when admin switches between "by quantity" and
+// "by invoice value" — same input, different unit/meaning.
+function onDeliveryTieredBasisChange(sel) {
+  const row   = sel.closest('.delivery-opt-row');
+  const label = row.querySelector('.delivery-opt-threshold-label');
+  if (label) label.textContent = sel.value === 'value' ? 'الحد (قيمة الفاتورة بالدرهم)' : 'الحد (كيلو)';
+}
+
+// When admin picks a vendor that this option requires an active order from,
+// auto-fill a sensible default block message (if the admin hasn't written one)
+function onDeliveryRequireChange(sel) {
+  const msgInput = sel.closest('.delivery-opt-row').querySelector('.delivery-opt-msg');
+  if (!sel.value || msgInput.value.trim()) return;
+  const vendorName = sel.options[sel.selectedIndex].dataset.name || sel.value;
+  msgInput.value = `لا يمكن اختيار هذا التوصيل إلا بعد تسجيل طلبك من ${vendorName} أولاً`;
+}
+
+async function saveDeliveryOptions(storeKey) {
+  const btn  = document.getElementById('saveDeliveryBtn-' + storeKey);
+  const chk  = document.getElementById('deliveryEnabled-' + storeKey);
+  const titleEl = document.getElementById('deliveryTitle-' + storeKey);
+  const list = document.getElementById('deliveryOptionsList-' + storeKey);
+  if (!chk) return;
+
+  const options = Array.from(list.querySelectorAll('.delivery-opt-row')).map(row => {
+    const isTiered = row.querySelector('.delivery-opt-feemode').value === 'tiered';
+    const opt = {
+      label: row.querySelector('.delivery-opt-label').value.trim(),
+      fee:   Number(row.querySelector('.delivery-opt-fee').value) || 0,
+      feeMode: isTiered ? 'tiered' : 'flat',
+      requireVendorOrder: row.querySelector('.delivery-opt-require').value || '',
+      blockMsg: row.querySelector('.delivery-opt-msg').value.trim(),
+      requiresPaymentMethod: row.querySelector('.delivery-opt-needs-payment').checked,
+    };
+    if (isTiered) {
+      opt.tieredRule = {
+        basis:                row.querySelector('.delivery-opt-tiered-basis').value || 'qty',
+        threshold:            Number(row.querySelector('.delivery-opt-threshold').value) || 0,
+        feeBelowThreshold:    Number(row.querySelector('.delivery-opt-fee-below').value) || 0,
+        feeAtOrAboveThreshold:Number(row.querySelector('.delivery-opt-fee-atabove').value) || 0,
+      };
+    }
+    return opt;
+  }).filter(o => o.label);
+
+  const prev = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  try {
+    const res = await api('setDeliveryOptions', {
+      store: storeKey,
+      enabled: chk.checked,
+      title: titleEl.value.trim() || 'هل تفضل التوصيل مع',
+      options: JSON.stringify(options),
+    }, 12000);
+    if (res?.success) toast('✓ تم حفظ خيارات التوصيل', 'success');
+    else throw new Error(res?.message || 'فشل');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  btn.disabled = false; btn.innerHTML = prev;
+}
+
+// ══════════════════════════════════════════════════════
+//  Menu Items — per-store product list with toggle
+// ══════════════════════════════════════════════════════
+
+async function loadMenuItems(storeKey) {
+  const list = document.getElementById('menuItemsList-' + storeKey);
+  try {
+    const res = await api('getMenuItems', { store: storeKey }, 15000);
+    const items = res?.items || [];
+    if (!list) return;
+    list.innerHTML = '';
+    const noteEl = document.getElementById('menuInvoiceNote-' + storeKey);
+    if (noteEl) noteEl.value = items.find(i => i.isInvoiceNote)?.text || '';
+    items.filter(i => !i.isInvoiceNote)
+         .forEach(item => item.isDivider ? addMenuDividerRow(storeKey, item)
+                         : item.isOffer  ? addMenuOfferRow(storeKey, item)
+                         : addMenuItemRow(storeKey, item));
+  } catch(e) {
+    if (list) list.innerHTML = `<div style="font-size:.8rem;color:#ff8060;padding:.5rem">
+      ❌ تعذر تحميل قائمة المنتجات: ${e.message}
+      <button onclick="loadMenuItems('${storeKey}')" style="background:none;border:1px solid rgba(255,128,96,.4);color:#ff8060;border-radius:6px;padding:.25rem .6rem;margin-right:.5rem;cursor:pointer;font-family:'Cairo',sans-serif;font-size:.75rem">إعادة المحاولة</button>
+    </div>`;
+  }
+}
+
+function addMenuItemRow(storeKey, item) {
+  item = item || { name: '', unit: 'كيلو', price: '', enabled: true, step: 0.5 };
+  const step = item.step != null ? Number(item.step) : 0.5;
+  const list = document.getElementById('menuItemsList-' + storeKey);
+  if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'menu-item-row';
+  row.draggable = true;
+  row.style.cssText = 'display:flex;gap:.5rem;align-items:center;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:.55rem .7rem;transition:opacity .15s';
+  const inputStyle = 'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.45rem .65rem;color:#fff;font-family:\'Cairo\',sans-serif;outline:none;box-sizing:border-box;direction:rtl;flex-shrink:0';
+  const selectStyle = `${inputStyle};cursor:pointer;font-size:.78rem`;
+  row.innerHTML = `
+    <span class="menu-item-drag-handle" title="اسحب لإعادة الترتيب"
+      style="cursor:grab;color:rgba(255,255,255,.3);flex-shrink:0;padding:0 .15rem;font-size:.85rem">
+      <i class="fas fa-grip-vertical"></i>
+    </span>
+    <label class="toggle" style="flex-shrink:0" title="ظهور للعميل">
+      <input type="checkbox" class="menu-item-enabled" ${item.enabled !== false ? 'checked' : ''}>
+      <span class="toggle-slider"></span>
+    </label>
+    <input type="text" class="menu-item-name" placeholder="اسم المنتج" value="${(item.name||'').replace(/"/g,'&quot;')}"
+      style="flex:2;${inputStyle};font-size:.85rem;min-width:0">
+    <input type="text" class="menu-item-unit" placeholder="وحدة" value="${(item.unit||'كيلو').replace(/"/g,'&quot;')}"
+      style="width:70px;font-size:.82rem;${inputStyle}">
+    <select class="menu-item-step" title="نوع الكمية" style="width:90px;${selectStyle}">
+      <option value="0.5" ${step < 1 ?'selected':''}>كسور (½)</option>
+      <option value="1"   ${step >= 1?'selected':''}>عدد صحيح</option>
+    </select>
+    <input type="text" class="menu-item-price" placeholder="السعر" value="${(item.price||'').replace(/"/g,'&quot;')}"
+      style="width:90px;font-size:.82rem;${inputStyle}">
+    <button onclick="this.closest('.menu-item-row').remove()"
+      style="background:none;border:none;color:rgba(255,80,80,.55);font-size:.9rem;cursor:pointer;padding:.3rem .4rem;flex-shrink:0" title="حذف">
+      <i class="fas fa-trash-alt"></i>
+    </button>`;
+  row.addEventListener('dragstart', onMenuItemDragStart);
+  row.addEventListener('dragover', onMenuItemDragOver);
+  row.addEventListener('dragend', onMenuItemDragEnd);
+  list.appendChild(row);
+}
+
+// A divider marks the start of a new section (e.g. "لحوم بلدي") in the
+// customer-facing menu list — it isn't a product, just a heading. Drag it
+// above whichever products it should group (order in this list = order on
+// the site).
+function addMenuDividerRow(storeKey, item) {
+  item = item || { category: '' };
+  const list = document.getElementById('menuItemsList-' + storeKey);
+  if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'menu-divider-row';
+  row.draggable = true;
+  row.style.cssText = 'display:flex;gap:.5rem;align-items:center;background:rgba(24,191,239,.08);border:1.5px dashed rgba(24,191,239,.4);border-radius:10px;padding:.55rem .7rem;transition:opacity .15s';
+  row.innerHTML = `
+    <span class="menu-item-drag-handle" title="اسحب لإعادة الترتيب"
+      style="cursor:grab;color:#18bfef;flex-shrink:0;padding:0 .15rem;font-size:.85rem">
+      <i class="fas fa-grip-vertical"></i>
+    </span>
+    <i class="fas fa-grip-lines" style="color:#18bfef;flex-shrink:0"></i>
+    <input type="text" class="menu-divider-label" placeholder="اسم القسم، مثال: لحوم بلدي"
+      value="${(item.category||'').replace(/"/g,'&quot;')}"
+      style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(24,191,239,.25);border-radius:8px;padding:.45rem .65rem;color:#18bfef;font-family:'Cairo',sans-serif;font-weight:700;font-size:.85rem;outline:none;box-sizing:border-box;direction:rtl">
+    <button onclick="this.closest('.menu-divider-row').remove()"
+      style="background:none;border:none;color:rgba(255,80,80,.55);font-size:.9rem;cursor:pointer;padding:.3rem .4rem;flex-shrink:0" title="حذف الفاصل">
+      <i class="fas fa-trash-alt"></i>
+    </button>`;
+  row.addEventListener('dragstart', onMenuItemDragStart);
+  row.addEventListener('dragover', onMenuItemDragOver);
+  row.addEventListener('dragend', onMenuItemDragEnd);
+  list.appendChild(row);
+}
+
+// An offer bundles several items under one title/price (e.g. "عرض العيلة"
+// = نص بانيه + نص لحمة + نص كبدة). It always renders in its own section
+// first on the customer site regardless of where it sits in this list —
+// its position here only controls its order relative to other offers.
+function addMenuOfferRow(storeKey, item) {
+  item = item || { name: '', price: '', enabled: true, offerItems: [''] };
+  const list = document.getElementById('menuItemsList-' + storeKey);
+  if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'menu-offer-row';
+  row.draggable = true;
+  row.style.cssText = 'display:flex;flex-direction:column;gap:.5rem;background:rgba(255,196,0,.06);border:1.5px dashed rgba(255,196,0,.35);border-radius:10px;padding:.6rem .7rem;transition:opacity .15s';
+  const inputStyle = "background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.45rem .65rem;color:#fff;font-family:'Cairo',sans-serif;outline:none;box-sizing:border-box;direction:rtl";
+
+  row.innerHTML = `
+    <div style="display:flex;gap:.5rem;align-items:center">
+      <span class="menu-item-drag-handle" title="اسحب لإعادة الترتيب"
+        style="cursor:grab;color:rgba(255,196,0,.7);flex-shrink:0;padding:0 .15rem;font-size:.85rem">
+        <i class="fas fa-grip-vertical"></i>
+      </span>
+      <label class="toggle" style="flex-shrink:0" title="ظهور للعميل">
+        <input type="checkbox" class="menu-offer-enabled" ${item.enabled !== false ? 'checked' : ''}>
+        <span class="toggle-slider"></span>
+      </label>
+      <input type="text" class="menu-offer-name" placeholder="عنوان العرض، مثال: عرض العيلة"
+        value="${(item.name||'').replace(/"/g,'&quot;')}"
+        style="flex:2;${inputStyle};font-size:.85rem;min-width:0">
+      <input type="text" class="menu-offer-price" placeholder="سعر العرض"
+        value="${(item.price||'').replace(/"/g,'&quot;')}"
+        style="width:100px;font-size:.82rem;${inputStyle}">
+      <button onclick="this.closest('.menu-offer-row').remove()"
+        style="background:none;border:none;color:rgba(255,80,80,.55);font-size:.9rem;cursor:pointer;padding:.3rem .4rem;flex-shrink:0" title="حذف العرض">
+        <i class="fas fa-trash-alt"></i>
+      </button>
+    </div>
+    <div class="menu-offer-items-list" style="display:flex;flex-direction:column;gap:.35rem;padding-right:2.1rem"></div>
+    <button type="button" onclick="addOfferItemField(this)"
+      style="align-self:flex-start;margin-right:2.1rem;background:none;border:1px dashed rgba(255,196,0,.4);color:#ffc400;border-radius:8px;padding:.3rem .7rem;font-size:.74rem;cursor:pointer;font-family:'Cairo',sans-serif">
+      <i class="fas fa-plus"></i> إضافة بند
+    </button>`;
+
+  const itemsList = row.querySelector('.menu-offer-items-list');
+  const offerItems = (item.offerItems && item.offerItems.length) ? item.offerItems : [''];
+  offerItems.forEach(t => itemsList.appendChild(_buildOfferItemField(t)));
+
+  row.addEventListener('dragstart', onMenuItemDragStart);
+  row.addEventListener('dragover', onMenuItemDragOver);
+  row.addEventListener('dragend', onMenuItemDragEnd);
+  list.appendChild(row);
+}
+
+function _buildOfferItemField(value) {
+  const wrap = document.createElement('div');
+  wrap.className = 'menu-offer-item-row';
+  wrap.style.cssText = 'display:flex;gap:.4rem;align-items:center';
+  wrap.innerHTML = `
+    <input type="text" class="menu-offer-item-field" placeholder="بند، مثال: نص كيلو بانيه"
+      value="${(value||'').replace(/"/g,'&quot;')}"
+      style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:.35rem .6rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.78rem;outline:none;box-sizing:border-box;direction:rtl">
+    <button type="button" onclick="this.closest('.menu-offer-item-row').remove()"
+      style="background:none;border:none;color:rgba(255,80,80,.5);font-size:.8rem;cursor:pointer;padding:.2rem .3rem" title="حذف البند">
+      <i class="fas fa-times"></i>
+    </button>`;
+  return wrap;
+}
+
+function addOfferItemField(btn) {
+  const itemsList = btn.previousElementSibling; // .menu-offer-items-list, right before this button
+  itemsList.appendChild(_buildOfferItemField(''));
+}
+
+// ── Drag & drop reordering for product rows ──
+let _draggedMenuItemRow = null;
+
+function onMenuItemDragStart(e) {
+  _draggedMenuItemRow = this;
+  this.style.opacity = '.35';
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function onMenuItemDragOver(e) {
+  e.preventDefault();
+  if (!_draggedMenuItemRow || _draggedMenuItemRow === this) return;
+  const list = this.parentElement;
+  const rows = Array.from(list.children);
+  const draggedIdx = rows.indexOf(_draggedMenuItemRow);
+  const overIdx    = rows.indexOf(this);
+  if (draggedIdx < overIdx) this.after(_draggedMenuItemRow);
+  else this.before(_draggedMenuItemRow);
+}
+
+function onMenuItemDragEnd() {
+  this.style.opacity = '';
+  _draggedMenuItemRow = null;
+}
+
+function toggleAllMenuItems(storeKey, state) {
+  document.querySelectorAll(`#menuItemsList-${storeKey} .menu-item-enabled`)
+    .forEach(cb => cb.checked = state);
+}
+
+async function saveMenuItems(storeKey) {
+  const btn  = document.getElementById('saveMenuBtn-' + storeKey);
+  const list = document.getElementById('menuItemsList-' + storeKey);
+  if (!list) return;
+  // Walk DOM order (not querySelectorAll on one class) so dividers stay
+  // interleaved with products exactly as arranged via drag-and-drop.
+  const items = Array.from(list.children).map(row => {
+    if (row.classList.contains('menu-divider-row')) {
+      const category = row.querySelector('.menu-divider-label').value.trim();
+      return category ? { isDivider: true, category } : null;
+    }
+    if (row.classList.contains('menu-offer-row')) {
+      const name = row.querySelector('.menu-offer-name').value.trim();
+      if (!name) return null;
+      const offerItems = Array.from(row.querySelectorAll('.menu-offer-item-field'))
+        .map(inp => inp.value.trim()).filter(Boolean);
+      return {
+        isOffer:  true,
+        name,
+        price:    row.querySelector('.menu-offer-price').value.trim(),
+        enabled:  row.querySelector('.menu-offer-enabled').checked,
+        unit:     'عرض',
+        step:     1,
+        offerItems,
+      };
+    }
+    return {
+      name:    row.querySelector('.menu-item-name').value.trim(),
+      unit:    row.querySelector('.menu-item-unit').value.trim() || 'كيلو',
+      price:   row.querySelector('.menu-item-price').value.trim(),
+      enabled: row.querySelector('.menu-item-enabled').checked,
+      step:    Number(row.querySelector('.menu-item-step').value) || 0.5,
+    };
+  }).filter(i => i && (i.isDivider || i.isOffer || i.name));
+
+  const noteEl = document.getElementById('menuInvoiceNote-' + storeKey);
+  const noteText = noteEl ? noteEl.value.trim() : '';
+  if (noteText) items.push({ isInvoiceNote: true, text: noteText });
+
+  const prev = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  try {
+    const res = await apiPost('setMenuItems', { store: storeKey, items: items }, 12000);
+    if (res?.success) toast('✓ تم حفظ قائمة المنتجات', 'success');
+    else throw new Error(res?.message || 'فشل الحفظ');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  btn.disabled = false; btn.innerHTML = prev;
+}
+
+// ── Load orders table for store ──
+async function loadStoreOrders(storeKey) {
+  const container = document.getElementById('table-' + storeKey);
+  if (!container) return;
+  container.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><br>جاري التحميل...</div>';
+  try {
+    const res = await api('getStoreOrders', { sheet: storeKey });
+    if (!res.success) throw new Error(res.message);
+    _storeOrdersCache[storeKey] = res.orders || [];
+    renderOrdersTable(storeKey, res.orders || []);
+  } catch(e) {
+    container.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><br>تعذر التحميل: ${e.message}</div>`;
+  }
+}
+
+function renderOrdersTable(storeKey, orders) {
+  const container = document.getElementById('table-' + storeKey);
+  if (!container) return;
+  // Only show active orders — completed/cancelled stay in the sheet but are hidden here
+  orders = orders.filter(o => o.status === 'New' || o.status === 'Preparing');
+  if (!orders.length) {
+    container.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><br>لا توجد طلبات</div>';
+    return;
+  }
+  // Sort newest first
+  orders.sort((a,b) => (b.date||'') > (a.date||'') ? 1 : -1);
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>رقم الطلب</th>
+          <th>الاسم</th>
+          <th>الهاتف</th>
+          <th>الطلب</th>
+          <th>الحالة</th>
+          <th>BatchID</th>
+          <th>التاريخ</th>
+          <th>آخر تحديث</th>
+          <th>إجراء</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${orders.map(o => `
+          <tr>
+            <td class="td-id">${o.id||'—'}</td>
+            <td>${o.name||'—'}</td>
+            <td style="font-family:monospace;font-size:.8rem">${o.phone||'—'}</td>
+            <td class="td-items" title="${o.items||''}">${o.items||'—'}</td>
+            <td><span class="badge badge-${o.status||'New'}">${_statusAr(o.status)}</span></td>
+            <td style="font-family:monospace;font-size:.7rem;color:rgba(255,255,255,.35);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.batchId||''}">${o.batchId ? o.batchId.replace('BATCH-','').split('-').slice(-1)[0] : '—'}</td>
+            <td class="td-date">${_fmtDate(o.date)}</td>
+            <td class="td-date">${_fmtDate(o.updated)}</td>
+            <td>
+              <select class="status-select" onchange="updateSingleStatus('${o.id}','${storeKey}',this)">
+                <option value="New"       ${o.status==='New'       ?'selected':''}>جديد</option>
+                <option value="Preparing" ${o.status==='Preparing' ?'selected':''}>جاري التحضير</option>
+                <option value="Delivered" ${o.status==='Delivered' ?'selected':''}>تم التوصيل</option>
+                <option value="Cancelled" ${o.status==='Cancelled' ?'selected':''}>ملغي</option>
+              </select>
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ── Update single order status ──
+async function updateSingleStatus(orderId, storeKey, selectEl) {
+  const newStatus = selectEl.value;
+  const orig = selectEl.dataset.orig || selectEl.value;
+  selectEl.disabled = true;
+  try {
+    const res = await api('adminUpdateOrderStatus', { orderId, status: newStatus, sheet: storeKey });
+    if (res.success) {
+      toast(`تم تحديث الحالة إلى: ${_statusAr(newStatus)}`, 'success');
+      selectEl.dataset.orig = newStatus;
+      // Update cache and re-render so completed/cancelled orders disappear from the list
+      const cached = _storeOrdersCache[storeKey];
+      if (cached) {
+        const o = cached.find(x => x.id === orderId);
+        if (o) o.status = newStatus;
+        if (newStatus === 'Delivered' || newStatus === 'Cancelled') {
+          renderOrdersTable(storeKey, cached);
+          return;
+        }
+      }
+    } else {
+      toast('خطأ: ' + res.message, 'error');
+      selectEl.value = orig;
+    }
+  } catch(e) {
+    toast('تعذر التحديث: ' + e.message, 'error');
+    selectEl.value = orig;
+  } finally { selectEl.disabled = false; }
+}
+
+// ── Bulk status change ──
+async function bulkStatus(storeKey, fromStatus, toStatus) {
+  const fromAr = _statusAr(fromStatus), toAr = _statusAr(toStatus);
+  if (!confirm(`تحويل جميع الطلبات "${fromAr}" إلى "${toAr}"؟\n\nهذا الإجراء يؤثر على جميع الطلبات المؤهلة.`)) return;
+  try {
+    const res = await api('bulkUpdateStatus', { sheet: storeKey, fromStatus, toStatus });
+    if (res.success) {
+      toast(`تم تحويل ${res.updated} طلب من "${fromAr}" إلى "${toAr}" ✓`, 'success');
+      loadStoreOrders(storeKey);
+    } else toast('خطأ: ' + res.message, 'error');
+  } catch(e) { toast('تعذر التنفيذ: ' + e.message, 'error'); }
+}
+
+async function bulkMarkDelivered(storeKey) {
+  const batchSel = document.getElementById('proc-batch-' + storeKey);
+  const batchId  = (batchSel && batchSel.value) ? batchSel.value : '';
+  const batchLabel = batchId ? '\nالدورة: ' + batchId.split('-').slice(-1)[0] : '\n(كل الدورات)';
+  if (!confirm('تحويل كل طلبات "تحضير" إلى "تم التوصيل"؟' + batchLabel)) return;
+  try {
+    const params = { sheet: storeKey };
+    if (batchId) params.batchId = batchId;
+    const res = await api('bulkMarkDelivered', params);
+    if (res.success) {
+      toast(`تم تحويل ${res.updated} طلب إلى "تم التوصيل" ✓`, 'success');
+      loadStoreOrders(storeKey);
+    } else toast('خطأ: ' + res.message, 'error');
+  } catch(e) { toast('تعذر التنفيذ: ' + e.message, 'error'); }
+}
+
+// ════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════
+function _statusAr(s) {
+  return { New:'جديد', Preparing:'جاري التحضير', Delivered:'تم التوصيل', Cancelled:'ملغي' }[s] || s;
+}
+function _fmtDate(d) {
+  if (!d) return '—';
+  return String(d).substring(0, 16);
+}
+function _toDatetimeLocal(str) {
+  if (!str) return '';
+  try {
+    const d = new Date(String(str).trim());
+    if (isNaN(d.getTime())) return String(str).replace(' ','T').substring(0,16);
+    // Use LOCAL time (not UTC) so 7pm shows as 7pm in the browser
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch(_) { return String(str).replace(' ','T').substring(0,16); }
+}
+
+// ════════════════════════════════════════════════════════
+//  REFRESH ALL
+// ════════════════════════════════════════════════════════
+async function refreshAll() {
+  const btn = document.querySelector('.btn-refresh');
+  btn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> جاري التحديث...';
+  await Promise.all([ loadOverview(), loadVisibility() ]);
+  // Refresh active store if on store page
+  const activePage = document.querySelector('.page.active');
+  if (activePage && activePage.id.startsWith('page-store-')) {
+    const storeKey = activePage.id.replace('page-store-','');
+    loadStoreOrders(storeKey);
+    loadStoreWindow(storeKey);
+  }
+  document.getElementById('lastRefresh').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
+  btn.innerHTML = '<i class="fas fa-sync-alt"></i> تحديث';
+}
+
+// ════════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════════
+function hideOverlay() {
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+// Safety: always hide overlay after 6s max — never stay stuck
+setTimeout(hideOverlay, 6000);
+
+(async function init() {
+  try {
+    await loadStoresList();
+    await Promise.all([ loadOverview(), loadVisibility() ]);
+    // Show GitHub token banner only if no token saved yet
+    try {
+      const tr = await api('hasGitHubToken', {}, 8000);
+      if (!tr?.hasToken) document.getElementById('ghTokenSection').style.display = 'block';
+    } catch(e) { /* hide banner on error */ }
+    document.getElementById('lastRefresh').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
+  } catch(e) {
+    console.warn('[Admin] init error:', e.message);
+  } finally {
+    hideOverlay();
+  }
+})();
+// ── Extend Batch Modal ────────────────────────────────────
+let _extendStore   = null;
+let _extendBatches = [];
+
+async function openExtendModal(storeKey) {
+  _extendStore = storeKey;
+  // Default new end = now + 2 hours
+  const d = new Date(Date.now() + 2 * 3600000);
+  const pad = n => String(n).padStart(2,'0');
+  const def = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const defT = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  document.getElementById('extendNewDate').value = def;
+  document.getElementById('extendNewTime').value = defT;
+  document.getElementById('extendPreview').textContent = '';
+  document.getElementById('extendBatchInfo').style.display = 'none';
+  document.getElementById('extendModal').style.display = 'flex';
+
+  // Load previous batches into dropdown
+  const sel = document.getElementById('extendBatchSelect');
+  sel.innerHTML = '<option value="">⏳ جاري تحميل الدورات...</option>';
+  try {
+    const res = await api('getPreviousBatches', { store: storeKey });
+    _extendBatches = res.batches || [];
+    if (!_extendBatches.length) {
+      sel.innerHTML = '<option value="">لا توجد دورات سابقة</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">— اختر دورة —</option>' +
+      _extendBatches.map(b => {
+        const label = b.batchId.replace('BATCH-','').replace(storeKey+'-','').slice(-6);
+        const active = b.isActive ? ' ★ نشطة' : '';
+        const info = `[${b.total} طلب | ${(b.firstOrder||'').substring(0,10)}]`;
+        return `<option value="${b.batchId}">${label}${active} ${info}</option>`;
+      }).join('');
+    // Auto-select the active batch
+    const activeBatch = _extendBatches.find(b => b.isActive);
+    if (activeBatch) { sel.value = activeBatch.batchId; onExtendBatchChange(); }
+  } catch(e) {
+    sel.innerHTML = '<option value="">تعذر التحميل</option>';
+  }
+}
+
+function onExtendBatchChange() {
+  const batchId  = document.getElementById('extendBatchSelect').value;
+  const infoEl   = document.getElementById('extendBatchInfo');
+  if (!batchId) { infoEl.style.display = 'none'; return; }
+  const batch = _extendBatches.find(b => b.batchId === batchId);
+  if (!batch) return;
+  infoEl.style.display = '';
+  infoEl.innerHTML = `
+    <div style="color:rgba(255,255,255,.5);margin-bottom:.3rem">تفاصيل الدورة المختارة:</div>
+    <div>🆔 <span style="font-family:monospace;color:#18bfef;font-size:.75rem">${batch.batchId}</span></div>
+    <div>📅 أول طلب: <b style="color:#fff">${(batch.firstOrder||'—').substring(0,16)}</b></div>
+    <div>📅 آخر طلب: <b style="color:#fff">${(batch.lastOrder||'—').substring(0,16)}</b></div>
+    <div id="extendEndInfo-${batchId}" style="color:#18bfef">⏰ جاري تحميل وقت الإغلاق...</div>
+    <div>📦 إجمالي الطلبات: <b style="color:#fff">${batch.total}</b>
+      &nbsp;|&nbsp; جديد: <span style="color:#18bfef">${batch.new}</span>
+      &nbsp;|&nbsp; تحضير: <span style="color:#ffa500">${batch.preparing}</span>
+      &nbsp;|&nbsp; تسليم: <span style="color:#28c864">${batch.delivered}</span>
+    </div>
+    ${batch.isActive ? '<div style="color:#28c864;margin-top:.2rem">✓ الدورة الحالية النشطة</div>' : '<div style="color:#ffa500;margin-top:.2rem">⚠ دورة سابقة — سيتم إعادة تفعيلها</div>'}`;
+}
+
+function closeExtendModal() {
+  document.getElementById('extendModal').style.display = 'none';
+  _extendStore   = null;
+  _extendBatches = [];
+}
+
+// ── Batch auto-close watcher ─────────────────────────────────
+// Runs every 30s on the admin page — acts exactly like pressing 🔒 إغلاق
+// when the batch end time passes. Works for both normal close and extend.
+var _batchWatchers = {};
+
+function startBatchWatcher(storeKey) {
+  if (_batchWatchers[storeKey]) clearInterval(_batchWatchers[storeKey]);
+
+  _batchWatchers[storeKey] = setInterval(async function() {
+    try {
+      var res = await api('getStoreOrderWindow', { store: storeKey }, 8000);
+      if (!res || !res.success) return;
+
+      // Only act if batch is still active and end time is set
+      if (res.batchStatus !== 'active' || !res.end) return;
+
+      var endTime = new Date(res.end.replace(' ', 'T'));
+      if (isNaN(endTime.getTime())) return;
+
+      if (new Date() >= endTime) {
+        // Time's up — do exactly what the 🔒 close button does
+        clearInterval(_batchWatchers[storeKey]);
+        delete _batchWatchers[storeKey];
+
+        var closeRes = await api('closeBatch', { store: storeKey }, 20000);
+        if (closeRes && closeRes.success) {
+          toast('🔒 تم إغلاق الدورة تلقائياً — ' + (closeRes.ordersUpdated || 0) + ' طلب تحوّل لـ Preparing', 'success');
+          loadStoreOrders(storeKey);
+          loadBatchDropdown(storeKey);
+          loadProcBatchDropdown(storeKey);
+        }
+      }
+    } catch(_) {}
+  }, 30000); // check every 30 seconds
+}
+
+function updateExtendPreview() {
+  const d = document.getElementById('extendNewDate').value;
+  const t = document.getElementById('extendNewTime').value;
+  const p = document.getElementById('extendPreview');
+  if (p && d && t) {
+    const dt = new Date(d + 'T' + t);
+    p.textContent = 'سيتم الإغلاق: ' + dt.toLocaleDateString('ar-AE', { weekday:'long', day:'numeric', month:'long' })
+                  + ' الساعة ' + dt.toLocaleTimeString('ar-AE', { hour:'2-digit', minute:'2-digit' });
+  }
+}
+
+async function confirmExtend() {
+  const newDate  = document.getElementById('extendNewDate').value;
+  const newTime  = document.getElementById('extendNewTime').value;
+  const batchId  = document.getElementById('extendBatchSelect').value;
+  if (!newDate || !newTime) { alert('يرجى تحديد تاريخ ووقت الإغلاق'); return; }
+  if (!batchId) { alert('يرجى اختيار الدورة أولاً'); return; }
+  // Build as unambiguous UTC ISO (same fix as saveWindow/confirmNewBatch) so
+  // the backend's Date parsing lands on the instant the admin actually picked.
+  const newEndReadable = newDate + ' ' + newTime;
+  const newEnd = new Date(newDate + 'T' + newTime).toISOString();
+  const btn = document.getElementById('extendConfirmBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التمديد...';
+  try {
+    const res = await api('extendBatch', { store: _extendStore, newEnd, batchId });
+    if (res.success) {
+      // Also update the store order window end time to match the new batch end
+      // so the "وقت الإغلاق" field always shows the latest saved time
+      try {
+        const winStart = document.getElementById('win-start-' + _extendStore)?.value;
+        if (winStart) {
+          await api('setStoreOrderWindow', {
+            store: _extendStore,
+            start: new Date(winStart).toISOString(),
+            end:   newEnd
+          });
+        }
+      } catch(_) { /* non-critical — batch already extended */ }
+
+      closeExtendModal();
+      const rev = res.revertedOrders > 0 ? ` — ${res.revertedOrders} طلب رجع لـ "جديد"` : '';
+      toast('✓ تم التمديد حتى ' + newEndReadable + rev, 'success');
+      loadStoreWindow(_extendStore);   // ← refreshes the closing time input
+      loadBatchStatus(_extendStore);
+      loadStoreOrders(_extendStore);
+    } else { toast('خطأ: ' + res.message, 'error'); }
+  } catch(e) { toast('تعذر: ' + e.message, 'error'); }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-check"></i> تأكيد التمديد';
+}
+
+// ════════════════════════════════════════════════════════
+//  PROCESSING PIPELINE
+// ════════════════════════════════════════════════════════
+var _procResults = {};
+
+function procGetLocation(storeKey) {
+  if (!navigator.geolocation) { toast('المتصفح لا يدعم تحديد الموقع', 'error'); return; }
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    document.getElementById('proc-lat-' + storeKey).value = pos.coords.latitude.toFixed(6);
+    document.getElementById('proc-lng-' + storeKey).value = pos.coords.longitude.toFixed(6);
+    document.getElementById('proc-status-' + storeKey).textContent = '📍 تم تحديد موقعك';
+  }, function() { toast('تعذّر تحديد الموقع', 'error'); });
+}
+
+  // ── Pipeline card: batch dropdown helpers ─────────────────────
+  async function loadProcBatchDropdown(storeKey) {
+    const sel = document.getElementById('proc-batch-' + storeKey);
+    if (!sel) return;
+    try {
+      const res = await api('getPreviousBatches', { store: storeKey });
+      const batches = res.batches || [];
+      _batchData[storeKey] = batches;
+      if (!batches.length) {
+        sel.innerHTML = '<option value="">لا توجد دورات — ابدأ دورة جديدة أولاً</option>';
+        return;
+      }
+      sel.innerHTML = '<option value="">— اختر دورة —</option>' +
+        batches.map(function(b) {
+          const short  = b.batchId.split('-').slice(-1)[0];
+          const active = b.isActive ? ' ★ نشطة' : '';
+          const date   = (b.firstOrder || '').substring(0, 10);
+          return '<option value="' + b.batchId + '">'
+               + active + ' ' + short + ' — ' + date
+               + ' (' + b.total + ' طلب | ' + b.preparing + ' تحضير)'
+               + '</option>';
+        }).join('');
+      // Auto-select batch with Preparing orders, else active
+      var withPrep = batches.find(function(b){ return b.preparing > 0; });
+      var active   = batches.find(function(b){ return b.isActive; });
+      if (withPrep) sel.value = withPrep.batchId;
+      else if (active) sel.value = active.batchId;
+      onProcBatchChange(storeKey);
+    } catch(e) { sel.innerHTML = '<option value="">تعذر التحميل</option>'; }
+  }
+
+  function onProcBatchChange(storeKey) {
+    var sel    = document.getElementById('proc-batch-'      + storeKey);
+    var info   = document.getElementById('proc-batch-info-' + storeKey);
+    var btn    = document.getElementById('proc-btn-'        + storeKey);
+    var warnEl = document.getElementById('proc-warn-'       + storeKey);
+    if (!sel) return;
+    var batchId = sel.value;
+
+    // No batch selected → disable button
+    if (!batchId) {
+      if (info)   info.textContent = '';
+      if (btn)    { btn.disabled = true; btn.style.opacity = '.5'; }
+      if (warnEl) warnEl.style.display = 'none';
+      return;
+    }
+
+    // Batch selected → button always ENABLED (pipeline will explain if nothing to process)
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    if (warnEl) warnEl.style.display = 'none';
+
+    var batches = _batchData[storeKey] || [];
+    var batch   = batches.find(function(b){ return b.batchId === batchId; });
+    if (batch && info) {
+      var prepColor = batch.preparing > 0 ? '#28c864' : '#ffa500';
+      info.innerHTML = 'إجمالي: ' + batch.total
+        + ' | <span style="color:' + prepColor + ';font-weight:700">تحضير: ' + batch.preparing + '</span>'
+        + ' | توصيل: ' + batch.delivered
+        + ' | جديد: ' + batch.new
+        + (batch.isActive ? ' | ★ نشطة' : ' | مغلقة')
+        + (batch.preparing === 0 && batch.new > 0
+            ? '<div style="margin-top:4px;color:#ffa500">⚠️ يوجد ' + batch.new + ' أوردر بحالة New — أغلق نافذة الطلبات أولاً لتحويلها إلى Preparing</div>'
+            : '');
+    }
+  }
+
+  // ── New runProcessPipeline: batch-aware + status validation ─────
+  async function runProcessPipeline(storeKey) {
+    var store = STORES.find(function(s){ return s.key === storeKey; });
+    if (!store) return;
+    // Ensure sheet and workspace are always defined
+    if (!store.sheet)     store.sheet     = store.key;
+    if (!store.workspace) store.workspace = store.key + 'Workspace';
+
+    var batchSel = document.getElementById('proc-batch-' + storeKey);
+    var batchId  = batchSel ? batchSel.value : '';
+    if (!batchId) { toast('اختر دورة (Batch) أولاً', 'error'); return; }
+
+    var lat = (document.getElementById('proc-lat-' + storeKey).value || '').trim();
+    var lng = (document.getElementById('proc-lng-' + storeKey).value || '').trim();
+    if (!lat || !lng) { toast('أدخل نقطة البداية أولاً', 'error'); return; }
+
+    var btn      = document.getElementById('proc-btn-'     + storeKey);
+    var prog     = document.getElementById('proc-prog-'    + storeKey);
+    var fill     = document.getElementById('proc-fill-'    + storeKey);
+    var status   = document.getElementById('proc-status-'  + storeKey);
+    var resDiv   = document.getElementById('proc-results-' + storeKey);
+    var warnEl   = document.getElementById('proc-warn-'       + storeKey);
+    var warnList = document.getElementById('proc-warn-list-'  + storeKey);
+
+    // Step 1 — fetch orders & validate all are Preparing
+    btn.disabled       = true;
+    status.textContent = '🔍 جاري التحقق من أوردرات الدورة...';
+    status.style.color = '#18bfef';
+    if (warnEl) warnEl.style.display = 'none';
+
+    try {
+      var ordersRes  = await api('getStoreOrders', { sheet: store.sheet });
+      var allOrders  = ordersRes.orders || [];
+      var batchOrders = allOrders.filter(function(o){ return o.batchId === batchId; });
+
+      if (!batchOrders.length) {
+        toast('لا توجد أوردرات في هذه الدورة', 'error');
+        status.textContent = '⚠️ الدورة لا تحتوي أوردرات';
+        status.style.color = '#ffa500';
+        btn.disabled = false;
+        return;
+      }
+
+      // Check count of Preparing (status may be 'Preparing' or its Arabic equivalent 'جاري التحضير')
+      var isPreparing = function(o){ return o.status === 'Preparing' || o.status === 'جاري التحضير'; };
+      var prepOrders = batchOrders.filter(isPreparing);
+      var newOrders  = batchOrders.filter(function(o){ return o.status === 'New'; });
+
+      if (prepOrders.length === 0 && newOrders.length > 0) {
+        // All orders still New — guide admin to close the batch window first
+        if (warnList) warnList.innerHTML =
+          '<div style="margin-bottom:.4rem">يوجد <strong style="color:#fff">' + newOrders.length + '</strong> أوردر بحالة <strong style="color:#18bfef">New</strong> لم تُحوَّل بعد.</div>'
+          + '<div>لتحويلها إلى Preparing: اضغط زر <strong style="color:#ff6060">🔒 إغلاق</strong> في قسم الدورة الحالية أعلاه.</div>';
+        if (warnEl) {
+          warnEl.style.display = 'block';
+          warnEl.querySelector('div').textContent = 'خطوة مطلوبة قبل المعالجة:';
+        }
+        status.textContent = '⚠️ الأوردرات لا تزال بحالة New — يجب إغلاق الدورة أولاً';
+        status.style.color = '#ffa500';
+        btn.disabled = false;
+        return;
+      }
+
+      // Check all are Preparing (ignore old Delivered/Cancelled orders — they're
+      // historical and won't be touched by the pipeline anyway)
+      var nonPrep = batchOrders.filter(function(o){
+        return !isPreparing(o) && o.status !== 'Delivered' && o.status !== 'Cancelled';
+      });
+      if (nonPrep.length > 0) {
+        if (warnList) warnList.innerHTML = nonPrep.map(function(o){
+          return '<div style="margin-bottom:.3rem">🔸 طلب <strong style="color:#fff">'
+            + (o.id || '—') + '</strong>'
+            + (o.name ? ' — ' + o.name : '')
+            + ' — الحالة: <strong style="color:#f59e0b">' + o.status + '</strong>'
+            + '</div>';
+        }).join('');
+        if (warnEl) warnEl.style.display = 'block';
+        status.textContent = '⚠️ ' + nonPrep.length + ' أوردر بحالة مختلفة — يرجى مراجعتها أولاً';
+        status.style.color = '#ffa500';
+        btn.disabled = false;
+        return;
+      }
+
+      // Step 2 — All Preparing: run pipeline
+      if (prog) prog.style.display = 'block';
+      if (resDiv) resDiv.style.display = 'none';
+
+      var steps = [
+        [12,'📋 تجميع أوردرات الدورة...'],
+        [28,'🔍 جلب بيانات العملاء...'],
+        [45,'✏️ تمليء الـ Workspace...'],
+        [60,'⚡ ترتيب المسار...'],
+        [75,'🔀 فرز تلقائي...'],
+        [88,'🔗 توليد روابط Maps...'],
+        [95,'✅ تحديث الحالة...'],
+      ];
+      var si = 0;
+      var tick = setInterval(function(){
+        if (si < steps.length){
+          if(fill) fill.style.width = steps[si][0]+'%';
+          status.textContent = steps[si][1];
+          status.style.color = '#f59e0b';
+          si++;
+        }
+      }, 1000);
+
+      var data = await api('processVendorFull', {
+        sheet    : store.sheet,
+        workspace: store.workspace,
+        lat      : lat,
+        lng      : lng,
+        batchId  : batchId
+      }, 120000);
+
+      clearInterval(tick);
+      if (!data.success) throw new Error(data.message);
+
+      if (fill) fill.style.width = '100%';
+      status.textContent = '✅ ' + data.message + (data.noCoords ? ' ⚠️ ' + data.noCoords + ' بدون موقع' : '');
+      status.style.color = '#28c864';
+
+      window._procResults = window._procResults || {};
+      window._procResults[storeKey] = { text: data.whatsappText || '', store: store };
+
+      var lc = document.getElementById('proc-links-' + storeKey);
+      if (lc) lc.innerHTML = (data.links && data.links.length)
+        ? data.links.map(function(l){
+            return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(255,255,255,.04);border-radius:8px;margin-bottom:6px;border-right:3px solid #18bfef">'
+              + '<div style="background:#18bfef;color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">' + l.route + '</div>'
+              + '<div style="flex:1;font-size:12px"><div style="font-weight:700;color:#fff">مسار ' + l.route + '</div><div style="color:rgba(255,255,255,.35)">' + l.stops + ' موقع</div></div>'
+              + '<a href="' + l.url + '" target="_blank" style="padding:5px 12px;background:#28c864;color:#fff;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none">📍 افتح</a>'
+              + '</div>';
+          }).join('')
+        : '<p style="color:rgba(255,255,255,.3);font-size:12px;text-align:center">لا توجد روابط</p>';
+
+      if (resDiv) resDiv.style.display = 'block';
+      loadStoreOrders(storeKey);
+      loadProcBatchDropdown(storeKey);
+      toast('✅ ' + data.message, 'success');
+
+    } catch(e) {
+      status.textContent = '❌ ' + e.message;
+      status.style.color = '#ff6060';
+      toast('❌ ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      setTimeout(function(){ if(prog){prog.style.display='none'; if(fill)fill.style.width='0%';} }, 2000);
+    }
+  }
+
+async function procCopyWhatsapp(storeKey) {
+  var store = STORES.find(function(s) { return s.key === storeKey; });
+  if (store && !store.workspace) store.workspace = store.key + 'Workspace';
+  var text = (_procResults[storeKey] || {}).text || '';
+  if (!text && store) {
+    try { var r = await api('getWorkspaceExport', { workspace: store.workspace }); text = r.text || ''; } catch(e) {}
+  }
+  if (!text) { toast('قم بمعالجة الأوردرات أولاً', 'error'); return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('\u2705 تم النسخ! الصق في واتساب.', 'success');
+  } catch(e) {
+    var el = document.createElement('textarea');
+    el.value = text; document.body.appendChild(el); el.select();
+    document.execCommand('copy'); document.body.removeChild(el);
+    toast('\u2705 تم النسخ!', 'success');
+  }
+}
+
+function procPrint(storeKey) {
+  var store = STORES.find(function(s) { return s.key === storeKey; });
+  var text  = (_procResults[storeKey] || {}).text || '';
+  if (!text) { toast('قم بمعالجة الأوردرات أولاً', 'error'); return; }
+  var rows = text.split('---------------------------').map(function(t) { return t.trim(); }).filter(function(t) { return t; });
+  var w = window.open('', '_blank');
+  var sName = store ? store.name : '';
+  w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>أوردرات ' + sName + '</title>'
+    + '<style>body{font-family:Arial;direction:rtl;padding:20px;font-size:13px}'
+    + '.ob{border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:12px;page-break-inside:avoid;white-space:pre-line}'
+    + 'h2{margin-bottom:16px}@media print{body{padding:0}}</style></head><body>'
+    + '<h2>أوردرات ' + sName + ' - ' + new Date().toLocaleDateString('ar-AE') + '</h2>'
+    + rows.map(function(r) { return '<div class="ob">' + r.replace(/</g,'&lt;') + '</div>'; }).join('')
+    + '<script>window.print();<\/script></body></html>');
+  w.document.close();
+}
+
+// ════════════════════════════════════════════════════════
+//  MULTI-VENDOR DELIVERY
+// ════════════════════════════════════════════════════════
+var _mvResults = null; // cache last result
+
+function openMultiVendorModal() {
+  // Build vendor checkboxes from current STORES list
+  var list = document.getElementById('mvVendorList');
+  // Default to ALL vendors selected — admin can still uncheck any of them,
+  // but forgetting to tick a store should not be how it gets left out.
+  list.innerHTML = STORES.map(function(s) {
+    return '<label style="display:flex;align-items:center;gap:.7rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:.65rem 1rem;cursor:pointer">'
+      + '<input type="checkbox" data-key="' + s.key + '" checked style="width:18px;height:18px;accent-color:#f59e0b;cursor:pointer">'
+      + '<span class="store-dot" style="background:' + s.color + '"></span>'
+      + '<span style="font-size:.92rem;color:#fff;font-weight:600">' + s.name + '</span>'
+      + '</label>';
+  }).join('');
+
+  // Reset UI
+  document.getElementById('mv-prog-wrap').style.display = 'none';
+  document.getElementById('mv-results').style.display   = 'none';
+  document.getElementById('mv-run-btn').disabled        = false;
+  document.getElementById('mv-fill').style.width        = '0%';
+  document.getElementById('mv-status').textContent      = '';
+  _mvResults = null;
+
+  document.getElementById('multiVendorModal').style.display = 'flex';
+}
+
+function closeMultiVendorModal() {
+  document.getElementById('multiVendorModal').style.display = 'none';
+}
+
+function mvGetLocation() {
+  if (!navigator.geolocation) { toast('المتصفح لا يدعم الموقع', 'error'); return; }
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    document.getElementById('mv-lat').value = pos.coords.latitude.toFixed(6);
+    document.getElementById('mv-lng').value = pos.coords.longitude.toFixed(6);
+    toast('✓ تم تحديد موقعك', 'success');
+  }, function() { toast('تعذر تحديد الموقع', 'error'); });
+}
+
+async function runMultiVendorPipeline() {
+  // Get selected vendors
+  var checked = Array.from(document.querySelectorAll('#mvVendorList input[type=checkbox]:checked'))
+    .map(function(cb) { return cb.dataset.key; });
+
+  if (checked.length === 0) { toast('اختر تاجر واحد على الأقل', 'error'); return; }
+
+  var lat = document.getElementById('mv-lat').value.trim();
+  var lng = document.getElementById('mv-lng').value.trim();
+  if (!lat || !lng) { toast('أدخل نقطة البداية', 'error'); return; }
+
+  var btn     = document.getElementById('mv-run-btn');
+  var progWrap= document.getElementById('mv-prog-wrap');
+  var fill    = document.getElementById('mv-fill');
+  var status  = document.getElementById('mv-status');
+  var results = document.getElementById('mv-results');
+
+  btn.disabled = true;
+  progWrap.style.display = 'block';
+  results.style.display  = 'none';
+  fill.style.width = '0%';
+
+  // Animate progress
+  var steps = [
+    [15, '📦 جمع الأوردرات من التجار المختارين...'],
+    [30, '👥 تجميع طلبات نفس العميل...'],
+    [50, '⚡ ترتيب أقصر مسار توصيل...'],
+    [70, '🔢 تعيين أرقام التوصيل...'],
+    [85, '🔗 توليد روابط Maps...'],
+    [93, '✅ حفظ النتائج في الشيتات...'],
+  ];
+  var si = 0;
+  var tick = setInterval(function() {
+    if (si < steps.length) {
+      fill.style.width     = steps[si][0] + '%';
+      status.textContent   = steps[si][1];
+      si++;
+    }
+  }, 1400);
+
+  try {
+    var data = await api('processMultiVendorFull', {
+      vendors: checked.join(','),
+      lat: lat,
+      lng: lng
+    }, 180000);
+
+    clearInterval(tick);
+
+    if (!data.success) throw new Error(data.message);
+
+    fill.style.width   = '100%';
+    status.textContent = '✅ ' + data.message;
+    status.style.color = '#28c864';
+
+    _mvResults = data;
+
+    // Show summary
+    document.getElementById('mv-summary').innerHTML =
+      '✅ ' + data.message + '<br>' +
+      '<span style="font-size:.78rem;color:rgba(255,255,255,.5)">إجمالي الأوردرات: ' + data.totalOrders + ' | العملاء الموحدين: ' + data.totalCustomers + '</span>';
+
+    // Show route links
+    var linksEl = document.getElementById('mv-links');
+    linksEl.innerHTML = (data.links && data.links.length)
+      ? data.links.map(function(l) {
+          return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,255,255,.04);border-radius:7px;border-right:3px solid #f59e0b">'
+            + '<div style="background:#f59e0b;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0">' + l.route + '</div>'
+            + '<div style="flex:1;font-size:12px;color:rgba(255,255,255,.65)">مسار ' + l.route + ' — ' + l.stops + ' موقع</div>'
+            + '<a href="' + l.url + '" target="_blank" style="padding:4px 10px;background:#28c864;color:#fff;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none">📍 افتح</a>'
+            + '</div>';
+        }).join('')
+      : '<div style="font-size:12px;color:rgba(255,255,255,.3)">لا توجد روابط مسار</div>';
+
+    // Store vendor texts globally so onclick can access them directly
+    window._mvVendorTexts = data.vendorTexts || {};
+
+    // Per-vendor copy buttons — built as inline-onclick HTML (same proven pattern as combined button)
+    var vendorBtnsEl = document.getElementById('mv-vendor-btns');
+    vendorBtnsEl.innerHTML = checked.map(function(key) {
+      var store = STORES.find(function(s) { return s.key === key; }) || { name: key, color: '#18bfef' };
+      var safeKey = String(key).replace(/'/g, "\\'");
+      return '<button onclick="mvCopyVendor(\'' + safeKey + '\')" '
+        + 'style="flex:1;min-width:130px;padding:8px;background:rgba(255,255,255,.06);color:#fff;border:1px solid '
+        + store.color + '44;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700">'
+        + '📋 ' + store.name + '</button>';
+    }).join('');
+
+    results.style.display = 'block';
+    toast('✅ ' + data.message, 'success');
+
+  } catch(e) {
+    clearInterval(tick);
+    fill.style.width   = '0%';
+    status.textContent = '❌ ' + e.message;
+    status.style.color = '#ff6060';
+    toast('❌ ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// Copy per-vendor text (called from dynamically created buttons)
+async function mvCopyVendor(key) {
+  var vt   = window._mvVendorTexts || {};
+  var text = vt[key] || '';
+  // Fallback: backend may key by sheet-name; match the store's folder/sheetName/name
+  if (!text) {
+    var store = STORES.find(function(s) { return s.key === key; });
+    if (store) {
+      var alt = vt[store.sheetName] || vt[store.folder] || vt[store.name];
+      if (alt) text = alt;
+    }
+  }
+  if (!text) {
+    toast('لا يوجد نص لـ ' + key + ' — المتاح: ' + Object.keys(vt).join(', '), 'error');
+    return;
+  }
+  var vName = (STORES.find(function(s){ return s.key === key; }) || { name: key }).name;
+  var ok = false;
+  try {
+    await navigator.clipboard.writeText(text);
+    ok = true;
+  } catch(e) {
+    var el = document.createElement('textarea');
+    el.value = text;
+    el.style.position = 'fixed'; el.style.top = '-9999px';
+    document.body.appendChild(el); el.focus(); el.select();
+    try { ok = document.execCommand('copy'); } catch(e2) { ok = false; }
+    document.body.removeChild(el);
+  }
+  if (ok) toast('✅ تم نسخ قائمة ' + vName + ' — الصقها في واتساب', 'success');
+  else    toast('⚠️ تعذّر النسخ التلقائي لـ ' + vName, 'error');
+}
+
+async function mvCopyText(key) {
+  if (!_mvResults) { toast('شغّل التجميع أولاً', 'error'); return; }
+
+  var text = _mvResults.combinedText || '';
+
+  if (!text) {
+    toast('لا يوجد نص للقائمة المجمعة', 'error');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('✅ تم النسخ! الصق في واتساب.', 'success');
+  } catch(e) {
+    var el = document.createElement('textarea');
+    el.value = text; document.body.appendChild(el); el.select();
+    document.execCommand('copy'); document.body.removeChild(el);
+    toast('✅ تم النسخ!', 'success');
+  }
+}
+
+function mvPrint(key) {
+  if (!_mvResults) { toast('شغّل التجميع أولاً', 'error'); return; }
+  var text = key === 'combined'
+    ? (_mvResults.combinedText || '')
+    : ((window._mvVendorTexts || {})[key] || '');
+  if (!text) { toast('لا يوجد نص', 'error'); return; }
+
+  var title = key === 'combined' ? 'القائمة المجمعة'
+    : (STORES.find(function(s){return s.key===key;})||{name:key}).name;
+
+  var rows = text.split('---------------------------').map(function(t){return t.trim();}).filter(Boolean);
+  var w = window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>' + title + '</title>'
+    + '<style>body{font-family:Arial;direction:rtl;padding:20px;font-size:13px}'
+    + '.ob{border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:12px;page-break-inside:avoid;white-space:pre-line}'
+    + 'h2{margin-bottom:16px}@media print{body{padding:0}}</style></head><body>'
+    + '<h2>' + title + ' — ' + new Date().toLocaleDateString('ar-AE') + '</h2>'
+    + rows.map(function(r){return '<div class="ob">'+r.replace(/</g,'&lt;')+'</div>';}).join('')
+    + '<script>window.print();<\/script></body></html>');
+  w.document.close();
+}
+</script>
+
+<!-- Extend Batch Modal -->
+<div id="extendModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;overflow-y:auto;padding:1rem">
+  <div style="background:#0d1a28;border:1.5px solid rgba(24,191,239,.3);border-radius:16px;padding:2rem;min-width:340px;max-width:520px;width:100%">
+
+    <div style="font-family:'Alexandria',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:1.2rem">
+      <i class="fas fa-clock" style="color:#18bfef;margin-left:.5rem"></i> تمديد دورة الطلبات
+    </div>
+
+    <!-- Batch selector -->
+    <div style="margin-bottom:1.2rem">
+      <label style="font-size:.8rem;color:rgba(255,255,255,.55);display:block;margin-bottom:.4rem">
+        <i class="fas fa-layer-group" style="color:#18bfef;margin-left:.3rem"></i>
+        اختر الدورة المراد تمديدها
+      </label>
+      <select id="extendBatchSelect" onchange="onExtendBatchChange()"
+        style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem 1rem;color:#fff;font-size:.85rem;outline:none;cursor:pointer">
+        <option value="">⏳ جاري تحميل الدورات السابقة...</option>
+      </select>
+      <!-- Batch info card -->
+      <div id="extendBatchInfo" style="display:none;margin-top:.7rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:.8rem 1rem;font-size:.8rem;line-height:1.9">
+      </div>
+    </div>
+
+    <!-- New end time -->
+    <div style="margin-bottom:1.2rem">
+      <label style="font-size:.8rem;color:rgba(255,255,255,.55);display:block;margin-bottom:.4rem">
+        <i class="fas fa-stop-circle" style="color:#ff6060;margin-left:.3rem"></i>
+        وقت الإغلاق الجديد
+      </label>
+      <div style="display:flex;gap:.6rem">
+        <input type="date" id="extendNewDate" onchange="updateExtendPreview()"
+          style="flex:1;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.3);border-radius:9px;padding:.65rem .9rem;color:#fff;font-size:.95rem;outline:none;cursor:pointer">
+        <input type="time" id="extendNewTime" step="60" onchange="updateExtendPreview()"
+          style="width:130px;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.3);border-radius:9px;padding:.65rem .9rem;color:#fff;font-size:.95rem;outline:none;cursor:pointer">
+      </div>
+      <div id="extendPreview" style="font-size:.78rem;color:#18bfef;margin-top:.4rem;min-height:1rem"></div>
+    </div>
+
+    <div style="font-size:.78rem;color:rgba(255,255,255,.35);margin-bottom:1.2rem;line-height:1.7">
+      ℹ️ جميع طلبات الدورة المختارة بحالة <span style="color:#ffa500">جاري التحضير</span> ستعود تلقائياً إلى <span style="color:#18bfef">جديد</span>، وستُفعَّل الدورة مجدداً.
+    </div>
+
+    <div style="display:flex;gap:.8rem">
+      <button id="extendConfirmBtn" onclick="confirmExtend()"
+        style="flex:1;background:linear-gradient(135deg,#18bfef,#0d9bcb);color:#fff;font-family:'Cairo',sans-serif;font-weight:700;border:none;border-radius:9px;padding:.75rem;cursor:pointer;font-size:.9rem">
+        <i class="fas fa-check"></i> تأكيد التمديد
+      </button>
+      <button onclick="closeExtendModal()"
+        style="flex:1;background:transparent;border:1.5px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);font-family:'Cairo',sans-serif;border-radius:9px;padding:.75rem;cursor:pointer;font-size:.9rem">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ NEW BATCH MODAL ══ -->
+<div id="newBatchModal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);align-items:center;justify-content:center">
+  <div style="background:#0d1520;border:1px solid rgba(24,191,239,.3);border-radius:18px;padding:2rem;width:min(460px,92vw)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem">
+      <div style="font-family:'Alexandria',sans-serif;font-size:1.05rem;font-weight:800;color:#fff">
+        <i class="fas fa-plus-circle" style="color:#18bfef;margin-left:.5rem"></i>بدء دورة طلبات جديدة
+      </div>
+      <button onclick="closeNewBatchModal()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:1.2rem;cursor:pointer"><i class="fas fa-times"></i></button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:1rem">
+      <div style="display:flex;flex-direction:column;gap:.75rem">
+        <div>
+          <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">
+            <i class="fas fa-play-circle" style="color:#28c864"></i> وقت الفتح
+          </label>
+          <input type="datetime-local" id="nb-start" onchange="updateNewBatchPreview()"
+            style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.2);border-radius:9px;padding:.6rem .9rem;color:#fff;font-size:.9rem;outline:none;box-sizing:border-box;cursor:pointer">
+        </div>
+        <div>
+          <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">
+            <i class="fas fa-stop-circle" style="color:#ff6060"></i> وقت الإغلاق
+          </label>
+          <input type="datetime-local" id="nb-end" onchange="updateNewBatchPreview()"
+            style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(ff6060,.2);border:1.5px solid rgba(255,96,96,.3);border-radius:9px;padding:.6rem .9rem;color:#fff;font-size:.9rem;outline:none;box-sizing:border-box;cursor:pointer">
+        </div>
+      </div>
+
+      <div id="nb-preview" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:.7rem 1rem;font-family:'Cairo',sans-serif;font-size:.82rem;line-height:1.8;min-height:2.5rem"></div>
+
+      <div style="font-size:.72rem;color:rgba(255,255,255,.3);line-height:1.6">
+        ℹ️ سيتم إنشاء BatchID جديد وحفظ وقت الإغلاق — ستُعرض للعملاء عداد تنازلي حتى وقت الإغلاق
+      </div>
+
+      <div style="display:flex;gap:.7rem;margin-top:.4rem">
+        <button id="nb-confirm-btn" onclick="confirmNewBatch()"
+          style="flex:1;background:linear-gradient(135deg,#18bfef,#0d9bcb);border:none;color:#fff;font-family:'Alexandria',sans-serif;font-size:.95rem;font-weight:800;padding:.85rem;border-radius:10px;cursor:pointer">
+          <i class="fas fa-check"></i> بدء الدورة
+        </button>
+        <button onclick="closeNewBatchModal()"
+          style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.6);font-family:'Cairo',sans-serif;font-size:.88rem;padding:.85rem 1.2rem;border-radius:10px;cursor:pointer">إلغاء</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MULTI-VENDOR DELIVERY MODAL ══ -->
+<div id="multiVendorModal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);align-items:flex-start;justify-content:center;overflow-y:auto;padding:2rem 1rem">
+  <div style="background:#0d1520;border:1px solid rgba(245,158,11,.35);border-radius:18px;padding:2rem;width:min(560px,96vw);margin:auto">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem">
+      <div style="font-family:'Alexandria',sans-serif;font-size:1.1rem;font-weight:800;color:#fff">
+        🚚 تجميع التوصيل — أكثر من تاجر
+      </div>
+      <button onclick="closeMultiVendorModal()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:1.2rem;cursor:pointer"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- Step 1: Select vendors -->
+    <div style="margin-bottom:1.2rem">
+      <div style="font-size:.8rem;color:rgba(255,255,255,.55);font-weight:700;margin-bottom:.6rem">
+        <i class="fas fa-store" style="color:#f59e0b;margin-left:.4rem"></i>
+        اختر التجار اللي هيتوصلوا مع بعض اليوم
+      </div>
+      <div id="mvVendorList" style="display:flex;flex-direction:column;gap:.5rem">
+        <!-- Filled dynamically -->
+      </div>
+    </div>
+
+    <!-- Step 2: Start location -->
+    <div style="margin-bottom:1.2rem">
+      <div style="font-size:.8rem;color:rgba(255,255,255,.55);font-weight:700;margin-bottom:.6rem">
+        <i class="fas fa-map-marker-alt" style="color:#f59e0b;margin-left:.4rem"></i>
+        نقطة البداية (موقعك)
+      </div>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <label style="font-size:.72rem;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Latitude</label>
+          <input type="number" id="mv-lat" step="any" value="24.5144395" placeholder="24.5144395"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none;box-sizing:border-box">
+        </div>
+        <div style="flex:1;min-width:120px">
+          <label style="font-size:.72rem;color:rgba(255,255,255,.35);display:block;margin-bottom:3px">Longitude</label>
+          <input type="number" id="mv-lng" step="any" value="54.375908" placeholder="54.375908"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none;box-sizing:border-box">
+        </div>
+        <button onclick="mvGetLocation()"
+          style="padding:8px 13px;background:#17a2b8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;align-self:flex-end">
+          📱 موقعي
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div id="mv-prog-wrap" style="display:none;margin-bottom:.8rem">
+      <div style="background:rgba(255,255,255,.08);border-radius:50px;height:7px;overflow:hidden;margin-bottom:6px">
+        <div id="mv-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#f59e0b,#18bfef);border-radius:50px;transition:width .6s ease"></div>
+      </div>
+      <div id="mv-status" style="font-size:12px;color:rgba(255,255,255,.5);text-align:center"></div>
+    </div>
+
+    <!-- Run button -->
+    <button id="mv-run-btn" onclick="runMultiVendorPipeline()"
+      style="width:100%;padding:13px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:800;font-family:'Cairo',sans-serif;margin-bottom:.8rem">
+      🚀 تجميع ومعالجة الطلبات
+    </button>
+
+    <!-- Results -->
+    <div id="mv-results" style="display:none">
+      <div style="background:rgba(40,200,100,.08);border:1px solid rgba(40,200,100,.25);border-radius:10px;padding:1rem;margin-bottom:1rem">
+        <div id="mv-summary" style="font-size:.85rem;color:#28c864;font-weight:700;margin-bottom:.5rem"></div>
+        <div id="mv-links" style="display:flex;flex-direction:column;gap:6px;margin-top:.6rem"></div>
+      </div>
+
+      <!-- Copy buttons -->
+      <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin-bottom:.5rem;font-weight:700">📋 نسخ / طباعة القوائم:</div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem">
+        <button onclick="mvCopyText('combined')"
+          style="flex:1;min-width:140px;padding:9px;background:#25d366;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">
+          📋 نسخ القائمة المجمعة
+        </button>
+        <button onclick="mvPrint('combined')"
+          style="flex:1;min-width:140px;padding:9px;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">
+          🖨️ طباعة المجمعة
+        </button>
+      </div>
+      <!-- Per-vendor buttons — filled dynamically -->
+      <div id="mv-vendor-btns" style="display:flex;gap:.5rem;flex-wrap:wrap"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ ADD STORE MODAL ══ -->
+<div id="addStoreModal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);align-items:center;justify-content:center">
+  <div style="background:#0d1520;border:1px solid rgba(24,191,239,.3);border-radius:18px;padding:2rem;width:min(480px,92vw);max-height:85vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem">
+      <div id="addStoreModalTitle" style="font-family:'Alexandria',sans-serif;font-size:1.1rem;font-weight:800;color:#fff"><i class="fas fa-store" style="color:#18bfef;margin-left:.5rem"></i>إضافة متجر جديد</div>
+      <button onclick="closeAddStoreModal()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:1.2rem;cursor:pointer"><i class="fas fa-times"></i></button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.9rem">
+      <!-- Name -->
+      <div>
+        <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">اسم المتجر بالعربي *</label>
+        <input id="as-name" type="text" placeholder="مثال: الركن المصري" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem 1rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.95rem;outline:none;box-sizing:border-box">
+      </div>
+      <!-- Key -->
+      <div>
+        <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">المعرّف الإنجليزي (يطابق اسم الشيت في Google Sheets) *</label>
+        <input id="as-key" type="text" placeholder="مثال: AlRoknAlMasry" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem 1rem;color:#fff;font-family:monospace;font-size:.9rem;outline:none;box-sizing:border-box">
+        <div id="as-key-hint" style="font-size:.7rem;color:rgba(255,255,255,.3);margin-top:.25rem">⚠️ انجليزي بدون مسافات — لازم يطابق اسم الـ Tab في Google Sheets</div>
+      </div>
+      <!-- Tag & Icon row -->
+      <div style="display:flex;gap:.7rem">
+        <div style="flex:1">
+          <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">التصنيف</label>
+          <input id="as-tag" type="text" placeholder="مثال: لحوم طازجة" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem .8rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.88rem;outline:none;box-sizing:border-box">
+        </div>
+        <div style="width:90px">
+          <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">أيقونة</label>
+          <input id="as-icon" type="text" value="🛒" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem .8rem;color:#fff;font-size:1.3rem;outline:none;text-align:center;box-sizing:border-box">
+        </div>
+      </div>
+      <!-- City -->
+      <div>
+        <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">الموقع / المدينة</label>
+        <input id="as-city" type="text" placeholder="مثال: عجمان، الإمارات" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem 1rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.9rem;outline:none;box-sizing:border-box">
+      </div>
+      <!-- Auto info -->
+      <div style="background:rgba(24,191,239,.07);border:1px solid rgba(24,191,239,.2);border-radius:9px;padding:.7rem 1rem;font-size:.76rem;color:rgba(255,255,255,.55);line-height:1.8">
+        <i class="fas fa-magic" style="color:#18bfef"></i> <b style="color:rgba(255,255,255,.75)">يتم أوتوماتيك بعد الإضافة:</b><br>
+        • شيت جديد في Google Sheets باسم المعرّف<br>
+        • فولدر <code style="color:#18bfef">frontend/assets/Menu/{key}/</code> على GitHub<br>
+        • فولدر <code style="color:#18bfef">discounts/</code> بداخله تلقائياً
+      </div>
+      <!-- Item label & Color row -->
+      <div style="display:flex;gap:.7rem">
+        <div style="flex:1">
+          <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">نوع المنتج (للتصنيف)</label>
+          <input id="as-itemlabel" type="text" placeholder="مثال: لحم / دجاج / خضار" style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(24,191,239,.25);border-radius:9px;padding:.65rem .8rem;color:#fff;font-family:'Cairo',sans-serif;font-size:.88rem;outline:none;box-sizing:border-box">
+        </div>
+        <div style="width:90px">
+          <label style="font-size:.78rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">لون</label>
+          <input id="as-color" type="color" value="#18bfef" style="width:100%;height:42px;border:none;border-radius:9px;cursor:pointer;background:none;padding:0">
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:.7rem;margin-top:1.4rem">
+      <button id="as-submit-btn" onclick="submitAddStore()" style="flex:1;background:linear-gradient(135deg,#18bfef,#0d9bcb);border:none;color:#fff;font-family:'Alexandria',sans-serif;font-size:.95rem;font-weight:800;padding:.85rem;border-radius:10px;cursor:pointer">
+        <i class="fas fa-plus"></i> إضافة المتجر
+      </button>
+      <button onclick="closeAddStoreModal()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.6);font-family:'Cairo',sans-serif;font-size:.88rem;padding:.85rem 1.2rem;border-radius:10px;cursor:pointer">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
