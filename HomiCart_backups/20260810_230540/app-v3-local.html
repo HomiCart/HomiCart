@@ -3806,7 +3806,7 @@
             if (!card) return;
             const editBtn = card.querySelector('.btn-cur-edit');
             const canBtn  = card.querySelector('.btn-cur-cancel');
-            if (editBtn) editBtn.addEventListener('click', () => _editCurrentOrder(o.id, o.items || '', o.itemsStructured));
+            if (editBtn) editBtn.addEventListener('click', () => _editCurrentOrder(o.id, o.items || ''));
             if (canBtn)  canBtn.addEventListener('click',  () => _cancelCurrentOrder(o.id, storeSheet, 'cancel-btn-' + o.id, 'cur-card-' + o.id));
           });
 
@@ -3839,7 +3839,7 @@
   }
 
   // ── Current-order helpers ──────────────────────────────
-  async function _editCurrentOrder(orderId, items, itemsStructured) {
+  async function _editCurrentOrder(orderId, items) {
     const store = window._pendingStore;
     if (!store) return;
 
@@ -3851,7 +3851,6 @@
     // Set edit state BEFORE navigating — do NOT use goToOrderPage (it resets _editingOrderId)
     window._editingOrderId = orderId;
     window._opPendingEditItems = items; // survives any duplicate/late render — see renderMenuItemsBox
-    window._opPendingEditStructured = itemsStructured || null;
     _opSaved = false;
     _showStep('stepCurrentOrder', false);
 
@@ -3866,7 +3865,7 @@
     const btn = document.getElementById('opSaveBtn');
     const lbl = document.getElementById('opSaveTxt');
     const err = document.getElementById('opError');
-    _prefillOrderForEdit(items, itemsStructured);
+    _prefillOrderForEdit(items);
     if (lbl)   lbl.textContent = 'حفظ التعديلات';
     if (btn)   btn.disabled = false;
     if (err) { err.textContent = `✏️ تعديل الطلب: ${orderId}`; err.style.color = '#18bfef'; }
@@ -4068,7 +4067,7 @@
     // Starting a genuinely new (non-edit) order must never carry over a
     // previous edit session's pending prefill data — otherwise a stray late
     // render could stamp an old order's quantities onto a brand-new one.
-    if (!window._editingOrderId) { window._opPendingEditItems = null; window._opPendingEditStructured = null; }
+    if (!window._editingOrderId) window._opPendingEditItems = null;
 
     // Build thumbnail HTML from already-loaded images
     const menuImgs     = window._menuImages     || [];
@@ -4332,7 +4331,7 @@
     // Re-applying here, on every render, makes the prefill immune to that:
     // no matter how many times (or in what order) this box gets rebuilt,
     // it always ends up reflecting the order actually being edited.
-    if (window._opPendingEditItems) _prefillOrderForEdit(window._opPendingEditItems, window._opPendingEditStructured);
+    if (window._opPendingEditItems) _prefillOrderForEdit(window._opPendingEditItems);
   }
 
   function clearAllMenuQty() {
@@ -4513,24 +4512,6 @@
     return lines;
   }
 
-  // Machine-readable companion to buildMenuOrderLines(), keyed by each
-  // item's stable id (assigned in admin, survives renaming) instead of its
-  // display name. Sent alongside the human-readable order text so editing
-  // an order later can restore quantities reliably even if the admin has
-  // since renamed the item — name-text parsing alone breaks in that case.
-  function buildMenuOrderStructured() {
-    const items = window._opMenuItems || [];
-    const structured = [];
-    items.forEach((item, i) => {
-      if (item.isDivider || !item.id) return;
-      const qty = parseFloat(document.getElementById('miQty' + i)?.value) || 0;
-      if (qty <= 0) return;
-      const note = (document.getElementById('miNote' + i)?.value || '').trim();
-      structured.push({ id: item.id, qty, note });
-    });
-    return structured;
-  }
-
   // Reverse of _formatQtyForOrder: "نصف كيلو" -> 0.5, "1.5 كيلو" -> 1.5, ...
   function _parseQtyFromOrderText(text) {
     if (/^نصف\s*كيلو/.test(text)) return 0.5;
@@ -4546,45 +4527,8 @@
   // previous order's lines back onto their matching quantity cards (so the
   // fee/invoice recompute against the true combined quantity), and leaves
   // only genuinely free-typed lines (no matching menu item) in the notes box.
-  // structuredJson (optional): JSON array of {id, qty, note}, keyed by each
-  // item's stable id — see buildMenuOrderStructured(). Preferred whenever
-  // present since it's immune to the admin having renamed an item since the
-  // order was placed; itemsText parsing is the fallback for orders placed
-  // before this existed.
-  function _prefillOrderForEdit(itemsText, structuredJson) {
+  function _prefillOrderForEdit(itemsText) {
     const menuItems = window._opMenuItems || [];
-
-    let structured = null;
-    if (structuredJson) {
-      try {
-        const parsed = typeof structuredJson === 'string' ? JSON.parse(structuredJson) : structuredJson;
-        if (Array.isArray(parsed) && parsed.length) structured = parsed;
-      } catch(e) { structured = null; }
-    }
-
-    if (structured) {
-      const byId = {};
-      menuItems.forEach((it, i) => { if (it.id) byId[it.id] = i; });
-      structured.forEach(entry => {
-        const idx = byId[entry.id];
-        if (idx === undefined) return; // item removed entirely since — nothing to restore it to
-        const inp  = document.getElementById('miQty'  + idx);
-        const note = document.getElementById('miNote' + idx);
-        const card = document.getElementById('miCard'  + idx);
-        if (inp)  inp.value = entry.qty;
-        if (note && entry.note) note.value = entry.note;
-        if (card) card.classList.toggle('has-qty', entry.qty > 0);
-      });
-      // Structured orders never have manually-typed leftover text (the
-      // free-text box was removed once every order became card-based).
-      const ta = document.getElementById('opItemsInput');
-      if (ta) ta.value = '';
-      updateMenuOrderPreview();
-      _refreshDeliveryFeeDisplay();
-      return;
-    }
-
-    // ── Legacy fallback: fragile name-text parsing (pre-dates stable ids) ──
     const byName = {};
     menuItems.forEach((it, i) => { if (!it.isDivider) byName[it.name] = i; });
 
@@ -4737,7 +4681,6 @@
     const items = menuLines.length
       ? (menuLines.join('\n') + (manualNotes ? '\n---\n' + manualNotes : ''))
       : manualNotes;
-    const itemsStructured = JSON.stringify(buildMenuOrderStructured());
 
     const err = document.getElementById('opError');
     if (!items) {
@@ -4849,7 +4792,6 @@
         result = await _callScript('updateOrderWithNewId', {
           orderId : window._editingOrderId,
           items   : items,
-          itemsStructured: itemsStructured,
           deliveryOption : deliveryOption,
           paymentMethod  : paymentMethod,
           invoiceTotal   : invoiceTotal,
@@ -4877,7 +4819,6 @@
           longitude   : !isNaN(parseFloat(customer.longitude)) ? String(parseFloat(customer.longitude)) : '',
           location    : (!isNaN(parseFloat(customer.latitude)) && !isNaN(parseFloat(customer.longitude))) ? `https://www.google.com/maps?q=${parseFloat(customer.latitude)},${parseFloat(customer.longitude)}` : '',
           orderText   : items,
-          itemsStructured: itemsStructured,
           deliveryOption : deliveryOption,
           paymentMethod  : paymentMethod,
           invoiceTotal   : invoiceTotal,
@@ -4910,7 +4851,7 @@
     localStorage.setItem('homiCart_pendingOrder', JSON.stringify({
       orderId, sheetName: store.sheetName,
       storeName: store.cfg?.name || '', storeKey: store.storeKey,
-      items, itemsStructured, savedAt: Date.now(),
+      items, savedAt: Date.now(),
     }));
 
     // ── Show success screen inside menuContainer (same place as ordering layout) ──
@@ -5056,7 +4997,7 @@
           const editBtn   = card.querySelector('.btn-edit-order');
           const cancelBtn = card.querySelector('.btn-cancel-order');
           if (editBtn) editBtn.addEventListener('click', () => {
-            _editOrderFromMyOrders(o.id, o.items || '', se.folder, se.sheetName, se.name, o.itemsStructured);
+            _editOrderFromMyOrders(o.id, o.items || '', se.folder, se.sheetName, se.name);
           });
           if (cancelBtn) cancelBtn.addEventListener('click', () => {
             cancelOrderByCustomer(o.id, se.sheetName, cancelBtn);
@@ -5070,13 +5011,12 @@
   }
 
   // Edit order from "طلباتي" — navigates to the correct store then opens edit panel
-  async function _editOrderFromMyOrders(orderId, items, folder, sheetName, storeName, itemsStructured) {
+  async function _editOrderFromMyOrders(orderId, items, folder, sheetName, storeName) {
     const matchedStore = (window._appStores || stores || []).find(s => s.folder === folder);
     if (!matchedStore) { alert('تعذر فتح متجر ' + storeName); return; }
 
     window._editingOrderId = orderId;
     window._opPendingEditItems = items; // survives any duplicate/late render — see renderMenuItemsBox
-    window._opPendingEditStructured = itemsStructured || null;
     window._pendingStore   = { folder: matchedStore.folder, name: matchedStore.name, tag: matchedStore.tag || '' };
 
     await selectStore(matchedStore.folder, matchedStore.name, matchedStore.tag || '');
@@ -5087,7 +5027,7 @@
     const btn = document.getElementById('opSaveBtn');
     const lbl = document.getElementById('opSaveTxt');
     const err = document.getElementById('opError');
-    _prefillOrderForEdit(items, itemsStructured);
+    _prefillOrderForEdit(items);
     if (lbl) lbl.textContent = 'حفظ التعديلات';
     if (btn) btn.disabled = false;
     if (err) { err.textContent = `✏️ تعديل الطلب: ${orderId}`; err.style.color = '#18bfef'; }
@@ -5131,17 +5071,16 @@
     return { New: 'جديد', Preparing: 'جاري التحضير', Delivered: 'تم التوصيل', Cancelled: 'ملغي' }[s] || s;
   }
 
-  async function loadOrderForEdit(orderId, items, itemsStructured) {
+  async function loadOrderForEdit(orderId, items) {
     window._editingOrderId = orderId;
     window._opPendingEditItems = items; // survives any duplicate/late render — see renderMenuItemsBox
-    window._opPendingEditStructured = itemsStructured || null;
     _opSaved = false;
     const store = window._opStore;
     if (!store) return;
     await orderNow(store.storeKey);
     const btn = document.getElementById('opSaveBtn');
     const lbl = document.getElementById('opSaveTxt');
-    _prefillOrderForEdit(items, itemsStructured);
+    _prefillOrderForEdit(items);
     if (btn)   btn.disabled = false;
     if (lbl)   lbl.textContent = 'حفظ التعديلات';
     // Show edit indicator
@@ -5165,7 +5104,6 @@
     // Set editing state — saveOrder will call updateOrderItems instead of submitOrder
     window._editingOrderId = pending.orderId || null;
     window._opPendingEditItems = pending.items || null; // survives any duplicate/late render — see renderMenuItemsBox
-    window._opPendingEditStructured = pending.itemsStructured || null;
     _opSaved = false;
 
     const store = window._opStore;
@@ -5173,7 +5111,7 @@
       await orderNow(store.storeKey);
       const btn = document.getElementById('opSaveBtn');
       const lbl = document.getElementById('opSaveTxt');
-      if (pending.items) _prefillOrderForEdit(pending.items, pending.itemsStructured);
+      if (pending.items) _prefillOrderForEdit(pending.items);
       if (btn) btn.disabled = false;
       if (lbl) lbl.textContent = 'حفظ التعديلات'; // different label for edit mode
     }
