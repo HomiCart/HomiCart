@@ -4505,8 +4505,8 @@
         // sheet shows exactly what's in the bundle, not just its title.
         const contents = item.isOffer && item.offerItems?.length
           ? ` (${item.offerItems.join('، ')})` : '';
-        let line = `عدد ${_formatQtyForOrder(qty, item.unit)} — ${item.name}${contents}`;
-        if (note) line += ` — (${note})`;
+        let line = `${item.name}${contents} — ${_formatQtyForOrder(qty, item.unit)}`;
+        if (note) line += ` (${note})`;
         lines.push(line);
       }
     });
