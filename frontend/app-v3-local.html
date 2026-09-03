@@ -1001,17 +1001,6 @@
     }
     .btn-cur-edit:hover { filter: brightness(1.1); }
     .cur-order-row2 { display: flex; gap: .65rem; }
-    .btn-cur-new {
-      flex: 1;
-      background: linear-gradient(135deg, #f5a623 0%, #e08c00 100%);
-      color: #fff; font-family: 'Alexandria', sans-serif;
-      font-size: .9rem; font-weight: 700; border: none;
-      border-radius: 50px; padding: .78rem 1rem; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; gap: .45rem;
-      box-shadow: 0 4px 14px rgba(245,166,35,.25);
-      transition: filter .2s;
-    }
-    .btn-cur-new:hover { filter: brightness(1.1); }
     .btn-cur-cancel {
       flex: 1;
       background: transparent;
@@ -1030,15 +1019,6 @@
     }
     .cur-order-secondary .btn-cust-amber,
     .cur-order-secondary .btn-cust-secondary { flex: 1; font-size: .88rem; padding: .75rem 1rem; }
-    .cur-order-new-warn {
-      background: rgba(245,166,35,.10);
-      border: 1.5px solid rgba(245,166,35,.35);
-      border-radius: 12px; padding: .85rem 1.1rem;
-      font-family: 'Cairo', sans-serif; font-size: .84rem;
-      color: rgba(255,220,100,.9); direction: rtl; line-height: 1.6;
-      margin-bottom: .7rem;
-    }
-    .cur-order-new-warn strong { color: #f5a623; }
 
     /* ══════════════════════════════
        How-to-order note card
@@ -1639,6 +1619,42 @@
       border-radius: 8px;
       padding: .5rem .7rem;
     }
+    .invoice-suborder-label {
+      font-weight: 700; color: #18bfef; font-size: .84rem;
+      margin: .5rem 0 .3rem; padding-top: .5rem;
+      border-top: 1px dashed rgba(24,191,239,.25);
+    }
+    .invoice-suborder-label:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+    .sub-orders-summary {
+      display: flex; flex-direction: column; gap: .5rem;
+      margin-top: .6rem;
+    }
+    .sub-order-chip {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: .6rem; background: rgba(24,191,239,.08);
+      border: 1px solid rgba(24,191,239,.25); border-radius: 10px;
+      padding: .55rem .8rem;
+      font-family: 'Cairo', sans-serif; font-size: .8rem;
+      color: rgba(255,255,255,.85); direction: rtl;
+    }
+    .sub-order-chip button {
+      background: none; border: none; cursor: pointer;
+      color: rgba(255,100,100,.6); font-size: .85rem; padding: 0; line-height: 1;
+      transition: color .15s;
+    }
+    .sub-order-chip button:hover { color: #ff6060; }
+    .add-sub-order-wrap { margin-top: .6rem; }
+    .add-sub-order-btn {
+      width: 100%;
+      background: transparent;
+      color: #18bfef; font-family: 'Alexandria', sans-serif;
+      font-size: .84rem; font-weight: 700;
+      border: 1.5px dashed rgba(24,191,239,.4); border-radius: 50px;
+      padding: .7rem 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: .45rem;
+      transition: border-color .2s, background .2s;
+    }
+    .add-sub-order-btn:hover { border-color: rgba(24,191,239,.8); background: rgba(24,191,239,.06); }
     .menu-items-footer {
       display: flex; justify-content: space-between; align-items: center;
       margin-top: .7rem;
@@ -2315,31 +2331,6 @@
 
         <!-- Dynamic order cards injected by JS -->
         <div id="curOrdersList"></div>
-
-        <!-- ── "طلب جديد" + warning ── -->
-        <div class="cur-order-actions" style="margin-top:.5rem">
-          <button class="btn-cur-new" id="btnCurNew" style="width:100%"
-            onclick="document.getElementById('curOrderNewWarn').style.display='block';this.style.display='none'">
-            <i class="fas fa-plus-circle"></i>&nbsp;طلب جديد إضافي
-          </button>
-          <div id="btnCurNewNote" class="cust-window-note" style="display:none"></div>
-          <div class="cur-order-new-warn" id="curOrderNewWarn" style="display:none">
-            <strong>⚠ تنبيه:</strong> لديك طلب مسجل بالفعل ضمن هذه الدورة.<br>
-            أي طلب جديد سيُسجَّل <strong>بشكل مستقل</strong> وقد تُطبَّق عليه
-            <strong>تكلفة توصيل إضافية</strong> منفصلة عن طلبك الحالي.
-            <div style="display:flex;gap:.6rem;margin-top:.8rem;">
-              <button class="btn-cur-edit" style="font-size:.86rem;padding:.65rem 1rem;flex:1"
-                onclick="_confirmNewOrder()">
-                <i class="fas fa-check"></i>&nbsp;تأكيد، أريد طلباً جديداً
-              </button>
-              <button class="btn-cur-cancel"
-                style="font-size:.86rem;padding:.65rem 1rem;flex:1;border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.6)"
-                onclick="document.getElementById('curOrderNewWarn').style.display='none';document.getElementById('btnCurNew').style.display=''">
-                <i class="fas fa-arrow-right"></i>&nbsp;رجوع
-              </button>
-            </div>
-          </div>
-        </div>
 
         <!-- ── Secondary actions ── -->
         <div class="cur-order-secondary">
@@ -3810,10 +3801,6 @@
             if (canBtn)  canBtn.addEventListener('click',  () => _cancelCurrentOrder(o.id, storeSheet, 'cancel-btn-' + o.id, 'cur-card-' + o.id));
           });
 
-          // Reset "طلب جديد" button visibility
-          document.getElementById('btnCurNew').style.display = '';
-          document.getElementById('curOrderNewWarn').style.display = 'none';
-
           _showStep('stepCurrentOrder', true);
           _showStep('stepExisting', false);
         } else {
@@ -3870,15 +3857,6 @@
     if (lbl)   lbl.textContent = 'حفظ التعديلات';
     if (btn)   btn.disabled = false;
     if (err) { err.textContent = `✏️ تعديل الطلب: ${orderId}`; err.style.color = '#18bfef'; }
-  }
-
-  function _confirmNewOrder() {
-    window._editingOrderId = null;
-    _opSaved = false;
-    _showStep('stepCurrentOrder', false);
-    document.getElementById('curOrderNewWarn').style.display = 'none';
-    document.getElementById('btnCurNew').style.display = '';
-    goToOrderPage();
   }
 
   async function _cancelCurrentOrder(orderId, sheetName, btnId, cardId) {
@@ -4069,6 +4047,11 @@
     // previous edit session's pending prefill data — otherwise a stray late
     // render could stamp an old order's quantities onto a brand-new one.
     if (!window._editingOrderId) { window._opPendingEditItems = null; window._opPendingEditStructured = null; }
+    // Any confirmed "add another order" rounds belong to whichever order
+    // panel was open before — never carry them into a new panel (editing
+    // an existing multi-round order just re-merges everything into one
+    // round, which is an accepted simplification — see _prefillOrderForEdit).
+    _resetSubOrders();
 
     // Build thumbnail HTML from already-loaded images
     const menuImgs     = window._menuImages     || [];
@@ -4317,6 +4300,12 @@
         <div class="menu-items-title"><i class="fas fa-drumstick-bite"></i> اختار من القائمة</div>
         <div class="menu-items-list">${rows}</div>
         <div class="menu-order-preview" id="menuOrderPreview"></div>
+        <div class="sub-orders-summary" id="subOrdersSummary"></div>
+        <div class="add-sub-order-wrap" id="addSubOrderWrap">
+          <button type="button" class="add-sub-order-btn" onclick="addAnotherSubOrder()">
+            <i class="fas fa-plus"></i> إضافة أوردر تاني بفاتورة منفصلة
+          </button>
+        </div>
         <div class="menu-items-footer">
           <div class="menu-items-note">✓ الأصناف المحددة بتضاف للطلب أوتوماتيك</div>
           <button class="menu-clear-btn" type="button" onclick="clearAllMenuQty()">
@@ -4333,6 +4322,10 @@
     // no matter how many times (or in what order) this box gets rebuilt,
     // it always ends up reflecting the order actually being edited.
     if (window._opPendingEditItems) _prefillOrderForEdit(window._opPendingEditItems, window._opPendingEditStructured);
+    // Re-render the confirmed-sub-orders summary too, for the same
+    // duplicate/late-render-immunity reason as the prefill above.
+    _renderSubOrdersSummary();
+    updateMenuOrderPreview();
   }
 
   function clearAllMenuQty() {
@@ -4365,6 +4358,94 @@
     _refreshDeliveryFeeDisplay();
   }
 
+  // ── "Add another order — separate invoice" ──────────────────────
+  // Lets one customer bundle up to 4 separate mini-orders (e.g. two
+  // roommates sharing a delivery) into a single submission: each round of
+  // picks gets snapshotted here when they click "add another", the cards
+  // reset for the next one, and delivery is computed ONCE against the
+  // combined total instead of per round (see _computeDeliveryFee below).
+  const SUBORDER_LABELS = ['الطلب الأول', 'الطلب الثاني', 'الطلب الثالث', 'الطلب الرابع'];
+  const SUBORDER_MAX = SUBORDER_LABELS.length;
+
+  function _resetSubOrders() {
+    window._opSubOrders = [];
+  }
+
+  // Sum of quantities for كيلو-priced items across already-confirmed
+  // sub-orders (not the current live cards — see _computeSelectedKg).
+  function _subOrdersSelectedKg() {
+    const menuItems = window._opMenuItems || [];
+    const byId = {};
+    menuItems.forEach(it => { if (it.id) byId[it.id] = it; });
+    let kg = 0;
+    (window._opSubOrders || []).forEach(so => {
+      so.structured.forEach(entry => {
+        const item = byId[entry.id];
+        if (item && (item.unit || 'كيلو') === 'كيلو') kg += entry.qty;
+      });
+    });
+    return kg;
+  }
+
+  // Items-only subtotal across already-confirmed sub-orders.
+  function _subOrdersItemsTotal() {
+    return (window._opSubOrders || []).reduce((s, so) => s + so.total, 0);
+  }
+
+  function addAnotherSubOrder() {
+    const lines = buildMenuOrderLines();
+    if (!lines.length) {
+      showOrderAlert('اختار صنف واحد على الأقل قبل ما تضيف طلب جديد');
+      return;
+    }
+    window._opSubOrders = window._opSubOrders || [];
+    if (window._opSubOrders.length >= SUBORDER_MAX - 1) return; // already at 4 total
+    const invoice = buildMenuOrderInvoice();
+    window._opSubOrders.push({
+      label     : SUBORDER_LABELS[window._opSubOrders.length],
+      lines     : lines,
+      structured: buildMenuOrderStructured(),
+      rows      : invoice.rows,
+      total     : invoice.total,
+    });
+    clearAllMenuQty();
+    _renderSubOrdersSummary();
+    updateMenuOrderPreview();
+    _refreshDeliveryFeeDisplay();
+  }
+
+  function removeSubOrder(idx) {
+    if (!window._opSubOrders) return;
+    window._opSubOrders.splice(idx, 1);
+    // Relabel the remaining ones so they stay sequential
+    window._opSubOrders.forEach((so, i) => { so.label = SUBORDER_LABELS[i]; });
+    _renderSubOrdersSummary();
+    updateMenuOrderPreview();
+    _refreshDeliveryFeeDisplay();
+  }
+
+  function _renderSubOrdersSummary() {
+    const box = document.getElementById('subOrdersSummary');
+    const addBtnWrap = document.getElementById('addSubOrderWrap');
+    if (!box) return;
+    const subOrders = window._opSubOrders || [];
+    box.innerHTML = subOrders.map((so, i) => `
+      <div class="sub-order-chip">
+        <span>✅ ${so.label} — ${so.lines.length} ${so.lines.length === 1 ? 'صنف' : 'أصناف'} — ${so.total} درهم</span>
+        <button type="button" onclick="removeSubOrder(${i})" title="حذف"><i class="fas fa-times"></i></button>
+      </div>`).join('');
+    if (addBtnWrap) {
+      const nextIdx = subOrders.length;
+      const btn = addBtnWrap.querySelector('.add-sub-order-btn');
+      if (nextIdx >= SUBORDER_MAX - 1) {
+        addBtnWrap.style.display = 'none';
+      } else {
+        addBtnWrap.style.display = '';
+        if (btn) btn.innerHTML = `<i class="fas fa-plus"></i> إضافة ${SUBORDER_LABELS[nextIdx + 1] ? 'أوردر ' + ['تاني','تالت','رابع'][nextIdx] : 'أوردر'} بفاتورة منفصلة`;
+      }
+    }
+  }
+
   // Sum of quantities for كيلو-priced items currently selected — used for
   // quantity-tiered delivery fees (e.g. Al Rokn Al Masry's 5kg threshold).
   function _computeSelectedKg() {
@@ -4388,9 +4469,11 @@
     if (opt.feeMode === 'tiered' && opt.tieredRule) {
       const { feeBelowThreshold, feeAtOrAboveThreshold } = opt.tieredRule;
       const threshold = opt.tieredRule.threshold ?? opt.tieredRule.thresholdKg ?? 0; // thresholdKg = old field name
+      // Combined across any confirmed sub-orders too — delivery is charged
+      // once per delivery stop, not once per mini-order bundled into it.
       const measure = opt.tieredRule.basis === 'value'
-        ? buildMenuOrderInvoice().total
-        : _computeSelectedKg();
+        ? +(buildMenuOrderInvoice().total + _subOrdersItemsTotal()).toFixed(2)
+        : _computeSelectedKg() + _subOrdersSelectedKg();
       return measure >= Number(threshold) ? Number(feeAtOrAboveThreshold) : Number(feeBelowThreshold);
     }
     return Number(opt.fee) || 0;
@@ -4448,26 +4531,42 @@
   function updateMenuOrderPreview() {
     const preview = document.getElementById('menuOrderPreview');
     if (!preview) return;
-    const { rows, total, hasUnknownPrice } = buildMenuOrderInvoice();
-    if (!rows.length) {
+    const current    = buildMenuOrderInvoice();
+    const subOrders  = window._opSubOrders || [];
+    if (!current.rows.length && !subOrders.length) {
       preview.style.display = 'none';
       preview.innerHTML = '';
       return;
     }
+
+    const itemsTotal     = +(current.total + _subOrdersItemsTotal()).toFixed(2);
+    const hasUnknownPrice = current.hasUnknownPrice || subOrders.some(so => so.rows.some(r => r.lineTotal == null));
     const deliveryFee = window._opDeliveryChoice ? _computeDeliveryFee(window._opDeliveryChoice) : null;
-    const grandTotal  = +(total + (deliveryFee || 0)).toFixed(2);
+    const grandTotal  = +(itemsTotal + (deliveryFee || 0)).toFixed(2);
+
+    // Group rows under a "الطلب الأول/الثاني/..." label only once the
+    // customer has actually used "إضافة أوردر بفاتورة منفصلة" — otherwise
+    // this looks exactly like the plain single-order preview as before.
+    const blocks = subOrders.map(so => ({ label: so.label, rows: so.rows }));
+    if (current.rows.length) {
+      blocks.push({ label: subOrders.length ? SUBORDER_LABELS[subOrders.length] : null, rows: current.rows });
+    }
+    const rowsHtml = rows => rows.map(r => `
+      <div class="invoice-row">
+        <span class="invoice-row-name">${r.name} <span class="invoice-row-qty">× ${r.qty} ${r.unit}</span></span>
+        <span class="invoice-row-total">${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}</span>
+      </div>`).join('');
+
     preview.style.display = 'block';
     preview.innerHTML = `
       <div class="invoice-title">📋 فاتورتك التقريبية</div>
       <div class="invoice-rows">
-        ${rows.map(r => `
-          <div class="invoice-row">
-            <span class="invoice-row-name">${r.name} <span class="invoice-row-qty">× ${r.qty} ${r.unit}</span></span>
-            <span class="invoice-row-total">${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}</span>
-          </div>`).join('')}
+        ${blocks.map(b => `
+          ${b.label ? `<div class="invoice-suborder-label">${b.label}</div>` : ''}
+          ${rowsHtml(b.rows)}`).join('')}
         ${deliveryFee != null ? `
           <div class="invoice-row">
-            <span class="invoice-row-name">رسوم التوصيل</span>
+            <span class="invoice-row-name">رسوم التوصيل${blocks.length > 1 ? ' (مرة واحدة على الكل)' : ''}</span>
             <span class="invoice-row-total">${deliveryFee > 0 ? deliveryFee + ' درهم' : 'مجاناً'}</span>
           </div>` : ''}
       </div>
@@ -4729,15 +4828,38 @@
 
   /* ── Submit order directly to Google Sheets ─────────── */
   async function saveOrder() {
+    // Combine any confirmed "add another order — separate invoice" rounds
+    // with the current one into a single submission — each round stays
+    // clearly labeled in the text/invoice, but it's one order, one delivery
+    // number, one delivery fee. With no extra rounds (the common case) this
+    // collapses to exactly the previous plain single-order behavior.
+    const subOrders = window._opSubOrders || [];
+    const currentInvoiceForBlocks = buildMenuOrderInvoice();
+    const currentLines = buildMenuOrderLines();
+    const currentStructured = buildMenuOrderStructured();
+    const blocks = [
+      ...subOrders.map(so => ({ label: so.label, lines: so.lines, structured: so.structured, rows: so.rows })),
+      ...(currentLines.length ? [{
+        label: subOrders.length ? SUBORDER_LABELS[subOrders.length] : null,
+        lines: currentLines, structured: currentStructured, rows: currentInvoiceForBlocks.rows,
+      }] : []),
+    ];
+
     // Compile menu-item quantities into the order text. opItemsInput is a
     // hidden field now (no visible free-text box) — it only ever holds
     // leftover text carried over from editing an older, pre-menu-cards order.
-    const menuLines = buildMenuOrderLines();
+    const menuLines = blocks.length > 1
+      ? blocks.map(b => `— ${b.label} —\n${b.lines.join('\n')}`)
+      : (blocks[0]?.lines || []);
     const manualNotes = document.getElementById('opItemsInput').value.trim();
     const items = menuLines.length
-      ? (menuLines.join('\n') + (manualNotes ? '\n---\n' + manualNotes : ''))
+      ? (menuLines.join(blocks.length > 1 ? '\n\n' : '\n') + (manualNotes ? '\n---\n' + manualNotes : ''))
       : manualNotes;
-    const itemsStructured = JSON.stringify(buildMenuOrderStructured());
+    const itemsStructured = JSON.stringify(
+      blocks.length > 1
+        ? blocks.flatMap((b, i) => b.structured.map(e => ({ ...e, suborder: i })))
+        : (blocks[0]?.structured || [])
+    );
 
     const err = document.getElementById('opError');
     if (!items) {
@@ -4821,22 +4943,27 @@
 
     const isEditing = !!window._editingOrderId;
 
-    // Grand total (menu-priced items + delivery fee) — recorded with the
-    // order so exports can show it alongside the route number. Manually
-    // typed free-text items aren't priced, so this only reflects whatever
-    // was picked from "اختار من القائمة".
-    const invoiceCalc   = buildMenuOrderInvoice();
-    const deliveryFeeNow = window._opDeliveryChoice ? _computeDeliveryFee(window._opDeliveryChoice) : 0;
-    const invoiceTotal   = +(invoiceCalc.total + deliveryFeeNow).toFixed(2);
+    // Grand total (menu-priced items across ALL rounds + one combined
+    // delivery fee) — recorded with the order so exports can show it
+    // alongside the route number. Manually typed free-text items aren't
+    // priced, so this only reflects whatever was picked from "اختار من القائمة".
+    const itemsTotal      = +blocks.reduce((s, b) => s + b.rows.reduce((rs, r) => rs + (r.lineTotal || 0), 0), 0).toFixed(2);
+    const deliveryFeeNow  = window._opDeliveryChoice ? _computeDeliveryFee(window._opDeliveryChoice) : 0;
+    const invoiceTotal    = +(itemsTotal + deliveryFeeNow).toFixed(2);
 
     // Itemized breakdown — same rows shown in the on-screen invoice preview
-    // (name × qty unit — price, all on one line per item), so exports can
-    // show exactly what the customer saw instead of just the final total.
-    const invoiceLines = invoiceCalc.rows.map(r =>
-      `${r.name} × ${r.qty} ${r.unit} — ${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}`
-    );
+    // (name × qty unit — price, all on one line per item), grouped under a
+    // "— {label} —" header per round when more than one is present, so
+    // exports show exactly what the customer saw instead of just the total.
+    const invoiceLines = [];
+    blocks.forEach(b => {
+      if (b.label) invoiceLines.push(`— ${b.label} —`);
+      b.rows.forEach(r => invoiceLines.push(
+        `${r.name} × ${r.qty} ${r.unit} — ${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}`
+      ));
+    });
     if (window._opDeliveryChoice) {
-      invoiceLines.push(`رسوم التوصيل — ${deliveryFeeNow > 0 ? deliveryFeeNow + ' درهم' : 'مجاناً'}`);
+      invoiceLines.push(`رسوم التوصيل${blocks.length > 1 ? ' (مرة واحدة على الكل)' : ''} — ${deliveryFeeNow > 0 ? deliveryFeeNow + ' درهم' : 'مجاناً'}`);
     }
     const invoiceBreakdown = invoiceLines.join('\n');
 
@@ -5224,7 +5351,7 @@
   function _applyOrderWindowGating() {
     const open = isOrderWindowOpen();
     const msg  = getWindowClosedMsg();
-    ['btnStartOrder', 'btnStartOrderSuccess', 'btnCurNew'].forEach(btnId => {
+    ['btnStartOrder', 'btnStartOrderSuccess'].forEach(btnId => {
       const btn  = document.getElementById(btnId);
       const note = document.getElementById(btnId + 'Note');
       if (btn)  btn.style.display  = open ? '' : 'none';
