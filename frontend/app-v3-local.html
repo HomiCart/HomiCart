@@ -3759,46 +3759,56 @@
         if (newOrders.length > 0) {
           // ── Show current-order panel ──
           document.getElementById('curOrderCustomerName').textContent = c.name || '';
+          // A multi-round order (see _parseOrderRounds) shows as several
+          // cards, so count actual visible cards, not just order rows.
+          const totalCards = newOrders.reduce((s, o) => s + (_parseOrderRounds(o)?.length || 1), 0);
           document.getElementById('curOrderSubtitle').textContent =
-            newOrders.length === 1
+            totalCards === 1
               ? 'لديك طلب مسجل حالياً'
-              : `لديك ${newOrders.length} طلبات مسجلة حالياً`;
+              : `لديك ${totalCards} طلبات مسجلة حالياً`;
 
-          // Render order cards
+          // Render order cards — one round becomes several cards sharing the
+          // same order id (see _parseOrderRounds); a plain order is one card.
+          const cardHtml = (o, r, dateStr) => `
+            <div class="cur-order-card" id="cur-card-${o.id}${r ? '-r' + r.roundIndex : ''}">
+              <div class="cur-order-meta">
+                <span class="cur-order-id">${o.id}${r ? ` <span style="opacity:.6;font-weight:600">· ${r.label}</span>` : ''}</span>
+                <span class="cur-order-badge">جديد</span>
+                <span class="cur-order-date">${dateStr}</span>
+              </div>
+              <div class="cur-order-items">${(r ? r.lines.join('\n') : (o.items || '—')).replace(/\n/g,'<br>')}</div>
+              <div class="cur-order-actions" style="margin-top:.6rem">
+                <button class="btn-cur-edit">
+                  <i class="fas fa-pen"></i>&nbsp;تعديل
+                </button>
+                <div class="cur-order-row2" style="margin-top:.5rem">
+                  <button class="btn-cur-cancel" id="cancel-btn-${o.id}${r ? '-r' + r.roundIndex : ''}">
+                    <i class="fas fa-times-circle"></i>&nbsp;${r ? 'إلغاء هذا الطلب' : 'إلغاء الطلب'}
+                  </button>
+                </div>
+              </div>
+            </div>`;
+
           const listEl = document.getElementById('curOrdersList');
           listEl.innerHTML = newOrders.map(o => {
             const dateStr = o.date ? String(o.date).substring(0, 16) : '—';
-            return `
-              <div class="cur-order-card" id="cur-card-${o.id}">
-                <div class="cur-order-meta">
-                  <span class="cur-order-id">${o.id}</span>
-                  <span class="cur-order-badge">جديد</span>
-                  <span class="cur-order-date">${dateStr}</span>
-                </div>
-                <div class="cur-order-items">${(o.items || '—').replace(/\n/g,'<br>')}</div>
-                <div class="cur-order-actions" style="margin-top:.6rem">
-                  <button class="btn-cur-edit" data-order-id="${o.id}">
-                    <i class="fas fa-pen"></i>&nbsp;تعديل
-                  </button>
-                  <div class="cur-order-row2" style="margin-top:.5rem">
-                    <button class="btn-cur-cancel" id="cancel-btn-${o.id}"
-                      data-order-id="${o.id}" data-sheet="${storeSheet}"
-                      data-btn-id="cancel-btn-${o.id}" data-card-id="cur-card-${o.id}">
-                      <i class="fas fa-times-circle"></i>&nbsp;إلغاء الطلب
-                    </button>
-                  </div>
-                </div>
-              </div>`;
+            const rounds  = _parseOrderRounds(o);
+            return rounds ? rounds.map(r => cardHtml(o, r, dateStr)).join('') : cardHtml(o, null, dateStr);
           }).join('');
 
-          // Attach events via data attributes (avoids newline/quote issues in onclick)
+          // Attach events per card (one order can map to several cards)
           newOrders.forEach(o => {
-            const card    = document.getElementById('cur-card-' + o.id);
-            if (!card) return;
-            const editBtn = card.querySelector('.btn-cur-edit');
-            const canBtn  = card.querySelector('.btn-cur-cancel');
-            if (editBtn) editBtn.addEventListener('click', () => _editCurrentOrder(o.id, o.items || '', o.itemsStructured));
-            if (canBtn)  canBtn.addEventListener('click',  () => _cancelCurrentOrder(o.id, storeSheet, 'cancel-btn-' + o.id, 'cur-card-' + o.id));
+            const rounds  = _parseOrderRounds(o);
+            const targets = rounds ? rounds.map(r => ({ round: r, suffix: '-r' + r.roundIndex })) : [{ round: null, suffix: '' }];
+            targets.forEach(({ round, suffix }) => {
+              const card = document.getElementById('cur-card-' + o.id + suffix);
+              if (!card) return;
+              const editBtn = card.querySelector('.btn-cur-edit');
+              const canBtn  = card.querySelector('.btn-cur-cancel');
+              const roundIdx = round ? round.roundIndex : null;
+              if (editBtn) editBtn.addEventListener('click', () => _editCurrentOrder(o.id, o, roundIdx));
+              if (canBtn)  canBtn.addEventListener('click',  () => _cancelCurrentOrder(o.id, o, roundIdx, storeSheet, 'cancel-btn-' + o.id + suffix, 'cur-card-' + o.id + suffix));
+            });
           });
 
           _showStep('stepCurrentOrder', true);
@@ -3826,7 +3836,56 @@
   }
 
   // ── Current-order helpers ──────────────────────────────
-  async function _editCurrentOrder(orderId, items, itemsStructured) {
+  // Opens the order-compose panel for editing — either the WHOLE order
+  // (roundIndex null, the plain/original behavior) or just ONE round of a
+  // multi-round order (see _parseOrderRounds), in which case the other
+  // rounds ride along untouched as locked _opSubOrders and get silently
+  // recombined back into the same row when saved (see saveOrder's blocks).
+  async function _beginEditRound(orderId, order, roundIndex, storeInfo) {
+    const rounds = roundIndex != null ? _parseOrderRounds(order) : null;
+    const target = rounds ? rounds.find(r => r.roundIndex === roundIndex) : null;
+    const others = rounds ? rounds.filter(r => r.roundIndex !== roundIndex) : [];
+    const editItems      = target ? target.lines.join('\n') : (order.items || '');
+    const editStructured = target ? JSON.stringify(target.structured) : (order.itemsStructured || null);
+
+    window._pendingStore = storeInfo;
+    window._editingOrderId = orderId;
+    window._opPendingEditItems = editItems; // survives any duplicate/late render — see renderMenuItemsBox
+    window._opPendingEditStructured = editStructured;
+    _opSaved = false;
+
+    await selectStore(storeInfo.folder, storeInfo.name, storeInfo.tag || '');
+    await new Promise(r => setTimeout(r, 200));
+
+    // Wait for the actual menu-items/delivery-options fetch to land before
+    // prefilling — a fixed short delay isn't reliable against a live network
+    // call to Apps Script (it can take well over a second).
+    await orderNow(storeInfo.folder);
+
+    if (target) {
+      // Other rounds ride along using THIS order's original priced rows —
+      // not today's live menu prices — so nothing shifts just because a
+      // product's price changed since the order was placed.
+      window._opSubOrders = others.map(r => ({ roundIndex: r.roundIndex, label: r.label, lines: r.lines, structured: r.structured, rows: r.rows, total: r.total }));
+      window._opEditingRoundIndex = roundIndex;
+      _renderSubOrdersSummary();
+    }
+
+    const btn = document.getElementById('opSaveBtn');
+    const lbl = document.getElementById('opSaveTxt');
+    const err = document.getElementById('opError');
+    _prefillOrderForEdit(editItems, editStructured);
+    if (lbl) lbl.textContent = 'حفظ التعديلات';
+    if (btn) btn.disabled = false;
+    if (err) {
+      err.textContent = target && others.length
+        ? `✏️ تعديل ${target.label} فقط — باقي الطلبات جوه نفس الأوردر (${orderId}) هتفضل زي ما هي`
+        : `✏️ تعديل الطلب: ${orderId}`;
+      err.style.color = '#18bfef';
+    }
+  }
+
+  async function _editCurrentOrder(orderId, order, roundIndex) {
     const store = window._pendingStore;
     if (!store) return;
 
@@ -3836,36 +3895,31 @@
     }
 
     // Set edit state BEFORE navigating — do NOT use goToOrderPage (it resets _editingOrderId)
-    window._editingOrderId = orderId;
-    window._opPendingEditItems = items; // survives any duplicate/late render — see renderMenuItemsBox
-    window._opPendingEditStructured = itemsStructured || null;
-    _opSaved = false;
     _showStep('stepCurrentOrder', false);
-
-    await selectStore(store.folder, store.name, store.tag);
-    await new Promise(r => setTimeout(r, 200));
-
-    // Wait for the actual menu-items/delivery-options fetch to land before
-    // prefilling — a fixed short delay isn't reliable against a live network
-    // call to Apps Script (it can take well over a second).
-    await orderNow(store.folder);
-
-    const btn = document.getElementById('opSaveBtn');
-    const lbl = document.getElementById('opSaveTxt');
-    const err = document.getElementById('opError');
-    _prefillOrderForEdit(items, itemsStructured);
-    if (lbl)   lbl.textContent = 'حفظ التعديلات';
-    if (btn)   btn.disabled = false;
-    if (err) { err.textContent = `✏️ تعديل الطلب: ${orderId}`; err.style.color = '#18bfef'; }
+    await _beginEditRound(orderId, order, roundIndex, store);
   }
 
-  async function _cancelCurrentOrder(orderId, sheetName, btnId, cardId) {
-    if (!confirm(`هل أنت متأكد من إلغاء الطلب؟\n\nرقم الطلب: ${orderId}\n\nسيتم حذفه نهائياً من النظام.`)) return;
+  async function _cancelCurrentOrder(orderId, order, roundIndex, sheetName, btnId, cardId) {
+    const rounds = _parseOrderRounds(order);
+    const isWholeOrder = !rounds || rounds.length <= 1;
+    const target = !isWholeOrder ? rounds.find(r => r.roundIndex === roundIndex) : null;
+    const confirmMsg = isWholeOrder
+      ? `هل أنت متأكد من إلغاء الطلب؟\n\nرقم الطلب: ${orderId}\n\nسيتم حذفه نهائياً من النظام.`
+      : `هل أنت متأكد من إلغاء ${target?.label || 'هذا الطلب الفرعي'} فقط؟\n\nباقي الطلبات جوه نفس الأوردر (${orderId}) هتفضل زي ما هي.`;
+    if (!confirm(confirmMsg)) return;
     const btn = document.getElementById(btnId);
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإلغاء...'; }
     try {
-      const r = await _callScript('cancelOrderByCustomer', { orderId, sheet: sheetName }, 20000);
+      const r = await _cancelOrderRound(orderId, order, roundIndex, sheetName);
       if (r.success) {
+        if (!isWholeOrder) {
+          // The order's OTHER round-cards changed too (labels/shares
+          // shifted) — simplest correct fix is a full refresh instead of
+          // patching just this one card.
+          const phone = _getActiveCustomer().phone;
+          if (phone) lookupCustomer(phone);
+          return;
+        }
         // Remove this card with animation
         const card = document.getElementById(cardId);
         if (card) {
@@ -4369,6 +4423,7 @@
 
   function _resetSubOrders() {
     window._opSubOrders = [];
+    window._opEditingRoundIndex = null;
   }
 
   // Sum of quantities for كيلو-priced items across already-confirmed
@@ -4405,6 +4460,7 @@
     if (window._opSubOrders.length >= SUBORDER_MAX - 1) return; // already at 4 total
     const invoice = buildMenuOrderInvoice();
     window._opSubOrders.push({
+      roundIndex: window._opSubOrders.length,
       label     : SUBORDER_LABELS[window._opSubOrders.length],
       lines     : lines,
       structured: buildMenuOrderStructured(),
@@ -4421,7 +4477,7 @@
     if (!window._opSubOrders) return;
     window._opSubOrders.splice(idx, 1);
     // Relabel the remaining ones so they stay sequential
-    window._opSubOrders.forEach((so, i) => { so.label = SUBORDER_LABELS[i]; });
+    window._opSubOrders.forEach((so, i) => { so.label = SUBORDER_LABELS[i]; so.roundIndex = i; });
     _renderSubOrdersSummary();
     updateMenuOrderPreview();
     _refreshDeliveryFeeDisplay();
@@ -4431,6 +4487,15 @@
     const box = document.getElementById('subOrdersSummary');
     const addBtnWrap = document.getElementById('addSubOrderWrap');
     if (!box) return;
+    // Not offered while editing — an edit always recombines back into the
+    // SAME order row (see saveOrder), and _opSubOrders here holds the
+    // OTHER, untouched rounds of that order (see _beginEditRound), not a
+    // removable in-progress list — so no chips/add-button are shown at all.
+    if (window._editingOrderId) {
+      box.innerHTML = '';
+      if (addBtnWrap) addBtnWrap.style.display = 'none';
+      return;
+    }
     const subOrders = window._opSubOrders || [];
     box.innerHTML = subOrders.map((so, i) => `
       <div class="sub-order-chip">
@@ -4440,9 +4505,7 @@
     if (addBtnWrap) {
       const nextIdx = subOrders.length;
       const btn = addBtnWrap.querySelector('.add-sub-order-btn');
-      // Not offered while editing — an edit always targets one existing
-      // order row, submitted as a single update (see saveOrder/addAnotherSubOrder).
-      if (window._editingOrderId || nextIdx >= SUBORDER_MAX - 1) {
+      if (nextIdx >= SUBORDER_MAX - 1) {
         addBtnWrap.style.display = 'none';
       } else {
         addBtnWrap.style.display = '';
@@ -4469,19 +4532,28 @@
   // so there's no circular dependency on the fee itself). The rule
   // (threshold + two prices) stays fixed in code; the numbers/basis are
   // all admin-editable.
-  function _computeDeliveryFee(opt) {
+  // Pure tier-fee lookup, given an already-computed combined value/kg — the
+  // same logic drives both the live compose screen (_computeDeliveryFee,
+  // which supplies the live combined figures) and re-pricing an existing
+  // order after one of its rounds is cancelled (see _resolveOrderDeliveryFee).
+  function _computeDeliveryFeeFor(opt, value, kg) {
     if (!opt) return 0;
     if (opt.feeMode === 'tiered' && opt.tieredRule) {
       const { feeBelowThreshold, feeAtOrAboveThreshold } = opt.tieredRule;
       const threshold = opt.tieredRule.threshold ?? opt.tieredRule.thresholdKg ?? 0; // thresholdKg = old field name
-      // Combined across any confirmed sub-orders too — delivery is charged
-      // once per delivery stop, not once per mini-order bundled into it.
-      const measure = opt.tieredRule.basis === 'value'
-        ? +(buildMenuOrderInvoice().total + _subOrdersItemsTotal()).toFixed(2)
-        : _computeSelectedKg() + _subOrdersSelectedKg();
+      const measure = opt.tieredRule.basis === 'value' ? value : kg;
       return measure >= Number(threshold) ? Number(feeAtOrAboveThreshold) : Number(feeBelowThreshold);
     }
     return Number(opt.fee) || 0;
+  }
+
+  function _computeDeliveryFee(opt) {
+    if (!opt) return 0;
+    // Combined across any confirmed sub-orders too — delivery is charged
+    // once per delivery stop, not once per mini-order bundled into it.
+    const value = +(buildMenuOrderInvoice().total + _subOrdersItemsTotal()).toFixed(2);
+    const kg = _computeSelectedKg() + _subOrdersSelectedKg();
+    return _computeDeliveryFeeFor(opt, value, kg);
   }
 
   // Refresh the displayed fee next to each delivery option (tiered fees
@@ -4544,6 +4616,130 @@
     const shares = new Array(n).fill(base);
     shares[n - 1] = +(totalFee - base * (n - 1)).toFixed(2);
     return shares;
+  }
+
+  // Splits an already-saved order back into its individual rounds, purely
+  // from its stored text (no live menu/pricing lookup needed) — used to
+  // show each round of a multi-round order as its own card in "طلباتي
+  // وتعديلها", and as the basis for editing or cancelling just one of them.
+  // Returns null for a plain (never-bundled) order, so callers fall back to
+  // treating it as a single card exactly like before this feature existed.
+  function _parseOrderRounds(order) {
+    let structured;
+    try { structured = JSON.parse(order?.itemsStructured || '[]'); } catch(e) { structured = []; }
+    if (!Array.isArray(structured) || !structured.some(e => e && e.suborder != null)) return null;
+
+    const byRound = {};
+    structured.forEach(e => {
+      const idx = e.suborder != null ? e.suborder : 0;
+      (byRound[idx] = byRound[idx] || []).push({ id: e.id, qty: e.qty, note: e.note || '' });
+    });
+
+    // Per-round display text: blocks look like "— label —\nline1\nline2",
+    // joined by a blank line between rounds (see saveOrder's `items` build).
+    const itemsByLabel = {};
+    (order.items || '').split(/\n\n(?=—\s)/).forEach(chunk => {
+      const m = chunk.match(/^—\s*(.+?)\s*—\n([\s\S]*)$/);
+      if (m) itemsByLabel[m[1].trim()] = m[2].trim();
+    });
+
+    // Per-round priced rows + fee share: same "— label —" blocks inside
+    // invoiceBreakdown, but joined with no blank line (see saveOrder).
+    const rowsByLabel = {};
+    (order.invoiceBreakdown || '').split(/\n(?=—\s)/).forEach(chunk => {
+      const m = chunk.match(/^—\s*(.+?)\s*—\n([\s\S]*)$/);
+      if (!m) return;
+      const rows = [];
+      m[2].split('\n').forEach(line => {
+        if (line.startsWith('رسوم التوصيل')) return;
+        const im = line.match(/^(.+?)\s*×\s*([\d.]+)\s*(\S+)\s*—\s*(?:([\d.]+)\s*درهم|.+)$/);
+        if (im) rows.push({ name: im[1].trim(), qty: parseFloat(im[2]), unit: im[3], lineTotal: im[4] != null ? parseFloat(im[4]) : null });
+      });
+      rowsByLabel[m[1].trim()] = rows;
+    });
+
+    return Object.keys(byRound).map(Number).sort((a, b) => a - b).map(idx => {
+      const label = SUBORDER_LABELS[idx] || `الطلب ${idx + 1}`;
+      const rows  = rowsByLabel[label] || [];
+      const lines = (itemsByLabel[label] || '').split('\n').filter(Boolean);
+      return {
+        roundIndex: idx, label,
+        structured: byRound[idx], rows, lines,
+        total: +rows.reduce((s, r) => s + (r.lineTotal || 0), 0).toFixed(2),
+      };
+    });
+  }
+
+  // Re-derives the delivery fee that SHOULD apply to an order's remaining
+  // rounds after one is cancelled — refetches the live tier rule (prices
+  // may have been tweaked in admin since the order was placed) and matches
+  // it by label against what the order originally recorded. Falls back to
+  // keeping the order's previous total fee unchanged if the option can't be
+  // confidently matched, which is always at least as safe as guessing.
+  async function _resolveOrderDeliveryFee(order, sheetName, itemsTotal, rows) {
+    const fallback = () => {
+      const m = String(order.deliveryOption || '').match(/—\s*([\d.]+)\s*درهم/);
+      return { label: String(order.deliveryOption || '').split(' — ')[0].trim(), fee: m ? parseFloat(m[1]) : 0 };
+    };
+    try {
+      const res = await _callScript('getDeliveryOptions', { store: sheetName }, 8000);
+      const options = res?.config?.options || [];
+      const optLabel = String(order.deliveryOption || '').split(' — ')[0].trim();
+      const opt = options.find(o => o.label === optLabel);
+      if (!opt) return fallback();
+      const kg = rows.filter(r => (r.unit || 'كيلو') === 'كيلو').reduce((s, r) => s + r.qty, 0);
+      return { label: opt.label, fee: _computeDeliveryFeeFor(opt, itemsTotal, kg) };
+    } catch(e) {
+      return fallback();
+    }
+  }
+
+  // Cancels ONE round of a (possibly multi-round) order. If it's the only
+  // round left, this is just an ordinary whole-order cancel. Otherwise it
+  // rewrites the SAME order row without that round — recomputing the
+  // combined delivery fee against the live tier rule and re-splitting it
+  // across whatever rounds remain (renumbered so labels stay sequential).
+  async function _cancelOrderRound(orderId, order, roundIndex, sheetName) {
+    const rounds = _parseOrderRounds(order);
+    if (!rounds || rounds.length <= 1) {
+      return _callScript('cancelOrderByCustomer', { orderId, sheet: sheetName }, 20000);
+    }
+    const remaining = rounds.filter(r => r.roundIndex !== roundIndex);
+    if (remaining.length === rounds.length) return { success: false, message: 'الطلب الفرعي غير موجود' };
+
+    const itemsTotal = +remaining.reduce((s, r) => s + r.rows.reduce((rs, x) => rs + (x.lineTotal || 0), 0), 0).toFixed(2);
+    const allRows = remaining.flatMap(r => r.rows);
+    const delivery = await _resolveOrderDeliveryFee(order, sheetName, itemsTotal, allRows);
+
+    let items, itemsStructured, invoiceBreakdown;
+    if (remaining.length === 1) {
+      const r0 = remaining[0];
+      items = r0.lines.join('\n');
+      itemsStructured = JSON.stringify(r0.structured);
+      invoiceBreakdown = r0.rows
+        .map(x => `${x.name} × ${x.qty} ${x.unit} — ${x.lineTotal != null ? x.lineTotal + ' درهم' : 'يُحدد لاحقاً'}`)
+        .concat(`رسوم التوصيل — ${delivery.fee > 0 ? delivery.fee + ' درهم' : 'مجاناً'}`)
+        .join('\n');
+    } else {
+      const shares = _splitFeeAcrossBlocks(delivery.fee, remaining.length);
+      items = remaining.map((r, i) => `— ${SUBORDER_LABELS[i]} —\n${r.lines.join('\n')}`).join('\n\n');
+      itemsStructured = JSON.stringify(remaining.flatMap((r, i) => r.structured.map(e => ({ ...e, suborder: i }))));
+      invoiceBreakdown = remaining.map((r, i) => {
+        const lines = r.rows.map(x => `${x.name} × ${x.qty} ${x.unit} — ${x.lineTotal != null ? x.lineTotal + ' درهم' : 'يُحدد لاحقاً'}`);
+        lines.push(`رسوم التوصيل (حصتك من التوصيل الموحد) — ${shares[i] > 0 ? shares[i] + ' درهم' : 'مجاناً'}`);
+        return `— ${SUBORDER_LABELS[i]} —\n` + lines.join('\n');
+      }).join('\n');
+    }
+    const invoiceTotal = +(itemsTotal + delivery.fee).toFixed(2);
+    const deliveryOption = delivery.label
+      ? `${delivery.label} — ${delivery.fee > 0 ? delivery.fee + ' درهم' : 'مجاناً'}${remaining.length > 1 ? ' (توصيل مشترك)' : ''}`
+      : (order.deliveryOption || '');
+
+    return _callScript('updateOrderWithNewId', {
+      orderId, items, itemsStructured, deliveryOption,
+      paymentMethod: order.paymentMethod || '',
+      invoiceTotal, invoiceBreakdown, sheet: sheetName,
+    }, 30000);
   }
 
   function updateMenuOrderPreview() {
@@ -4850,20 +5046,31 @@
   async function saveOrder() {
     // Combine any confirmed "add another order — separate invoice" rounds
     // with the current one into a single submission — each round stays
-    // clearly labeled in the text/invoice, but it's one order, one delivery
-    // number, one delivery fee. With no extra rounds (the common case) this
-    // collapses to exactly the previous plain single-order behavior.
+    // clearly labeled in the text/invoice, but it's one order (one row, one
+    // OrderID), one delivery number, one delivery fee split across rounds.
+    // With no extra rounds (the common case) this collapses to exactly the
+    // plain single-order behavior.
+    //
+    // Normally the live cards represent the NEXT round after any already
+    // confirmed ones (subOrders.length). When editing just ONE round inside
+    // an existing multi-round order (see _beginEditRound), the live cards
+    // instead represent that round's ORIGINAL position — _opEditingRoundIndex
+    // overrides it so the round keeps its original label/place in the
+    // recombined order instead of being appended at the end.
     const subOrders = window._opSubOrders || [];
     const currentInvoiceForBlocks = buildMenuOrderInvoice();
     const currentLines = buildMenuOrderLines();
     const currentStructured = buildMenuOrderStructured();
-    const blocks = [
-      ...subOrders.map(so => ({ label: so.label, lines: so.lines, structured: so.structured, rows: so.rows })),
+    const currentRoundIndex = window._opEditingRoundIndex != null ? window._opEditingRoundIndex : subOrders.length;
+    const rawBlocks = [
+      ...subOrders.map(so => ({ roundIndex: so.roundIndex, label: so.label, lines: so.lines, structured: so.structured, rows: so.rows })),
       ...(currentLines.length ? [{
-        label: subOrders.length ? SUBORDER_LABELS[subOrders.length] : null,
+        roundIndex: currentRoundIndex,
+        label: subOrders.length ? SUBORDER_LABELS[currentRoundIndex] : null,
         lines: currentLines, structured: currentStructured, rows: currentInvoiceForBlocks.rows,
       }] : []),
     ];
+    const blocks = rawBlocks.length > 1 ? rawBlocks.slice().sort((a, b) => a.roundIndex - b.roundIndex) : rawBlocks;
 
     // Compile menu-item quantities into the order text. opItemsInput is a
     // hidden field now (no visible free-text box) — it only ever holds
@@ -4875,7 +5082,11 @@
     const items = menuLines.length
       ? (menuLines.join(blocks.length > 1 ? '\n\n' : '\n') + (manualNotes ? '\n---\n' + manualNotes : ''))
       : manualNotes;
-    const itemsStructured = JSON.stringify(blocks.length > 1 ? blocks.flatMap(b => b.structured) : (blocks[0]?.structured || []));
+    const itemsStructured = JSON.stringify(
+      blocks.length > 1
+        ? blocks.flatMap((b, i) => b.structured.map(e => ({ ...e, suborder: i })))
+        : (blocks[0]?.structured || [])
+    );
 
     const err = document.getElementById('opError');
     if (!items) {
@@ -4967,38 +5178,33 @@
     const deliveryFeeNow  = window._opDeliveryChoice ? _computeDeliveryFee(window._opDeliveryChoice) : 0;
     const invoiceTotal    = +(itemsTotal + deliveryFeeNow).toFixed(2);
 
-    // The one combined delivery fee is split evenly across the rounds (see
-    // _splitFeeAcrossBlocks) so each round's own invoice shows its own share
+    // Itemized breakdown — same rows shown in the on-screen invoice preview
+    // (name × qty unit — price, all on one line per item), grouped under a
+    // "— {label} —" header per round when more than one is present, so
+    // exports show exactly what the customer saw instead of just the total.
+    // The one combined delivery fee is split evenly across the rounds
+    // (see _splitFeeAcrossBlocks) so each round's line shows its own share
     // instead of the full fee repeated for every round.
     const feeSharesNow = window._opDeliveryChoice ? _splitFeeAcrossBlocks(deliveryFeeNow, blocks.length) : [];
-
-    // Itemized breakdown — same rows shown in the on-screen invoice preview
-    // (name × qty unit — price, all on one line per item). Kept as one
-    // combined breakdown for the EDIT path (a single existing order always
-    // has exactly one block — see below), and built per-block for NEW
-    // multi-round orders instead (each round gets submitted as its own row).
-    function _blockBreakdown(b, share) {
-      const lines = b.rows.map(r =>
+    const invoiceLines = [];
+    blocks.forEach((b, i) => {
+      if (b.label) invoiceLines.push(`— ${b.label} —`);
+      b.rows.forEach(r => invoiceLines.push(
         `${r.name} × ${r.qty} ${r.unit} — ${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}`
-      );
+      ));
       if (window._opDeliveryChoice) {
-        lines.push(`رسوم التوصيل${blocks.length > 1 ? ' (حصتك من التوصيل الموحد)' : ''} — ${share > 0 ? share + ' درهم' : 'مجاناً'}`);
+        const share = feeSharesNow[i];
+        invoiceLines.push(`رسوم التوصيل${blocks.length > 1 ? ' (حصتك من التوصيل الموحد)' : ''} — ${share > 0 ? share + ' درهم' : 'مجاناً'}`);
       }
-      return lines.join('\n');
-    }
-    const invoiceBreakdown = blocks.map((b, i) => _blockBreakdown(b, feeSharesNow[i])).join('\n');
+    });
+    const invoiceBreakdown = invoiceLines.join('\n');
 
-    // Fire the request(s) — 30 second timeout each
+    // Fire the request — 30 second timeout
     let serverOrderId = null;
-    const createdOrders = []; // { id, label, items, total } — one per block, NEW-order path only
     try {
       let result;
       if (isEditing) {
         // ── EDIT: update same row, generate NEW OrderID ──────
-        // Editing always targets exactly one existing order (a fresh
-        // orderNow() call resets any confirmed sub-orders — see
-        // _resetSubOrders), so `blocks` here is always a single block and
-        // this is identical to plain single-order behavior.
         result = await _callScript('updateOrderWithNewId', {
           orderId : window._editingOrderId,
           items   : items,
@@ -5019,57 +5225,36 @@
           return;
         }
       } else {
-        // ── NEW ORDER(S) ──────────────────────────────────────
-        // Each round of "إضافة أوردر بفاتورة منفصلة" becomes its OWN order
-        // row (own OrderID) sharing the same customer/delivery data — that
-        // way each one shows up as its own separate, independently
-        // editable/cancelable card in "طلباتي وتعديلها" instead of being
-        // locked together as one bundled order. The combined delivery fee
-        // (computed once above, against the true combined total) is simply
-        // split across the rows so nothing is double-charged.
-        for (let i = 0; i < blocks.length; i++) {
-          const b = blocks[i];
-          const isLastBlock = i === blocks.length - 1;
-          const blockItemsText = (blocks.length > 1 && b.label ? `(${b.label} من ${blocks.length} — بفاتورة منفصلة، توصيل مشترك)\n` : '')
-            + b.lines.join('\n')
-            + (isLastBlock && manualNotes ? '\n---\n' + manualNotes : '');
-          const blockTotal = +(b.rows.reduce((rs, r) => rs + (r.lineTotal || 0), 0) + feeSharesNow[i]).toFixed(2);
-          const blockDeliveryOption = window._opDeliveryChoice
-            ? `${window._opDeliveryChoice.label} — ${feeSharesNow[i] > 0 ? feeSharesNow[i] + ' درهم' : 'مجاناً'}${blocks.length > 1 ? ' (توصيل مشترك)' : ''}`
-            : '';
-          const r = await _callScript('submitOrder', {
-            phone       : customer.phone    || '',
-            name        : customer.name     || '',
-            area        : customer.area     || '',
-            address     : customer.address  || '',
-            whatsapp    : customer.whatsapp || customer.phone || '',
-            latitude    : !isNaN(parseFloat(customer.latitude))  ? String(parseFloat(customer.latitude))  : '',
-            longitude   : !isNaN(parseFloat(customer.longitude)) ? String(parseFloat(customer.longitude)) : '',
-            location    : (!isNaN(parseFloat(customer.latitude)) && !isNaN(parseFloat(customer.longitude))) ? `https://www.google.com/maps?q=${parseFloat(customer.latitude)},${parseFloat(customer.longitude)}` : '',
-            orderText   : blockItemsText,
-            itemsStructured: JSON.stringify(b.structured),
-            deliveryOption : blockDeliveryOption,
-            paymentMethod  : paymentMethod,
-            invoiceTotal   : blockTotal,
-            invoiceBreakdown: _blockBreakdown(b, feeSharesNow[i]),
-            store       : store.sheetName,   // ← primary: used by _validSheet
-            sheet       : store.sheetName,   // ← fallback for older code
-            vendor      : store.cfg?.name || store.storeKey,
-            userTimezone: 'Asia/Dubai',
-          }, 30000);
-          result = r; // last result drives the phase/error check below
-          if (r.success) {
-            createdOrders.push({ id: r.orderId, label: b.label, items: blockItemsText, total: blockTotal });
-          } else if (r.phase) {
-            // Window closed server-side mid-way — stop submitting further rounds
-            clearInterval(countdownTimer);
-            btn.disabled = false;
-            document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
-            err.textContent = '⚠ ' + r.message + (createdOrders.length ? ` (تم تسجيل ${createdOrders.length} من ${blocks.length} طلبات قبل التوقف)` : '');
-            return;
-          }
+        // ── NEW ORDER — one row, all rounds combined inside it ──
+        result = await _callScript('submitOrder', {
+          phone       : customer.phone    || '',
+          name        : customer.name     || '',
+          area        : customer.area     || '',
+          address     : customer.address  || '',
+          whatsapp    : customer.whatsapp || customer.phone || '',
+          latitude    : !isNaN(parseFloat(customer.latitude))  ? String(parseFloat(customer.latitude))  : '',
+          longitude   : !isNaN(parseFloat(customer.longitude)) ? String(parseFloat(customer.longitude)) : '',
+          location    : (!isNaN(parseFloat(customer.latitude)) && !isNaN(parseFloat(customer.longitude))) ? `https://www.google.com/maps?q=${parseFloat(customer.latitude)},${parseFloat(customer.longitude)}` : '',
+          orderText   : items,
+          itemsStructured: itemsStructured,
+          deliveryOption : deliveryOption,
+          paymentMethod  : paymentMethod,
+          invoiceTotal   : invoiceTotal,
+          invoiceBreakdown: invoiceBreakdown,
+          store       : store.sheetName,   // ← primary: used by _validSheet
+          sheet       : store.sheetName,   // ← fallback for older code
+          vendor      : store.cfg?.name || store.storeKey,
+          userTimezone: 'Asia/Dubai',
+        }, 30000);
+        if (result.success) serverOrderId = result.orderId;
+        else if (result.phase) {
+          // Window closed server-side
+          clearInterval(countdownTimer);
+          btn.disabled = false;
+          document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
+          err.textContent = '⚠ ' + result.message;
+          return;
         }
-        serverOrderId = createdOrders[0]?.id;
       }
     } catch(e) {
       console.warn('[saveOrder] fetch issue:', e.message, '— may still have saved');
@@ -5089,36 +5274,17 @@
     }));
 
     // ── Show success screen inside menuContainer (same place as ordering layout) ──
-    // For a multi-round submission, list every order created (its own ID +
-    // its own items) instead of one combined block — matches how they'll
-    // appear as separate cards under "طلباتي وتعديلها".
-    const orderRowsHtml = createdOrders.length > 1
-      ? createdOrders.map(o => `
-          <div class="op-preview-row">
-            <span class="op-preview-label">📦 ${o.label || 'الطلب'}</span>
-            <span class="op-preview-value op-order-id">${o.id}</span>
-          </div>
-          <div class="op-preview-row op-preview-items-row">
-            <span class="op-preview-label">الطلب</span>
-            <span class="op-preview-value op-preview-items">${o.items}</span>
-          </div>`).join('')
-      : `
-          <div class="op-preview-row">
-            <span class="op-preview-label">رقم الطلب</span>
-            <span class="op-preview-value op-order-id">${orderId}</span>
-          </div>
-          <div class="op-preview-row">
-            <span class="op-preview-label">الطلب</span>
-            <span class="op-preview-value op-preview-items">${items}</span>
-          </div>`;
-
     document.getElementById('menuContainer').innerHTML = `
       <div class="order-success-wrap">
         <div class="op-success-header">
           <div class="op-success-icon"><i class="fas fa-check-circle"></i></div>
-          <div class="op-success-title">${createdOrders.length > 1 ? `تم تسجيل ${createdOrders.length} طلبات بنجاح!` : 'تم تسجيل طلبك بنجاح!'}</div>
+          <div class="op-success-title">تم تسجيل طلبك بنجاح!</div>
         </div>
         <div class="op-order-preview">
+          <div class="op-preview-row">
+            <span class="op-preview-label">رقم الطلب</span>
+            <span class="op-preview-value op-order-id">${orderId}</span>
+          </div>
           <div class="op-preview-row">
             <span class="op-preview-label">الاسم</span>
             <span class="op-preview-value">${customer.name || '—'}</span>
@@ -5127,7 +5293,10 @@
             <span class="op-preview-label">الهاتف</span>
             <span class="op-preview-value">${customer.phone || '—'}</span>
           </div>
-          ${orderRowsHtml}
+          <div class="op-preview-row">
+            <span class="op-preview-label">الطلب</span>
+            <span class="op-preview-value op-preview-items">${items}</span>
+          </div>
         </div>
         <div class="order-success-btns">
           <button class="btn-op-save" onclick="showMyOrders()">
@@ -5203,22 +5372,25 @@
           const canEdit     = o.status === 'New';
           const statusClass = 'status-' + (o.status || 'New');
           const dateStr     = o.date ? String(o.date).substring(0, 16) : '—';
-          const itemsSafe   = (o.items || '').replace(/`/g, "'");
-          return `
-            <div class="order-card ${canEdit ? 'editable' : ''}" id="myord-${o.id}">
+          // A multi-round order (see _parseOrderRounds) shows as several
+          // separate, independently editable/cancelable cards sharing the
+          // same order id — only ever relevant while it's still "New".
+          const rounds = canEdit ? _parseOrderRounds(o) : null;
+          const cardHtml = (r) => `
+            <div class="order-card ${canEdit ? 'editable' : ''}" id="myord-${o.id}${r ? '-r' + r.roundIndex : ''}">
               <div class="order-card-top">
-                <span class="order-card-id">${o.id}</span>
+                <span class="order-card-id">${o.id}${r ? ` <span style="opacity:.6;font-weight:600">· ${r.label}</span>` : ''}</span>
                 <span class="order-status-badge ${statusClass}">${_statusAr(o.status)}</span>
                 <span class="order-card-date">${dateStr}</span>
               </div>
-              <div class="order-card-items">${o.items || '—'}</div>
+              <div class="order-card-items">${r ? r.lines.join('<br>') : (o.items || '—')}</div>
               <div class="order-card-actions">
                 ${canEdit ? `
-                  <button class="btn-edit-order" data-orderid="${o.id}" data-sheet="${se.sheetName}" data-folder="${se.folder}">
+                  <button class="btn-edit-order">
                     <i class="fas fa-pen"></i> تعديل
                   </button>
-                  <button class="btn-cancel-order" data-orderid="${o.id}" data-sheet="${se.sheetName}">
-                    <i class="fas fa-times"></i> إلغاء
+                  <button class="btn-cancel-order">
+                    <i class="fas fa-times"></i> ${r ? 'إلغاء هذا الطلب' : 'إلغاء'}
                   </button>
                 ` : `
                   <span style="font-family:'Cairo',sans-serif;font-size:.78rem;color:rgba(255,255,255,.3)">
@@ -5227,6 +5399,7 @@
                 `}
               </div>
             </div>`;
+          return rounds ? rounds.map(cardHtml).join('') : cardHtml(null);
         }).join('');
 
         return `
@@ -5239,18 +5412,22 @@
           </div>`;
       }).join('');
 
-      // Attach event listeners for edit + cancel buttons
+      // Attach event listeners for edit + cancel buttons (one order can map to several round-cards)
       storesWithOrders.forEach(({ store: se, orders }) => {
         orders.forEach(o => {
-          const card = document.getElementById('myord-' + o.id);
-          if (!card) return;
-          const editBtn   = card.querySelector('.btn-edit-order');
-          const cancelBtn = card.querySelector('.btn-cancel-order');
-          if (editBtn) editBtn.addEventListener('click', () => {
-            _editOrderFromMyOrders(o.id, o.items || '', se.folder, se.sheetName, se.name, o.itemsStructured);
-          });
-          if (cancelBtn) cancelBtn.addEventListener('click', () => {
-            cancelOrderByCustomer(o.id, se.sheetName, cancelBtn);
+          const rounds  = o.status === 'New' ? _parseOrderRounds(o) : null;
+          const targets = rounds ? rounds.map(r => ({ id: `myord-${o.id}-r${r.roundIndex}`, roundIdx: r.roundIndex })) : [{ id: `myord-${o.id}`, roundIdx: null }];
+          targets.forEach(t => {
+            const card = document.getElementById(t.id);
+            if (!card) return;
+            const editBtn   = card.querySelector('.btn-edit-order');
+            const cancelBtn = card.querySelector('.btn-cancel-order');
+            if (editBtn) editBtn.addEventListener('click', () => {
+              _editOrderFromMyOrders(o.id, o, t.roundIdx, se.folder, se.sheetName, se.name);
+            });
+            if (cancelBtn) cancelBtn.addEventListener('click', () => {
+              cancelOrderByCustomer(o.id, o, t.roundIdx, se.sheetName, cancelBtn);
+            });
           });
         });
       });
@@ -5261,43 +5438,35 @@
   }
 
   // Edit order from "طلباتي" — navigates to the correct store then opens edit panel
-  async function _editOrderFromMyOrders(orderId, items, folder, sheetName, storeName, itemsStructured) {
+  async function _editOrderFromMyOrders(orderId, order, roundIndex, folder, sheetName, storeName) {
     const matchedStore = (window._appStores || stores || []).find(s => s.folder === folder);
     if (!matchedStore) { alert('تعذر فتح متجر ' + storeName); return; }
-
-    window._editingOrderId = orderId;
-    window._opPendingEditItems = items; // survives any duplicate/late render — see renderMenuItemsBox
-    window._opPendingEditStructured = itemsStructured || null;
-    window._pendingStore   = { folder: matchedStore.folder, name: matchedStore.name, tag: matchedStore.tag || '' };
-
-    await selectStore(matchedStore.folder, matchedStore.name, matchedStore.tag || '');
-    await new Promise(r => setTimeout(r, 200));
-
-    await orderNow(matchedStore.folder);
-
-    const btn = document.getElementById('opSaveBtn');
-    const lbl = document.getElementById('opSaveTxt');
-    const err = document.getElementById('opError');
-    _prefillOrderForEdit(items, itemsStructured);
-    if (lbl) lbl.textContent = 'حفظ التعديلات';
-    if (btn) btn.disabled = false;
-    if (err) { err.textContent = `✏️ تعديل الطلب: ${orderId}`; err.style.color = '#18bfef'; }
+    await _beginEditRound(orderId, order, roundIndex, { folder: matchedStore.folder, name: matchedStore.name, tag: matchedStore.tag || '' });
   }
 
-  async function cancelOrderByCustomer(orderId, sheetName, btn) {
-    if (!confirm(`هل أنت متأكد من إلغاء الطلب؟\n\nرقم الطلب: ${orderId}\n\nسيتم حذفه نهائياً من النظام.`)) return;
+  async function cancelOrderByCustomer(orderId, order, roundIndex, sheetName, btn) {
+    const rounds = _parseOrderRounds(order);
+    const isWholeOrder = !rounds || rounds.length <= 1;
+    const target = !isWholeOrder ? rounds.find(r => r.roundIndex === roundIndex) : null;
+    const confirmMsg = isWholeOrder
+      ? `هل أنت متأكد من إلغاء الطلب؟\n\nرقم الطلب: ${orderId}\n\nسيتم حذفه نهائياً من النظام.`
+      : `هل أنت متأكد من إلغاء ${target?.label || 'هذا الطلب الفرعي'} فقط؟\n\nباقي الطلبات جوه نفس الأوردر (${orderId}) هتفضل زي ما هي.`;
+    if (!confirm(confirmMsg)) return;
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإلغاء...';
 
     try {
-      const result = await _callScript('cancelOrderByCustomer', {
-        orderId,
-        sheet: sheetName,
-      }, 20000);
+      const result = await _cancelOrderRound(orderId, order, roundIndex, sheetName);
 
       if (result.success) {
+        if (!isWholeOrder) {
+          // The order's OTHER round-cards changed too (labels/shares
+          // shifted) — simplest correct fix is a full refresh.
+          showMyOrders();
+          return;
+        }
         // Remove the order card from the UI
         const card = btn.closest('.order-card');
         if (card) {
