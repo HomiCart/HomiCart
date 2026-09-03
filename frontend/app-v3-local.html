@@ -4393,6 +4393,9 @@
   }
 
   function addAnotherSubOrder() {
+    // Only meaningful when creating fresh orders — an edit always targets
+    // one existing row, submitted as a single update (see saveOrder).
+    if (window._editingOrderId) return;
     const lines = buildMenuOrderLines();
     if (!lines.length) {
       showOrderAlert('اختار صنف واحد على الأقل قبل ما تضيف طلب جديد');
@@ -4437,7 +4440,9 @@
     if (addBtnWrap) {
       const nextIdx = subOrders.length;
       const btn = addBtnWrap.querySelector('.add-sub-order-btn');
-      if (nextIdx >= SUBORDER_MAX - 1) {
+      // Not offered while editing — an edit always targets one existing
+      // order row, submitted as a single update (see saveOrder/addAnotherSubOrder).
+      if (window._editingOrderId || nextIdx >= SUBORDER_MAX - 1) {
         addBtnWrap.style.display = 'none';
       } else {
         addBtnWrap.style.display = '';
@@ -4870,11 +4875,7 @@
     const items = menuLines.length
       ? (menuLines.join(blocks.length > 1 ? '\n\n' : '\n') + (manualNotes ? '\n---\n' + manualNotes : ''))
       : manualNotes;
-    const itemsStructured = JSON.stringify(
-      blocks.length > 1
-        ? blocks.flatMap((b, i) => b.structured.map(e => ({ ...e, suborder: i })))
-        : (blocks[0]?.structured || [])
-    );
+    const itemsStructured = JSON.stringify(blocks.length > 1 ? blocks.flatMap(b => b.structured) : (blocks[0]?.structured || []));
 
     const err = document.getElementById('opError');
     if (!items) {
@@ -4966,33 +4967,38 @@
     const deliveryFeeNow  = window._opDeliveryChoice ? _computeDeliveryFee(window._opDeliveryChoice) : 0;
     const invoiceTotal    = +(itemsTotal + deliveryFeeNow).toFixed(2);
 
-    // Itemized breakdown — same rows shown in the on-screen invoice preview
-    // (name × qty unit — price, all on one line per item), grouped under a
-    // "— {label} —" header per round when more than one is present, so
-    // exports show exactly what the customer saw instead of just the total.
-    // The one combined delivery fee is split evenly across the rounds
-    // (see _splitFeeAcrossBlocks) so each round's line shows its own share
+    // The one combined delivery fee is split evenly across the rounds (see
+    // _splitFeeAcrossBlocks) so each round's own invoice shows its own share
     // instead of the full fee repeated for every round.
     const feeSharesNow = window._opDeliveryChoice ? _splitFeeAcrossBlocks(deliveryFeeNow, blocks.length) : [];
-    const invoiceLines = [];
-    blocks.forEach((b, i) => {
-      if (b.label) invoiceLines.push(`— ${b.label} —`);
-      b.rows.forEach(r => invoiceLines.push(
-        `${r.name} × ${r.qty} ${r.unit} — ${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}`
-      ));
-      if (window._opDeliveryChoice) {
-        const share = feeSharesNow[i];
-        invoiceLines.push(`رسوم التوصيل${blocks.length > 1 ? ' (حصتك من التوصيل الموحد)' : ''} — ${share > 0 ? share + ' درهم' : 'مجاناً'}`);
-      }
-    });
-    const invoiceBreakdown = invoiceLines.join('\n');
 
-    // Fire the request — 30 second timeout
+    // Itemized breakdown — same rows shown in the on-screen invoice preview
+    // (name × qty unit — price, all on one line per item). Kept as one
+    // combined breakdown for the EDIT path (a single existing order always
+    // has exactly one block — see below), and built per-block for NEW
+    // multi-round orders instead (each round gets submitted as its own row).
+    function _blockBreakdown(b, share) {
+      const lines = b.rows.map(r =>
+        `${r.name} × ${r.qty} ${r.unit} — ${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}`
+      );
+      if (window._opDeliveryChoice) {
+        lines.push(`رسوم التوصيل${blocks.length > 1 ? ' (حصتك من التوصيل الموحد)' : ''} — ${share > 0 ? share + ' درهم' : 'مجاناً'}`);
+      }
+      return lines.join('\n');
+    }
+    const invoiceBreakdown = blocks.map((b, i) => _blockBreakdown(b, feeSharesNow[i])).join('\n');
+
+    // Fire the request(s) — 30 second timeout each
     let serverOrderId = null;
+    const createdOrders = []; // { id, label, items, total } — one per block, NEW-order path only
     try {
       let result;
       if (isEditing) {
         // ── EDIT: update same row, generate NEW OrderID ──────
+        // Editing always targets exactly one existing order (a fresh
+        // orderNow() call resets any confirmed sub-orders — see
+        // _resetSubOrders), so `blocks` here is always a single block and
+        // this is identical to plain single-order behavior.
         result = await _callScript('updateOrderWithNewId', {
           orderId : window._editingOrderId,
           items   : items,
@@ -5013,36 +5019,57 @@
           return;
         }
       } else {
-        // ── NEW ORDER ─────────────────────────────────────────
-        result = await _callScript('submitOrder', {
-          phone       : customer.phone    || '',
-          name        : customer.name     || '',
-          area        : customer.area     || '',
-          address     : customer.address  || '',
-          whatsapp    : customer.whatsapp || customer.phone || '',
-          latitude    : !isNaN(parseFloat(customer.latitude))  ? String(parseFloat(customer.latitude))  : '',
-          longitude   : !isNaN(parseFloat(customer.longitude)) ? String(parseFloat(customer.longitude)) : '',
-          location    : (!isNaN(parseFloat(customer.latitude)) && !isNaN(parseFloat(customer.longitude))) ? `https://www.google.com/maps?q=${parseFloat(customer.latitude)},${parseFloat(customer.longitude)}` : '',
-          orderText   : items,
-          itemsStructured: itemsStructured,
-          deliveryOption : deliveryOption,
-          paymentMethod  : paymentMethod,
-          invoiceTotal   : invoiceTotal,
-          invoiceBreakdown: invoiceBreakdown,
-          store       : store.sheetName,   // ← primary: used by _validSheet
-          sheet       : store.sheetName,   // ← fallback for older code
-          vendor      : store.cfg?.name || store.storeKey,
-          userTimezone: 'Asia/Dubai',
-        }, 30000);
-        if (result.success) serverOrderId = result.orderId;
-        else if (result.phase) {
-          // Window closed server-side
-          clearInterval(countdownTimer);
-          btn.disabled = false;
-          document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
-          err.textContent = '⚠ ' + result.message;
-          return;
+        // ── NEW ORDER(S) ──────────────────────────────────────
+        // Each round of "إضافة أوردر بفاتورة منفصلة" becomes its OWN order
+        // row (own OrderID) sharing the same customer/delivery data — that
+        // way each one shows up as its own separate, independently
+        // editable/cancelable card in "طلباتي وتعديلها" instead of being
+        // locked together as one bundled order. The combined delivery fee
+        // (computed once above, against the true combined total) is simply
+        // split across the rows so nothing is double-charged.
+        for (let i = 0; i < blocks.length; i++) {
+          const b = blocks[i];
+          const isLastBlock = i === blocks.length - 1;
+          const blockItemsText = (blocks.length > 1 && b.label ? `(${b.label} من ${blocks.length} — بفاتورة منفصلة، توصيل مشترك)\n` : '')
+            + b.lines.join('\n')
+            + (isLastBlock && manualNotes ? '\n---\n' + manualNotes : '');
+          const blockTotal = +(b.rows.reduce((rs, r) => rs + (r.lineTotal || 0), 0) + feeSharesNow[i]).toFixed(2);
+          const blockDeliveryOption = window._opDeliveryChoice
+            ? `${window._opDeliveryChoice.label} — ${feeSharesNow[i] > 0 ? feeSharesNow[i] + ' درهم' : 'مجاناً'}${blocks.length > 1 ? ' (توصيل مشترك)' : ''}`
+            : '';
+          const r = await _callScript('submitOrder', {
+            phone       : customer.phone    || '',
+            name        : customer.name     || '',
+            area        : customer.area     || '',
+            address     : customer.address  || '',
+            whatsapp    : customer.whatsapp || customer.phone || '',
+            latitude    : !isNaN(parseFloat(customer.latitude))  ? String(parseFloat(customer.latitude))  : '',
+            longitude   : !isNaN(parseFloat(customer.longitude)) ? String(parseFloat(customer.longitude)) : '',
+            location    : (!isNaN(parseFloat(customer.latitude)) && !isNaN(parseFloat(customer.longitude))) ? `https://www.google.com/maps?q=${parseFloat(customer.latitude)},${parseFloat(customer.longitude)}` : '',
+            orderText   : blockItemsText,
+            itemsStructured: JSON.stringify(b.structured),
+            deliveryOption : blockDeliveryOption,
+            paymentMethod  : paymentMethod,
+            invoiceTotal   : blockTotal,
+            invoiceBreakdown: _blockBreakdown(b, feeSharesNow[i]),
+            store       : store.sheetName,   // ← primary: used by _validSheet
+            sheet       : store.sheetName,   // ← fallback for older code
+            vendor      : store.cfg?.name || store.storeKey,
+            userTimezone: 'Asia/Dubai',
+          }, 30000);
+          result = r; // last result drives the phase/error check below
+          if (r.success) {
+            createdOrders.push({ id: r.orderId, label: b.label, items: blockItemsText, total: blockTotal });
+          } else if (r.phase) {
+            // Window closed server-side mid-way — stop submitting further rounds
+            clearInterval(countdownTimer);
+            btn.disabled = false;
+            document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
+            err.textContent = '⚠ ' + r.message + (createdOrders.length ? ` (تم تسجيل ${createdOrders.length} من ${blocks.length} طلبات قبل التوقف)` : '');
+            return;
+          }
         }
+        serverOrderId = createdOrders[0]?.id;
       }
     } catch(e) {
       console.warn('[saveOrder] fetch issue:', e.message, '— may still have saved');
@@ -5050,6 +5077,7 @@
 
     clearInterval(countdownTimer);
     window._editingOrderId = null; // reset edit state
+    _resetSubOrders();
 
     // Use server ID if we got one, else use pre-generated client ID
     const orderId = serverOrderId || clientOrderId;
@@ -5061,17 +5089,36 @@
     }));
 
     // ── Show success screen inside menuContainer (same place as ordering layout) ──
-    document.getElementById('menuContainer').innerHTML = `
-      <div class="order-success-wrap">
-        <div class="op-success-header">
-          <div class="op-success-icon"><i class="fas fa-check-circle"></i></div>
-          <div class="op-success-title">تم تسجيل طلبك بنجاح!</div>
-        </div>
-        <div class="op-order-preview">
+    // For a multi-round submission, list every order created (its own ID +
+    // its own items) instead of one combined block — matches how they'll
+    // appear as separate cards under "طلباتي وتعديلها".
+    const orderRowsHtml = createdOrders.length > 1
+      ? createdOrders.map(o => `
+          <div class="op-preview-row">
+            <span class="op-preview-label">📦 ${o.label || 'الطلب'}</span>
+            <span class="op-preview-value op-order-id">${o.id}</span>
+          </div>
+          <div class="op-preview-row op-preview-items-row">
+            <span class="op-preview-label">الطلب</span>
+            <span class="op-preview-value op-preview-items">${o.items}</span>
+          </div>`).join('')
+      : `
           <div class="op-preview-row">
             <span class="op-preview-label">رقم الطلب</span>
             <span class="op-preview-value op-order-id">${orderId}</span>
           </div>
+          <div class="op-preview-row">
+            <span class="op-preview-label">الطلب</span>
+            <span class="op-preview-value op-preview-items">${items}</span>
+          </div>`;
+
+    document.getElementById('menuContainer').innerHTML = `
+      <div class="order-success-wrap">
+        <div class="op-success-header">
+          <div class="op-success-icon"><i class="fas fa-check-circle"></i></div>
+          <div class="op-success-title">${createdOrders.length > 1 ? `تم تسجيل ${createdOrders.length} طلبات بنجاح!` : 'تم تسجيل طلبك بنجاح!'}</div>
+        </div>
+        <div class="op-order-preview">
           <div class="op-preview-row">
             <span class="op-preview-label">الاسم</span>
             <span class="op-preview-value">${customer.name || '—'}</span>
@@ -5080,10 +5127,7 @@
             <span class="op-preview-label">الهاتف</span>
             <span class="op-preview-value">${customer.phone || '—'}</span>
           </div>
-          <div class="op-preview-row">
-            <span class="op-preview-label">الطلب</span>
-            <span class="op-preview-value op-preview-items">${items}</span>
-          </div>
+          ${orderRowsHtml}
         </div>
         <div class="order-success-btns">
           <button class="btn-op-save" onclick="showMyOrders()">
