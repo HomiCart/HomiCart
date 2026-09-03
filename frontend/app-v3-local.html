@@ -4528,6 +4528,19 @@
     return { rows, total: +total.toFixed(2), hasUnknownPrice };
   }
 
+  // One combined delivery fee is charged for the whole submission (see
+  // _computeDeliveryFee), but when it's split across several "separate
+  // invoice" rounds each round should show its own even share, not the
+  // full amount repeated — e.g. 40 total ÷ 2 rounds = 20 each. The last
+  // share absorbs any rounding remainder so the shares still sum exactly.
+  function _splitFeeAcrossBlocks(totalFee, n) {
+    if (n <= 1) return [totalFee];
+    const base = Math.floor((totalFee / n) * 100) / 100;
+    const shares = new Array(n).fill(base);
+    shares[n - 1] = +(totalFee - base * (n - 1)).toFixed(2);
+    return shares;
+  }
+
   function updateMenuOrderPreview() {
     const preview = document.getElementById('menuOrderPreview');
     if (!preview) return;
@@ -4551,24 +4564,26 @@
     if (current.rows.length) {
       blocks.push({ label: subOrders.length ? SUBORDER_LABELS[subOrders.length] : null, rows: current.rows });
     }
+    const feeShares = deliveryFee != null ? _splitFeeAcrossBlocks(deliveryFee, blocks.length) : [];
     const rowsHtml = rows => rows.map(r => `
       <div class="invoice-row">
         <span class="invoice-row-name">${r.name} <span class="invoice-row-qty">× ${r.qty} ${r.unit}</span></span>
         <span class="invoice-row-total">${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}</span>
       </div>`).join('');
+    const feeRowHtml = (share, split) => `
+      <div class="invoice-row">
+        <span class="invoice-row-name">رسوم التوصيل${split ? ' (حصتك من التوصيل الموحد)' : ''}</span>
+        <span class="invoice-row-total">${share > 0 ? share + ' درهم' : 'مجاناً'}</span>
+      </div>`;
 
     preview.style.display = 'block';
     preview.innerHTML = `
       <div class="invoice-title">📋 فاتورتك التقريبية</div>
       <div class="invoice-rows">
-        ${blocks.map(b => `
+        ${blocks.map((b, i) => `
           ${b.label ? `<div class="invoice-suborder-label">${b.label}</div>` : ''}
-          ${rowsHtml(b.rows)}`).join('')}
-        ${deliveryFee != null ? `
-          <div class="invoice-row">
-            <span class="invoice-row-name">رسوم التوصيل${blocks.length > 1 ? ' (مرة واحدة على الكل)' : ''}</span>
-            <span class="invoice-row-total">${deliveryFee > 0 ? deliveryFee + ' درهم' : 'مجاناً'}</span>
-          </div>` : ''}
+          ${rowsHtml(b.rows)}
+          ${deliveryFee != null ? feeRowHtml(feeShares[i], blocks.length > 1) : ''}`).join('')}
       </div>
       <div class="invoice-total-row">
         <span>الإجمالي التقريبي</span>
@@ -4955,16 +4970,21 @@
     // (name × qty unit — price, all on one line per item), grouped under a
     // "— {label} —" header per round when more than one is present, so
     // exports show exactly what the customer saw instead of just the total.
+    // The one combined delivery fee is split evenly across the rounds
+    // (see _splitFeeAcrossBlocks) so each round's line shows its own share
+    // instead of the full fee repeated for every round.
+    const feeSharesNow = window._opDeliveryChoice ? _splitFeeAcrossBlocks(deliveryFeeNow, blocks.length) : [];
     const invoiceLines = [];
-    blocks.forEach(b => {
+    blocks.forEach((b, i) => {
       if (b.label) invoiceLines.push(`— ${b.label} —`);
       b.rows.forEach(r => invoiceLines.push(
         `${r.name} × ${r.qty} ${r.unit} — ${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}`
       ));
+      if (window._opDeliveryChoice) {
+        const share = feeSharesNow[i];
+        invoiceLines.push(`رسوم التوصيل${blocks.length > 1 ? ' (حصتك من التوصيل الموحد)' : ''} — ${share > 0 ? share + ' درهم' : 'مجاناً'}`);
+      }
     });
-    if (window._opDeliveryChoice) {
-      invoiceLines.push(`رسوم التوصيل${blocks.length > 1 ? ' (مرة واحدة على الكل)' : ''} — ${deliveryFeeNow > 0 ? deliveryFeeNow + ' درهم' : 'مجاناً'}`);
-    }
     const invoiceBreakdown = invoiceLines.join('\n');
 
     // Fire the request — 30 second timeout
