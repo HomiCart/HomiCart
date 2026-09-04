@@ -1012,6 +1012,17 @@
       transition: border-color .2s, color .2s;
     }
     .btn-cur-cancel:hover { border-color: rgba(255,80,80,.7); color: #ff6060; }
+    .btn-add-round {
+      width: 100%; margin: -.35rem 0 .8rem;
+      background: transparent;
+      color: #28a745; font-family: 'Alexandria', sans-serif;
+      font-size: .88rem; font-weight: 700;
+      border: 1.5px dashed rgba(40,167,69,.4); border-radius: 50px;
+      padding: .75rem 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: .45rem;
+      transition: border-color .2s, background .2s;
+    }
+    .btn-add-round:hover { border-color: rgba(40,167,69,.8); background: rgba(40,167,69,.08); }
     .cur-order-secondary {
       display: flex; gap: .65rem; margin-top: .9rem;
       padding-top: .9rem;
@@ -3789,11 +3800,21 @@
               </div>
             </div>`;
 
+          // A friend/second round can be added to an already-submitted
+          // order at any time (not just while first composing it) — one
+          // "add" affordance per order, shown after its round-card(s),
+          // hidden once it's already at the 4-round cap.
+          const addRoundHtml = (o) => _parseOrderAsRounds(o).length >= SUBORDER_MAX ? '' : `
+            <button class="btn-add-round" id="add-round-${o.id}">
+              <i class="fas fa-plus-circle"></i>&nbsp;إضافة طلب جديد على نفس الأوردر
+            </button>`;
+
           const listEl = document.getElementById('curOrdersList');
           listEl.innerHTML = newOrders.map(o => {
             const dateStr = o.date ? String(o.date).substring(0, 16) : '—';
             const rounds  = _parseOrderRounds(o);
-            return rounds ? rounds.map(r => cardHtml(o, r, dateStr)).join('') : cardHtml(o, null, dateStr);
+            const cards   = rounds ? rounds.map(r => cardHtml(o, r, dateStr)).join('') : cardHtml(o, null, dateStr);
+            return cards + addRoundHtml(o);
           }).join('');
 
           // Attach events per card (one order can map to several cards)
@@ -3808,6 +3829,11 @@
               const roundIdx = round ? round.roundIndex : null;
               if (editBtn) editBtn.addEventListener('click', () => _editCurrentOrder(o.id, o, roundIdx));
               if (canBtn)  canBtn.addEventListener('click',  () => _cancelCurrentOrder(o.id, o, roundIdx, storeSheet, 'cancel-btn-' + o.id + suffix, 'cur-card-' + o.id + suffix));
+            });
+            const addBtn = document.getElementById('add-round-' + o.id);
+            if (addBtn) addBtn.addEventListener('click', () => {
+              _showStep('stepCurrentOrder', false);
+              _addRoundToOrder(o.id, o, window._pendingStore);
             });
           });
 
@@ -4670,6 +4696,74 @@
     });
   }
 
+  // Same shape as _parseOrderRounds, but never null — a plain (never
+  // bundled) order comes back as a single round, so it can be handed to the
+  // same "combine with a new round" machinery used for adding another round
+  // to an order that's already multi-round (see _addRoundToOrder).
+  function _parseOrderAsRounds(order) {
+    const rounds = _parseOrderRounds(order);
+    if (rounds) return rounds;
+    let structured = [];
+    try { structured = JSON.parse(order?.itemsStructured || '[]'); } catch(e) {}
+    const rows = [];
+    (order?.invoiceBreakdown || '').split('\n').forEach(line => {
+      if (line.startsWith('رسوم التوصيل')) return;
+      const im = line.match(/^(.+?)\s*×\s*([\d.]+)\s*(\S+)\s*—\s*(?:([\d.]+)\s*درهم|.+)$/);
+      if (im) rows.push({ name: im[1].trim(), qty: parseFloat(im[2]), unit: im[3], lineTotal: im[4] != null ? parseFloat(im[4]) : null });
+    });
+    return [{
+      roundIndex: 0, label: SUBORDER_LABELS[0],
+      structured, rows,
+      lines: (order?.items || '').split('\n').filter(Boolean),
+      total: +rows.reduce((s, r) => s + (r.lineTotal || 0), 0).toFixed(2),
+    }];
+  }
+
+  // Adds a brand-new round to an ALREADY-SUBMITTED order (e.g. a friend
+  // ordering on the same delivery after the fact) — the existing round(s)
+  // ride along as locked _opSubOrders exactly like editing one round does,
+  // except the live cards start EMPTY at the next available slot instead of
+  // prefilling an existing round. Saving takes the normal EDIT path
+  // (window._editingOrderId is set) and recombines everything into the
+  // SAME order row via saveOrder's blocks builder — no new submit path needed.
+  async function _addRoundToOrder(orderId, order, storeInfo) {
+    if (!isOrderWindowOpen()) {
+      alert(getWindowClosedMsg() + '\n\nلا يمكن إضافة طلب في الوقت الحالي.');
+      return;
+    }
+    const existingRounds = _parseOrderAsRounds(order);
+    if (existingRounds.length >= SUBORDER_MAX) {
+      showOrderAlert(`تم الوصول للحد الأقصى (${SUBORDER_MAX} طلبات) في نفس الأوردر`);
+      return;
+    }
+
+    window._pendingStore = storeInfo;
+    window._editingOrderId = orderId;
+    window._opPendingEditItems = null;
+    window._opPendingEditStructured = null;
+    _opSaved = false;
+
+    await selectStore(storeInfo.folder, storeInfo.name, storeInfo.tag || '');
+    await new Promise(r => setTimeout(r, 200));
+    await orderNow(storeInfo.folder); // resets _opSubOrders/_opEditingRoundIndex, loads menu+delivery options
+
+    window._opSubOrders = existingRounds.map(r => ({ roundIndex: r.roundIndex, label: r.label, lines: r.lines, structured: r.structured, rows: r.rows, total: r.total }));
+    window._opEditingRoundIndex = existingRounds.length; // next available slot
+    clearAllMenuQty();
+    _renderSubOrdersSummary();
+    updateMenuOrderPreview();
+
+    const btn = document.getElementById('opSaveBtn');
+    const lbl = document.getElementById('opSaveTxt');
+    const err = document.getElementById('opError');
+    if (lbl) lbl.textContent = 'حفظ الطلب الجديد';
+    if (btn) btn.disabled = false;
+    if (err) {
+      err.textContent = `➕ إضافة ${SUBORDER_LABELS[existingRounds.length]} على نفس الأوردر (${orderId}) — باقي الطلبات هتفضل زي ما هي`;
+      err.style.color = '#28a745';
+    }
+  }
+
   // Re-derives the delivery fee that SHOULD apply to an order's remaining
   // rounds after one is cancelled — refetches the live tier rule (prices
   // may have been tweaked in admin since the order was placed) and matches
@@ -5399,7 +5493,11 @@
                 `}
               </div>
             </div>`;
-          return rounds ? rounds.map(cardHtml).join('') : cardHtml(null);
+          const addRoundHtml = canEdit && _parseOrderAsRounds(o).length < SUBORDER_MAX ? `
+            <button class="btn-add-round" id="add-round-${o.id}">
+              <i class="fas fa-plus-circle"></i>&nbsp;إضافة طلب جديد على نفس الأوردر
+            </button>` : '';
+          return (rounds ? rounds.map(cardHtml).join('') : cardHtml(null)) + addRoundHtml;
         }).join('');
 
         return `
@@ -5429,6 +5527,10 @@
               cancelOrderByCustomer(o.id, o, t.roundIdx, se.sheetName, cancelBtn);
             });
           });
+          const addBtn = document.getElementById('add-round-' + o.id);
+          if (addBtn) addBtn.addEventListener('click', () => {
+            _addRoundToOrderFromMyOrders(o.id, o, se.folder, se.sheetName, se.name);
+          });
         });
       });
 
@@ -5442,6 +5544,14 @@
     const matchedStore = (window._appStores || stores || []).find(s => s.folder === folder);
     if (!matchedStore) { alert('تعذر فتح متجر ' + storeName); return; }
     await _beginEditRound(orderId, order, roundIndex, { folder: matchedStore.folder, name: matchedStore.name, tag: matchedStore.tag || '' });
+  }
+
+  // Add a new round to an order from "طلباتي" — same idea as _editOrderFromMyOrders
+  // but for _addRoundToOrder.
+  async function _addRoundToOrderFromMyOrders(orderId, order, folder, sheetName, storeName) {
+    const matchedStore = (window._appStores || stores || []).find(s => s.folder === folder);
+    if (!matchedStore) { alert('تعذر فتح متجر ' + storeName); return; }
+    await _addRoundToOrder(orderId, order, { folder: matchedStore.folder, name: matchedStore.name, tag: matchedStore.tag || '' });
   }
 
   async function cancelOrderByCustomer(orderId, order, roundIndex, sheetName, btn) {
