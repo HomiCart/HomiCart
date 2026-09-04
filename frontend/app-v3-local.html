@@ -1776,11 +1776,21 @@
     .status-Preparing  { background: rgba(255,165,0,.15);  color: #ffa500; }
     .status-Delivered  { background: rgba(40,200,100,.15); color: #28c864; }
     .status-Cancelled  { background: rgba(255,80,80,.15);  color: #ff5050; }
-    .order-card-items {
-      font-family: 'Cairo', sans-serif; font-size: .88rem;
-      color: rgba(255,255,255,.65); line-height: 1.7;
-      white-space: pre-line; max-height: 80px; overflow: hidden;
-      mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+    .order-card-invoice {
+      display: flex; flex-direction: column; gap: .3rem;
+      font-family: 'Cairo', sans-serif; font-size: .84rem;
+    }
+    .order-card-total-row {
+      display: flex; align-items: center; justify-content: space-between;
+      font-family: 'Alexandria', sans-serif; font-size: .88rem; font-weight: 700;
+      color: #fff; padding-top: .5rem;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .order-card-total-row span:last-child { color: #18bfef; }
+    .order-card-meta-row {
+      display: flex; flex-wrap: wrap; gap: .3rem 1rem;
+      font-family: 'Cairo', sans-serif; font-size: .78rem;
+      color: rgba(255,255,255,.55);
     }
     .btn-edit-order {
       align-self: flex-end; margin-top: .3rem;
@@ -3787,7 +3797,16 @@
                 <span class="cur-order-badge">جديد</span>
                 <span class="cur-order-date">${dateStr}</span>
               </div>
-              <div class="cur-order-items">${(r ? r.lines.join('\n') : (o.items || '—')).replace(/\n/g,'<br>')}</div>
+              <div class="cur-order-items">${_renderInvoiceLinesHtml(r ? r.breakdownText : (o.invoiceBreakdown || o.items))}</div>
+              ${(r ? +(r.total + r.feeShare).toFixed(2) : o.invoiceTotal) != null ? `
+                <div class="order-card-total-row">
+                  <span>الإجمالي</span><span>${r ? +(r.total + r.feeShare).toFixed(2) : o.invoiceTotal} درهم</span>
+                </div>` : ''}
+              ${o.deliveryOption || o.paymentMethod ? `
+                <div class="order-card-meta-row">
+                  ${o.deliveryOption ? `<span>🚚 ${o.deliveryOption}</span>` : ''}
+                  ${o.paymentMethod ? `<span>💳 ${o.paymentMethod}</span>` : ''}
+                </div>` : ''}
               <div class="cur-order-actions" style="margin-top:.6rem">
                 <button class="btn-cur-edit">
                   <i class="fas fa-pen"></i>&nbsp;تعديل
@@ -4644,6 +4663,31 @@
     return shares;
   }
 
+  // Renders a stored invoice-breakdown/items text block (one line per item
+  // or delivery fee, e.g. "دجاج × 1 كيلو — 20 درهم") as the same
+  // .invoice-row markup used for the live on-screen preview — reused so a
+  // customer looking up an old order later sees the FULL priced order, not
+  // just a truncated item list, whether it's still editable or not.
+  function _renderInvoiceLinesHtml(text) {
+    return (text || '').split('\n').filter(Boolean).map(line => {
+      const withQty = line.match(/^(.+?)\s*×\s*([\d.]+)\s*(\S+)\s*—\s*(.+)$/);
+      if (withQty) {
+        return `<div class="invoice-row">
+          <span class="invoice-row-name">${withQty[1].trim()} <span class="invoice-row-qty">× ${withQty[2]} ${withQty[3]}</span></span>
+          <span class="invoice-row-total">${withQty[4].trim()}</span>
+        </div>`;
+      }
+      const plain = line.match(/^(.+?)\s*—\s*(.+)$/);
+      if (plain) {
+        return `<div class="invoice-row">
+          <span class="invoice-row-name">${plain[1].trim()}</span>
+          <span class="invoice-row-total">${plain[2].trim()}</span>
+        </div>`;
+      }
+      return `<div class="invoice-row"><span class="invoice-row-name">${line}</span></div>`;
+    }).join('');
+  }
+
   // Splits an already-saved order back into its individual rounds, purely
   // from its stored text (no live menu/pricing lookup needed) — used to
   // show each round of a multi-round order as its own card in "طلباتي
@@ -4670,27 +4714,47 @@
     });
 
     // Per-round priced rows + fee share: same "— label —" blocks inside
-    // invoiceBreakdown, but joined with no blank line (see saveOrder).
+    // invoiceBreakdown, but joined with no blank line (see saveOrder). Also
+    // keeps the raw chunk text as-is (breakdownText) so callers that just
+    // want to DISPLAY the round's full priced invoice (see showMyOrders/
+    // curOrdersList) don't need to re-format the parsed rows themselves.
     const rowsByLabel = {};
+    const feeByLabel = {};
+    const textByLabel = {};
     (order.invoiceBreakdown || '').split(/\n(?=—\s)/).forEach(chunk => {
       const m = chunk.match(/^—\s*(.+?)\s*—\n([\s\S]*)$/);
       if (!m) return;
+      const label = m[1].trim();
+      textByLabel[label] = m[2].trim();
       const rows = [];
+      let fee = 0;
       m[2].split('\n').forEach(line => {
-        if (line.startsWith('رسوم التوصيل')) return;
+        if (line.startsWith('رسوم التوصيل')) {
+          const fm = line.match(/—\s*([\d.]+)\s*درهم/);
+          if (fm) fee = parseFloat(fm[1]);
+          return;
+        }
         const im = line.match(/^(.+?)\s*×\s*([\d.]+)\s*(\S+)\s*—\s*(?:([\d.]+)\s*درهم|.+)$/);
         if (im) rows.push({ name: im[1].trim(), qty: parseFloat(im[2]), unit: im[3], lineTotal: im[4] != null ? parseFloat(im[4]) : null });
       });
-      rowsByLabel[m[1].trim()] = rows;
+      rowsByLabel[label] = rows;
+      feeByLabel[label] = fee;
     });
 
     return Object.keys(byRound).map(Number).sort((a, b) => a - b).map(idx => {
       const label = SUBORDER_LABELS[idx] || `الطلب ${idx + 1}`;
       const rows  = rowsByLabel[label] || [];
       const lines = (itemsByLabel[label] || '').split('\n').filter(Boolean);
+      const feeShare = feeByLabel[label] || 0;
       return {
         roundIndex: idx, label,
-        structured: byRound[idx], rows, lines,
+        structured: byRound[idx], rows, lines, feeShare,
+        breakdownText: textByLabel[label] || lines.join('\n'),
+        // Items-only — matches buildMenuOrderInvoice().total / addAnotherSubOrder's
+        // contract for _opSubOrders entries (see _subOrdersItemsTotal, which
+        // sums this to compute the live tiered-fee threshold; adding the
+        // delivery share in here would double-count it). Use total+feeShare
+        // for a round's grand total when just displaying it.
         total: +rows.reduce((s, r) => s + (r.lineTotal || 0), 0).toFixed(2),
       };
     });
@@ -4706,16 +4770,22 @@
     let structured = [];
     try { structured = JSON.parse(order?.itemsStructured || '[]'); } catch(e) {}
     const rows = [];
+    let feeShare = 0;
     (order?.invoiceBreakdown || '').split('\n').forEach(line => {
-      if (line.startsWith('رسوم التوصيل')) return;
+      if (line.startsWith('رسوم التوصيل')) {
+        const fm = line.match(/—\s*([\d.]+)\s*درهم/);
+        if (fm) feeShare = parseFloat(fm[1]);
+        return;
+      }
       const im = line.match(/^(.+?)\s*×\s*([\d.]+)\s*(\S+)\s*—\s*(?:([\d.]+)\s*درهم|.+)$/);
       if (im) rows.push({ name: im[1].trim(), qty: parseFloat(im[2]), unit: im[3], lineTotal: im[4] != null ? parseFloat(im[4]) : null });
     });
     return [{
       roundIndex: 0, label: SUBORDER_LABELS[0],
-      structured, rows,
+      structured, rows, feeShare,
       lines: (order?.items || '').split('\n').filter(Boolean),
-      total: +rows.reduce((s, r) => s + (r.lineTotal || 0), 0).toFixed(2),
+      breakdownText: order?.invoiceBreakdown || (order?.items || ''),
+      total: +rows.reduce((s, r) => s + (r.lineTotal || 0), 0).toFixed(2), // items-only, see _parseOrderRounds
     }];
   }
 
@@ -5466,18 +5536,30 @@
           const canEdit     = o.status === 'New';
           const statusClass = 'status-' + (o.status || 'New');
           const dateStr     = o.date ? String(o.date).substring(0, 16) : '—';
-          // A multi-round order (see _parseOrderRounds) shows as several
-          // separate, independently editable/cancelable cards sharing the
-          // same order id — only ever relevant while it's still "New".
-          const rounds = canEdit ? _parseOrderRounds(o) : null;
-          const cardHtml = (r) => `
+          // A multi-round order (see _parseOrderRounds) always shows as
+          // several separate cards sharing the same order id — regardless
+          // of status, so the full order stays reviewable/readable during
+          // preparation too, not just while it's still editable.
+          const rounds = _parseOrderRounds(o);
+          const cardHtml = (r) => {
+            const grandTotal = r ? +(r.total + r.feeShare).toFixed(2) : o.invoiceTotal;
+            return `
             <div class="order-card ${canEdit ? 'editable' : ''}" id="myord-${o.id}${r ? '-r' + r.roundIndex : ''}">
               <div class="order-card-top">
                 <span class="order-card-id">${o.id}${r ? ` <span style="opacity:.6;font-weight:600">· ${r.label}</span>` : ''}</span>
                 <span class="order-status-badge ${statusClass}">${_statusAr(o.status)}</span>
                 <span class="order-card-date">${dateStr}</span>
               </div>
-              <div class="order-card-items">${r ? r.lines.join('<br>') : (o.items || '—')}</div>
+              <div class="order-card-invoice">${_renderInvoiceLinesHtml(r ? r.breakdownText : (o.invoiceBreakdown || o.items))}</div>
+              ${grandTotal != null ? `
+                <div class="order-card-total-row">
+                  <span>الإجمالي</span><span>${grandTotal} درهم</span>
+                </div>` : ''}
+              ${o.deliveryOption || o.paymentMethod ? `
+                <div class="order-card-meta-row">
+                  ${o.deliveryOption ? `<span>🚚 ${o.deliveryOption}</span>` : ''}
+                  ${o.paymentMethod ? `<span>💳 ${o.paymentMethod}</span>` : ''}
+                </div>` : ''}
               <div class="order-card-actions">
                 ${canEdit ? `
                   <button class="btn-edit-order">
@@ -5493,6 +5575,7 @@
                 `}
               </div>
             </div>`;
+          };
           const addRoundHtml = canEdit && _parseOrderAsRounds(o).length < SUBORDER_MAX ? `
             <button class="btn-add-round" id="add-round-${o.id}">
               <i class="fas fa-plus-circle"></i>&nbsp;إضافة طلب جديد على نفس الأوردر
@@ -5513,7 +5596,7 @@
       // Attach event listeners for edit + cancel buttons (one order can map to several round-cards)
       storesWithOrders.forEach(({ store: se, orders }) => {
         orders.forEach(o => {
-          const rounds  = o.status === 'New' ? _parseOrderRounds(o) : null;
+          const rounds  = _parseOrderRounds(o);
           const targets = rounds ? rounds.map(r => ({ id: `myord-${o.id}-r${r.roundIndex}`, roundIdx: r.roundIndex })) : [{ id: `myord-${o.id}`, roundIdx: null }];
           targets.forEach(t => {
             const card = document.getElementById(t.id);
