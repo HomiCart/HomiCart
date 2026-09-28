@@ -4268,7 +4268,19 @@
     window._opDeliveryChoice = null;
     window._opPaymentMethod  = null;
     window._opMenuItems      = [];
+    // Reset (not just the choice) — otherwise switching to a store with NO
+    // delivery options while a previous store's options were still sitting
+    // here would wrongly block checkout demanding a choice from a list that
+    // no longer applies to this store.
+    window._opDeliveryOptions = [];
+    // Distinct from `_opDeliveryOptions?.length` — that's falsy BOTH before
+    // this fetch resolves AND when the store genuinely has none, so saveOrder
+    // couldn't tell "still loading" from "no delivery fee applies" and let a
+    // fast submit through with the delivery line silently missing (confirmed
+    // on a live AlFalaki order, 2026-09-28: totaled items only, no fee line).
+    window._opDeliveryOptionsLoaded = false;
     const deliveryOptionsPromise = _callScript('getDeliveryOptions', { store: _noteStore }, 6000).then(res => {
+      window._opDeliveryOptionsLoaded = true;
       const cfg = res?.config;
       const box = document.getElementById('deliveryOptionsBox');
       if (!box || !cfg?.enabled || !Array.isArray(cfg.options) || !cfg.options.length) return;
@@ -4305,7 +4317,7 @@
             }).join('')}
           </div>
         </div>`;
-    }).catch(() => {});
+    }).catch(() => { window._opDeliveryOptionsLoaded = true; });
 
     // Load menu items in background
     window._opInvoiceNote = '';
@@ -4645,7 +4657,8 @@
       const lineTotal = unitPrice != null ? +(qty * unitPrice).toFixed(2) : null;
       if (lineTotal != null) total += lineTotal;
       else hasUnknownPrice = true;
-      rows.push({ name: item.name, qty, unit: item.unit || 'كيلو', lineTotal });
+      const note = (document.getElementById('miNote' + i)?.value || '').trim();
+      rows.push({ name: item.name, qty, unit: item.unit || 'كيلو', lineTotal, note });
     });
     return { rows, total: +total.toFixed(2), hasUnknownPrice };
   }
@@ -5257,6 +5270,13 @@
       err.textContent = 'يرجى تحديد كمية لمنتج واحد على الأقل';
       return;
     }
+    if (!window._opDeliveryOptionsLoaded) {
+      // Don't let a fast click race the delivery-options fetch — that's how
+      // an order could end up saved with no delivery fee line at all (see
+      // orderNow/_opDeliveryOptionsLoaded).
+      err.textContent = 'برجاء الانتظار لحظة... جاري تحميل بيانات التوصيل';
+      return;
+    }
     if (window._opDeliveryOptions?.length && !window._opDeliveryChoice) {
       err.textContent = 'يرجى اختيار طريقة التوصيل المفضلة';
       return;
@@ -5354,7 +5374,7 @@
     blocks.forEach((b, i) => {
       if (b.label) invoiceLines.push(`— ${b.label} —`);
       b.rows.forEach(r => invoiceLines.push(
-        `${r.name} × ${r.qty} ${r.unit} — ${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}`
+        `${r.name} × ${r.qty} ${r.unit} — ${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}${r.note ? ` — (${r.note})` : ''}`
       ));
       if (window._opDeliveryChoice) {
         const share = feeSharesNow[i];
