@@ -1414,10 +1414,15 @@
     /* ══════════════════════════════
        Payment method chooser
     ══════════════════════════════ */
-    .payment-options-list {
-      display: flex; gap: .6rem;
+    .payment-note {
+      margin-top: .8rem;
+      font-family: 'Cairo', sans-serif; font-size: .88rem; font-weight: 600;
+      color: rgba(255,255,255,.75); line-height: 1.6;
+      background: rgba(24,191,239,.07);
+      border: 1px solid rgba(24,191,239,.22);
+      border-radius: 11px; padding: .7rem .9rem;
     }
-    .payment-options-list .delivery-option { flex: 1; justify-content: center; }
+    .payment-note i { color: #18bfef; margin-left: .35rem; }
 
     /* ══════════════════════════════
        Menu items picker (customer)
@@ -4266,7 +4271,6 @@
 
     // Load delivery options & menu items in background
     window._opDeliveryChoice = null;
-    window._opPaymentMethod  = null;
     window._opMenuItems      = [];
     // Reset (not just the choice) — otherwise switching to a store with NO
     // delivery options while a previous store's options were still sitting
@@ -4614,8 +4618,7 @@
   }
 
   // Refresh the displayed fee next to each delivery option (tiered fees
-  // change live as quantities change), and re-check whether the payment
-  // method chooser should be shown for the currently selected option.
+  // change live as quantities change).
   function _refreshDeliveryFeeDisplay() {
     (window._opDeliveryOptions || []).forEach((opt, i) => {
       const el = document.getElementById('deliveryOptFee' + i);
@@ -4623,18 +4626,6 @@
       const fee = _computeDeliveryFee(opt);
       el.textContent = fee > 0 ? '+' + fee + ' درهم' : 'مجاناً';
     });
-    if (window._opDeliveryChoice) {
-      const box = document.getElementById('paymentMethodBox');
-      const needsPayment = window._opDeliveryChoice?.requiresPaymentMethod !== false && _computeDeliveryFee(window._opDeliveryChoice) > 0;
-      if (box && needsPayment && box.style.display === 'none') {
-        renderPaymentMethodBox();
-        box.style.display = '';
-      } else if (box && !needsPayment && box.style.display !== 'none') {
-        box.style.display = 'none';
-        box.innerHTML = '';
-        window._opPaymentMethod = null;
-      }
-    }
   }
 
   // Prices are typed freely in admin (e.g. "35 درهم/كيلو"), not a clean
@@ -5144,14 +5135,16 @@
 
     updateMenuOrderPreview(); // refresh invoice with this option's delivery fee
 
-    // Show the payment method chooser only for paid (shipping company) delivery
-    // — and only for options that want it at all (see per-option checkbox in admin).
+    // Payment isn't chosen on the site anymore — just tell the customer what
+    // is accepted once they've picked a delivery method.
     const box = document.getElementById('paymentMethodBox');
+    if (box) {
+      box.innerHTML = '<div class="payment-note"><i class="fas fa-money-bill-wave"></i> الدفع المتاح عند استلام الطلب هو كاش او بطاقة</div>';
+      box.style.display = window._opDeliveryChoice ? '' : 'none';
+    }
+
     const needsPayment = window._opDeliveryChoice?.requiresPaymentMethod !== false && _computeDeliveryFee(window._opDeliveryChoice) > 0;
     if (needsPayment) {
-      renderPaymentMethodBox();
-      box.style.display = '';
-
       // Warn the customer if they already qualify for a free combined-delivery
       // option (i.e. they have an active order with the vendor that option
       // requires) — picking paid shipping here would cost them money for
@@ -5169,39 +5162,7 @@
           } catch(e) {}
         }
       }
-    } else {
-      box.style.display = 'none';
-      box.innerHTML = '';
-      window._opPaymentMethod = null;
     }
-  }
-
-  /* ── Build payment method chooser (cash / bank transfer) ─────── */
-  function renderPaymentMethodBox() {
-    const box = document.getElementById('paymentMethodBox');
-    const methods = [
-      { id: 'cash', label: 'كاش عند التوصيل' },
-      { id: 'bank', label: 'تحويل بنكي' }
-    ];
-    box.innerHTML = `
-      <div class="delivery-options">
-        <div class="delivery-options-title"><i class="fas fa-money-bill-wave"></i> هل تفضل الدفع</div>
-        <div class="delivery-options-list payment-options-list">
-          ${methods.map((m, i) => `
-            <label class="delivery-option${window._opPaymentMethod === m.id ? ' selected' : ''}" id="paymentOpt${i}">
-              <input type="radio" name="paymentMethod" value="${m.id}" ${window._opPaymentMethod === m.id ? 'checked' : ''} onchange="selectPaymentMethod('${m.id}')">
-              <span class="delivery-option-label">${m.label}</span>
-            </label>`).join('')}
-        </div>
-      </div>`;
-  }
-
-  /* ── Track chosen payment method ──────────────────────────── */
-  function selectPaymentMethod(id) {
-    window._opPaymentMethod = id;
-    document.querySelectorAll('#paymentMethodBox .delivery-option').forEach(el => {
-      el.classList.toggle('selected', el.querySelector('input').value === id);
-    });
   }
 
   /* ── Cancel order mode → restore normal menu view ────────────── */
@@ -5281,10 +5242,6 @@
       err.textContent = 'يرجى اختيار طريقة التوصيل المفضلة';
       return;
     }
-    if (window._opDeliveryChoice?.requiresPaymentMethod !== false && _computeDeliveryFee(window._opDeliveryChoice) > 0 && !window._opPaymentMethod) {
-      err.textContent = 'يرجى اختيار طريقة الدفع';
-      return;
-    }
 
     // If the chosen delivery option requires an active order from another vendor first
     if (window._opDeliveryChoice?.requireVendorOrder) {
@@ -5315,10 +5272,6 @@
     const deliveryOption = window._opDeliveryChoice
       ? `${window._opDeliveryChoice.label} — ${deliveryFeeCharged > 0 ? deliveryFeeCharged + ' درهم' : 'مجاناً'}`
       : '';
-
-    // Chosen payment method (cash / bank transfer) — goes to its own column
-    const paymentLabels = { cash: 'كاش عند التوصيل', bank: 'تحويل بنكي' };
-    const paymentMethod = window._opPaymentMethod ? (paymentLabels[window._opPaymentMethod] || window._opPaymentMethod) : '';
 
     // Prevent duplicate submission
     const btn = document.getElementById('opSaveBtn');
@@ -5394,7 +5347,6 @@
           items   : items,
           itemsStructured: itemsStructured,
           deliveryOption : deliveryOption,
-          paymentMethod  : paymentMethod,
           invoiceTotal   : invoiceTotal,
           invoiceBreakdown: invoiceBreakdown,
           sheet   : store.sheetName,
@@ -5422,7 +5374,6 @@
           orderText   : items,
           itemsStructured: itemsStructured,
           deliveryOption : deliveryOption,
-          paymentMethod  : paymentMethod,
           invoiceTotal   : invoiceTotal,
           invoiceBreakdown: invoiceBreakdown,
           store       : store.sheetName,   // ← primary: used by _validSheet
