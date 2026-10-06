@@ -2594,16 +2594,7 @@ async function runMultiVendorPipeline() {
     // Store vendor texts globally so onclick can access them directly
     window._mvVendorTexts = data.vendorTexts || {};
 
-    // Per-vendor copy buttons — built as inline-onclick HTML (same proven pattern as combined button)
-    var vendorBtnsEl = document.getElementById('mv-vendor-btns');
-    vendorBtnsEl.innerHTML = checked.map(function(key) {
-      var store = STORES.find(function(s) { return s.key === key; }) || { name: key, color: '#18bfef' };
-      var safeKey = String(key).replace(/'/g, "\\'");
-      return '<button onclick="mvCopyVendor(\'' + safeKey + '\')" '
-        + 'style="flex:1;min-width:130px;padding:8px;background:rgba(255,255,255,.06);color:#fff;border:1px solid '
-        + store.color + '44;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700">'
-        + '📋 ' + store.name + '</button>';
-    }).join('');
+    _mvRenderVendorButtons(checked);
 
     results.style.display = 'block';
     toast('✅ ' + data.message, 'success');
@@ -2616,6 +2607,93 @@ async function runMultiVendorPipeline() {
     toast('❌ ' + e.message, 'error');
   } finally {
     btn.disabled = false;
+  }
+}
+
+// Per-vendor copy buttons — built as inline-onclick HTML (same proven pattern as combined button)
+function _mvRenderVendorButtons(keys) {
+  var vendorBtnsEl = document.getElementById('mv-vendor-btns');
+  vendorBtnsEl.innerHTML = keys.map(function(key) {
+    var store = STORES.find(function(s) { return s.key === key; }) || { name: key, color: '#18bfef' };
+    var safeKey = String(key).replace(/'/g, "\\'");
+    return '<button onclick="mvCopyVendor(\'' + safeKey + '\')" '
+      + 'style="flex:1;min-width:130px;padding:8px;background:rgba(255,255,255,.06);color:#fff;border:1px solid '
+      + store.color + '44;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700">'
+      + '📋 ' + store.name + '</button>';
+  }).join('');
+}
+
+function _mvEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+  });
+}
+
+// Slots orders that arrived after the route was already sent into it —
+// without renumbering anything (see insertLateOrders in AdminRoutes.gs).
+async function runInsertLateOrders() {
+  var checked = Array.from(document.querySelectorAll('#mvVendorList input[type=checkbox]:checked'))
+    .map(function(cb) { return cb.dataset.key; });
+  if (checked.length === 0) { toast('اختر تاجر واحد على الأقل', 'error'); return; }
+
+  if (!confirm('هيدي رقم لكل أوردر "جاري التحضير" لسه من غير رقم توصيل — بنفس رقم أقرب محطة + حرف (مثل 6b) — من غير ما يغيّر أي رقم قديم.\n\nمتأكدة إنك قفلتي التجميع الجديد قبل كده؟ تكملي؟')) return;
+
+  var runBtn  = document.getElementById('mv-run-btn');
+  var lateBtn = document.getElementById('mv-late-btn');
+  var progWrap= document.getElementById('mv-prog-wrap');
+  var fill    = document.getElementById('mv-fill');
+  var status  = document.getElementById('mv-status');
+  var results = document.getElementById('mv-results');
+
+  runBtn.disabled = true; lateBtn.disabled = true;
+  progWrap.style.display = 'block';
+  results.style.display  = 'none';
+  fill.style.width = '40%';
+  status.style.color = '';
+  status.textContent = '📍 بحدد أقرب محطة لكل أوردر متأخر...';
+
+  try {
+    var data = await api('insertLateOrders', { vendors: checked.join(',') }, 180000);
+    if (!data.success) {
+      var more = (data.unplaced && data.unplaced.length)
+        ? '\n' + data.unplaced.map(function(u) { return '• ' + u.name + ' (' + u.phone + ') — ' + u.reason; }).join('\n') : '';
+      throw new Error(data.message + more);
+    }
+
+    fill.style.width   = '100%';
+    status.textContent = '✅ ' + data.message;
+    status.style.color = '#28c864';
+
+    _mvResults = data;
+    window._mvVendorTexts = data.vendorTexts || {};
+
+    var placedHtml = (data.placed || []).map(function(p) {
+      var why = p.sameCustomer ? 'نفس رقم أوردره القديم'
+        : 'قريب من ' + _mvEsc(p.nearNo) + ' · ' + _mvEsc(p.nearName) + ' (' + p.km + ' كم)';
+      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,255,255,.04);border-radius:7px;border-right:3px solid #f59e0b">'
+        + '<div style="background:#f59e0b;color:#fff;min-width:34px;height:24px;padding:0 6px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0">' + _mvEsc(p.no) + '</div>'
+        + '<div style="flex:1;font-size:12px;color:rgba(255,255,255,.7)">' + _mvEsc(p.name) + ' — ' + why + '</div></div>';
+    }).join('');
+    var unplacedHtml = (data.unplaced || []).map(function(u) {
+      return '<div style="padding:7px 10px;background:rgba(255,80,80,.08);border-radius:7px;border-right:3px solid #ff5050;font-size:12px;color:#ff9a9a">'
+        + '⚠️ ' + _mvEsc(u.name) + ' (' + _mvEsc(u.phone) + ') — ' + _mvEsc(u.reason) + ' — محتاج رقم يدوي</div>';
+    }).join('');
+
+    document.getElementById('mv-summary').innerHTML =
+      '✅ ' + _mvEsc(data.message) + '<br>' +
+      '<span style="font-size:.78rem;color:rgba(255,255,255,.5)">القوائم اللي تحت فيها المتأخرين بس — جاهزة تتبعت للتاجر · وفي تاب "ملحق_..." في الشيت</span>';
+    document.getElementById('mv-links').innerHTML = placedHtml + unplacedHtml;
+
+    _mvRenderVendorButtons(checked);
+    results.style.display = 'block';
+    toast('✅ ' + data.message, 'success');
+  } catch(e) {
+    fill.style.width   = '0%';
+    status.textContent = '❌ ' + e.message;
+    status.style.color = '#ff6060';
+    toast('❌ ' + e.message.split('\n')[0], 'error');
+  } finally {
+    runBtn.disabled = false; lateBtn.disabled = false;
   }
 }
 
@@ -2856,6 +2934,15 @@ function mvPrint(key) {
       style="width:100%;padding:13px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:800;font-family:'Cairo',sans-serif;margin-bottom:.8rem">
       🚀 تجميع ومعالجة الطلبات
     </button>
+
+    <!-- Late orders: slot new orders into an already-sent route without renumbering -->
+    <button id="mv-late-btn" onclick="runInsertLateOrders()"
+      style="width:100%;padding:11px;background:rgba(255,255,255,.06);color:#fff;border:1.5px dashed rgba(245,158,11,.55);border-radius:9px;cursor:pointer;font-size:13px;font-weight:800;font-family:'Cairo',sans-serif;margin-bottom:.4rem">
+      ➕ إدراج المتأخرين (من غير تغيير الأرقام القديمة)
+    </button>
+    <div style="font-size:.7rem;color:rgba(255,255,255,.35);margin-bottom:.8rem;text-align:center;line-height:1.6">
+      للأوردرات اللي جت بعد ما الأرقام اتبعتت للتاجر — بتاخد رقم أقرب محطة + حرف (مثل 6b)
+    </div>
 
     <!-- Results -->
     <div id="mv-results" style="display:none">
