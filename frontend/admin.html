@@ -404,6 +404,19 @@ select option { background:#0d1a28; color:#fff; }
             <i class="fas fa-check-double"></i> حوّل لتم التوصيل
           </button>
         </div>
+
+        <!-- Same thing, but by phone — for when route numbers can't be trusted (route was re-run) -->
+        <div style="border-top:1px dashed rgba(255,255,255,.12);margin-top:1.1rem;padding-top:1rem">
+          <div style="font-size:.78rem;color:rgba(255,255,255,.5);margin-bottom:.5rem;line-height:1.7">
+            <b style="color:#fff">أو بأرقام الموبايل</b> — لو الأرقام اتغيرت (اتعمل تجميع تاني): الصقي أرقام موبايل اللي اتسلموا (واحد في كل سطر، تقدري تنسخي عمود الموبايل من الشيت)
+          </div>
+          <textarea id="deliveredPhones" rows="4" dir="ltr" placeholder="0529157624&#10;0547793964"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 12px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;resize:vertical;margin-bottom:.6rem"></textarea>
+          <button id="deliveredPhonesBtn" onclick="markDeliveredByPhones()"
+            style="background:rgba(40,200,100,.15);border:1px solid rgba(40,200,100,.5);color:#28c864;font-family:'Alexandria',sans-serif;font-size:.85rem;font-weight:800;padding:.6rem 1.2rem;border-radius:10px;cursor:pointer;white-space:nowrap">
+            <i class="fas fa-phone"></i> حوّل بأرقام الموبايل
+          </button>
+        </div>
       </div>
 
       <div class="section-head">
@@ -1976,6 +1989,45 @@ async function markDeliveredByRouteNos() {
     if (!confirm(`هيتحول ${preview.updated} أوردر إلى "تم التوصيل":\n${perStore}${missing}\n\nتأكيد؟`)) return;
 
     const res = await api('markDeliveredByRouteNos', { routeNos });
+    if (res.success) {
+      toast(`تم تحويل ${res.updated} أوردر إلى "تم التوصيل" ✓`, 'success');
+      input.value = '';
+      refreshAll();
+    } else toast('خطأ: ' + res.message, 'error');
+  } catch(e) {
+    toast('تعذر التنفيذ: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// Same as above, but matched by customer phone instead of route number —
+// for when the numbers can't be trusted any more (the route was re-run).
+async function markDeliveredByPhones() {
+  const input = document.getElementById('deliveredPhones');
+  const btn   = document.getElementById('deliveredPhonesBtn');
+  const phones = (input.value || '').trim();
+  if (!phones) { toast('الصقي أرقام الموبايل الأول', 'error'); return; }
+  btn.disabled = true;
+  try {
+    const preview = await api('markDeliveredByPhones', { phones, dryRun: '1' });
+    if (!preview.success) { toast('خطأ: ' + preview.message, 'error'); return; }
+    if (!preview.updated) {
+      toast('مفيش أوردرات "جاري التحضير" بأرقام الموبايل دي', 'error');
+      return;
+    }
+    const perStore = Object.entries(preview.perStore).map(([s, n]) => `${s}: ${n}`).join('\n');
+    const lines = [`هيتحول ${preview.updated} أوردر إلى "تم التوصيل":`, perStore];
+    if (preview.unmatched.length)
+      lines.push(`\nأرقام ملقيتش ليها أوردر (${preview.unmatched.length}): ${preview.unmatched.slice(0, 10).join(', ')}${preview.unmatched.length > 10 ? ' ...' : ''}`);
+    if (preview.invalid.length)
+      lines.push(`\nأسطر مش أرقام موبايل واتتجاهلت: ${preview.invalid.slice(0, 5).join(' | ')}`);
+    if (preview.multi.length)
+      lines.push(`\n⚠️ عندهم أكتر من أوردر عند نفس التاجر (ممكن واحد منهم جديد ومتسلمش): ${preview.multi.map(m => m.phone).join(', ')}`);
+    lines.push('\nتأكيد؟');
+    if (!confirm(lines.join('\n'))) return;
+
+    const res = await api('markDeliveredByPhones', { phones });
     if (res.success) {
       toast(`تم تحويل ${res.updated} أوردر إلى "تم التوصيل" ✓`, 'success');
       input.value = '';
