@@ -387,6 +387,25 @@ select option { background:#0d1a28; color:#fff; }
         </div>
       </div>
 
+      <!-- ══ MARK DELIVERED BY ROUTE NUMBER ══ -->
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(40,200,100,.2);border-radius:14px;padding:1.4rem;margin-bottom:1.5rem;border-top:3px solid #28c864">
+        <div style="font-family:'Alexandria',sans-serif;font-size:1rem;font-weight:800;color:#fff;display:flex;align-items:center;gap:.5rem">
+          <span>✅</span> تم توصيلهم — بأرقام التوصيل
+        </div>
+        <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin:.3rem 0 .9rem;line-height:1.7">
+          اكتب أرقام التوصيل اللي اتسلمت من شيت التصدير (مثال: <b style="color:#fff">1-21</b> أو <b style="color:#fff">1-12, 15, 18</b>) —
+          الأوردرات دي في كل التجار هتتحول لـ "تم التوصيل" وتخرج من الترتيب الجاي. اعملها قبل ما تبدأ تجميع جديد، لأن الأرقام بتتغير مع كل تجميع.
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+          <input id="deliveredRouteNos" type="text" dir="ltr" placeholder="1-21"
+            style="flex:1;min-width:160px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 12px;color:#fff;font-size:14px;outline:none;box-sizing:border-box">
+          <button id="deliveredRouteBtn" onclick="markDeliveredByRouteNos()"
+            style="background:linear-gradient(135deg,#28c864,#1f9d4e);border:none;color:#fff;font-family:'Alexandria',sans-serif;font-size:.9rem;font-weight:800;padding:.7rem 1.4rem;border-radius:10px;cursor:pointer;white-space:nowrap">
+            <i class="fas fa-check-double"></i> حوّل لتم التوصيل
+          </button>
+        </div>
+      </div>
+
       <div class="section-head">
         <div class="section-title"><i class="fas fa-store"></i> الطلبات حسب المتجر</div>
       </div>
@@ -1933,6 +1952,40 @@ async function bulkMarkDelivered(storeKey) {
       loadStoreOrders(storeKey);
     } else toast('خطأ: ' + res.message, 'error');
   } catch(e) { toast('تعذر التنفيذ: ' + e.message, 'error'); }
+}
+
+// Marks as Delivered, across every store, the orders whose route number
+// (from the unified delivery export) is in the typed list. Does a dry run
+// first so the count can be confirmed before anything changes.
+async function markDeliveredByRouteNos() {
+  const input = document.getElementById('deliveredRouteNos');
+  const btn   = document.getElementById('deliveredRouteBtn');
+  const routeNos = (input.value || '').trim();
+  if (!routeNos) { toast('اكتب أرقام التوصيل الأول (مثال: 1-21)', 'error'); return; }
+  btn.disabled = true;
+  try {
+    const preview = await api('markDeliveredByRouteNos', { routeNos, dryRun: '1' });
+    if (!preview.success) { toast('خطأ: ' + preview.message, 'error'); return; }
+    if (!preview.updated) {
+      toast('مفيش أوردرات "جاري التحضير" بالأرقام دي — اتأكدي إن الأرقام من آخر تجميع', 'error');
+      return;
+    }
+    const perStore = Object.entries(preview.perStore).map(([s, n]) => `${s}: ${n}`).join('\n');
+    const missing  = preview.unmatched.length && preview.unmatched.length <= 15
+      ? `\n\nأرقام ملقيتش ليها أوردر: ${preview.unmatched.join(', ')}` : '';
+    if (!confirm(`هيتحول ${preview.updated} أوردر إلى "تم التوصيل":\n${perStore}${missing}\n\nتأكيد؟`)) return;
+
+    const res = await api('markDeliveredByRouteNos', { routeNos });
+    if (res.success) {
+      toast(`تم تحويل ${res.updated} أوردر إلى "تم التوصيل" ✓`, 'success');
+      input.value = '';
+      refreshAll();
+    } else toast('خطأ: ' + res.message, 'error');
+  } catch(e) {
+    toast('تعذر التنفيذ: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ════════════════════════════════════════════════════════
