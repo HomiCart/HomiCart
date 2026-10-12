@@ -4648,8 +4648,7 @@
       const lineTotal = unitPrice != null ? +(qty * unitPrice).toFixed(2) : null;
       if (lineTotal != null) total += lineTotal;
       else hasUnknownPrice = true;
-      const note = (document.getElementById('miNote' + i)?.value || '').trim();
-      rows.push({ name: item.name, qty, unit: item.unit || 'كيلو', lineTotal, note });
+      rows.push({ name: item.name, qty, unit: item.unit || 'كيلو', lineTotal });
     });
     return { rows, total: +total.toFixed(2), hasUnknownPrice };
   }
@@ -4672,8 +4671,31 @@
   // .invoice-row markup used for the live on-screen preview — reused so a
   // customer looking up an old order later sees the FULL priced order, not
   // just a truncated item list, whether it's still editable or not.
+  // Orders saved for a short while had the customer's per-item note
+  // appended to its invoice line ("... — 81 درهم — (note)", and a note
+  // can span several lines). Notes belong with the order text, not the
+  // invoice — and that suffix breaks price parsing — so drop it. Item
+  // lines are "name × qty unit — price"; once a note starts, everything up
+  // to the next item / delivery-fee / round-header line is part of it.
+  function _stripInvoiceNotes(text) {
+    const itemRe = /^(.+?)\s*×\s*[\d.]+\s*\S+\s*—\s*/;
+    const startsLine = l => itemRe.test(l) || /^رسوم التوصيل/.test(l) || /^—\s.+\s—$/.test(l);
+    const out = [];
+    let skipping = false;
+    String(text || '').split('\n').forEach(line => {
+      if (skipping && !startsLine(line)) return;
+      skipping = false;
+      if (itemRe.test(line)) {
+        const cut = line.search(/\s—\s\(/);
+        if (cut !== -1) { line = line.slice(0, cut); skipping = true; }
+      }
+      out.push(line);
+    });
+    return out.join('\n');
+  }
+
   function _renderInvoiceLinesHtml(text) {
-    return (text || '').split('\n').filter(Boolean).map(line => {
+    return _stripInvoiceNotes(text).split('\n').filter(Boolean).map(line => {
       const withQty = line.match(/^(.+?)\s*×\s*([\d.]+)\s*(\S+)\s*—\s*(.+)$/);
       if (withQty) {
         return `<div class="invoice-row">
@@ -4725,7 +4747,7 @@
     const rowsByLabel = {};
     const feeByLabel = {};
     const textByLabel = {};
-    (order.invoiceBreakdown || '').split(/\n(?=—\s)/).forEach(chunk => {
+    _stripInvoiceNotes(order.invoiceBreakdown).split(/\n(?=—\s)/).forEach(chunk => {
       const m = chunk.match(/^—\s*(.+?)\s*—\n([\s\S]*)$/);
       if (!m) return;
       const label = m[1].trim();
@@ -4775,7 +4797,7 @@
     try { structured = JSON.parse(order?.itemsStructured || '[]'); } catch(e) {}
     const rows = [];
     let feeShare = 0;
-    (order?.invoiceBreakdown || '').split('\n').forEach(line => {
+    _stripInvoiceNotes(order?.invoiceBreakdown).split('\n').forEach(line => {
       if (line.startsWith('رسوم التوصيل')) {
         const fm = line.match(/—\s*([\d.]+)\s*درهم/);
         if (fm) feeShare = parseFloat(fm[1]);
@@ -4788,7 +4810,7 @@
       roundIndex: 0, label: SUBORDER_LABELS[0],
       structured, rows, feeShare,
       lines: (order?.items || '').split('\n').filter(Boolean),
-      breakdownText: order?.invoiceBreakdown || (order?.items || ''),
+      breakdownText: _stripInvoiceNotes(order?.invoiceBreakdown) || (order?.items || ''),
       total: +rows.reduce((s, r) => s + (r.lineTotal || 0), 0).toFixed(2), // items-only, see _parseOrderRounds
     }];
   }
@@ -5327,7 +5349,7 @@
     blocks.forEach((b, i) => {
       if (b.label) invoiceLines.push(`— ${b.label} —`);
       b.rows.forEach(r => invoiceLines.push(
-        `${r.name} × ${r.qty} ${r.unit} — ${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}${r.note ? ` — (${r.note})` : ''}`
+        `${r.name} × ${r.qty} ${r.unit} — ${r.lineTotal != null ? r.lineTotal + ' درهم' : 'يُحدد لاحقاً'}`
       ));
       if (window._opDeliveryChoice) {
         const share = feeSharesNow[i];
