@@ -1685,6 +1685,13 @@
       backdrop-filter: blur(6px);
     }
     body.has-sticky-bar { padding-bottom: 90px; }
+    .op-who {
+      display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+      margin-bottom: .9rem; padding: .55rem .8rem;
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 11px;
+      font-family: 'Cairo', sans-serif; font-size: .82rem; color: rgba(255,255,255,.75);
+    }
+    .op-who a { color: #18bfef; font-weight: 700; text-decoration: none; white-space: nowrap; }
     .op-sticky-info { display: flex; flex-direction: column; line-height: 1.35; }
     .op-sticky-label { font-family: 'Cairo', sans-serif; font-size: .72rem; color: rgba(255,255,255,.5); }
     .op-sticky-total { font-family: 'Alexandria', sans-serif; font-size: 1.05rem; font-weight: 800; color: #18bfef; }
@@ -3402,17 +3409,16 @@
   }
 
   // ── Menu-first entry ─────────────────────────────────────────────────
-  // A visitor who hasn't identified themselves yet lands straight on the
-  // priced menu and builds their basket first; their details are only asked
-  // at the very end (see _goIdentifyForCheckout). Anyone with a saved phone
-  // keeps the original flow (their orders/profile come first), and so does a
-  // closed collection (nothing to order — the closed notice lives there).
+  // Everyone lands straight on the priced menu and builds their basket
+  // first. A visitor we don't know is asked for phone/details only at the
+  // very end (see _goIdentifyForCheckout); a returning customer (saved
+  // phone) isn't asked anything — saveOrder only checks they don't already
+  // have an order in this batch. A closed collection keeps the original
+  // customer page (nothing to order — the closed notice lives there).
   async function openStore(folder, name, tag) {
     window._pendingStore = { folder, name, tag };
     window._returnToCart = false;
     window._guestFlow    = false;
-
-    if (_getSavedPhone()) { showCustomerPage(folder, name, tag); return; }
 
     // Know whether collection is open before offering to order (short wait —
     // if the check is slow we just assume open; submit re-checks anyway).
@@ -3430,8 +3436,13 @@
     orderNow(folder);
   }
 
-  // The basket is done but we don't know who's ordering: park it (the order
-  // panel stays in the DOM, untouched) and open the phone/registration step.
+  function _cartHasItems() {
+    return !!(buildMenuOrderLines().length || (window._opSubOrders || []).length);
+  }
+
+  // Park the basket (the order panel stays in the DOM, untouched) and open
+  // the phone/registration step — used when we don't know who's ordering, or
+  // the customer already has an order and should see it first.
   function _goIdentifyForCheckout() {
     const s = window._pendingStore;
     if (!s) return;
@@ -3982,7 +3993,7 @@
           // finished basket: the same button then adds that basket to the order.)
           const addRoundHtml = (o) => _parseOrderAsRounds(o).length >= SUBORDER_MAX ? '' : `
             <button class="btn-add-round" id="add-round-${o.id}">
-              <i class="fas fa-plus-circle"></i>&nbsp;${window._returnToCart ? 'ضيف اختياراتي على الأوردر ده' : 'إضافة طلب جديد على نفس الأوردر'}
+              <i class="fas fa-plus-circle"></i>&nbsp;${window._returnToCart && _cartHasItems() ? 'ضيف اختياراتي على الأوردر ده' : 'إضافة طلب جديد على نفس الأوردر'}
             </button>`;
 
           const listEl = document.getElementById('curOrdersList');
@@ -4008,7 +4019,7 @@
             });
             const addBtn = document.getElementById('add-round-' + o.id);
             if (addBtn) addBtn.addEventListener('click', () => {
-              if (window._returnToCart) { _attachCartToOrder(o.id, o); return; }
+              if (window._returnToCart && _cartHasItems()) { _attachCartToOrder(o.id, o); return; }
               _showStep('stepCurrentOrder', false);
               _addRoundToOrder(o.id, o, window._pendingStore);
             });
@@ -4389,6 +4400,11 @@
               <i class="fas fa-times"></i>
             </button>
           </div>
+          ${_getActiveCustomer().phone ? `
+          <div class="op-who">
+            <span>👤 ${_escHtml(_getActiveCustomer().name || _getActiveCustomer().phone)}</span>
+            <a href="javascript:void(0)" onclick="_goIdentifyForCheckout()">طلباتي وبياناتي</a>
+          </div>` : ''}
           <div id="menuItemsBox"></div>
           <!-- Kept as a hidden field (not shown to the customer anymore) so
                editing an older order that has leftover free-typed text
@@ -5484,12 +5500,38 @@
       return;
     }
 
-    // Menu-first visitors reach this point with a finished basket but no
-    // identity yet — ask for their details now (the basket stays put).
-    if (!window._editingOrderId && !_getActiveCustomer().phone) {
-      err.textContent = '';
-      _goIdentifyForCheckout();
-      return;
+    // Menu-first visitors reach this point with a finished basket:
+    //  • unknown visitor → ask for their details now (the basket stays put)
+    //  • known customer → they were never shown "your orders", so make sure
+    //    this isn't a second order in the batch; if it is, send them to their
+    //    order, where the basket can be added to it as an extra round.
+    if (!window._editingOrderId) {
+      const who = _getActiveCustomer();
+      if (!who.phone) {
+        err.textContent = '';
+        _goIdentifyForCheckout();
+        return;
+      }
+      if (window._guestFlow) {
+        const chkBtn = document.getElementById('opSaveBtn');
+        const chkTxt = document.getElementById('opSaveTxt');
+        if (chkBtn.disabled) return;
+        const prevLabel = chkTxt ? chkTxt.textContent : '';
+        chkBtn.disabled = true;
+        if (chkTxt) chkTxt.textContent = 'لحظة...';
+        let hasActive = false;
+        try {
+          const chk = await _callScript('getOrdersByPhone', { phone: who.phone, sheet: window._opStore.sheetName }, 10000);
+          hasActive = (chk?.orders || []).some(o => o.status === 'New');
+        } catch(e) { /* can't check — don't block ordering */ }
+        chkBtn.disabled = false;
+        if (chkTxt) chkTxt.textContent = prevLabel;
+        if (hasActive) {
+          err.textContent = '';
+          _goIdentifyForCheckout();
+          return;
+        }
+      }
     }
 
     // If the chosen delivery option requires an active order from another vendor first
