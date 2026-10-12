@@ -3413,21 +3413,23 @@
   // first. A visitor we don't know is asked for phone/details only at the
   // very end (see _goIdentifyForCheckout); a returning customer (saved
   // phone) isn't asked anything — saveOrder only checks they don't already
-  // have an order in this batch. A closed collection keeps the original
-  // customer page (nothing to order — the closed notice lives there).
+  // have an order in this batch. The menu shows whether collection is open
+  // or closed; when closed, the first attempt to add something explains
+  // that (see _blockIfClosed).
   async function openStore(folder, name, tag) {
     window._pendingStore = { folder, name, tag };
     window._returnToCart = false;
     window._guestFlow    = false;
 
-    // Know whether collection is open before offering to order (short wait —
-    // if the check is slow we just assume open; submit re-checks anyway).
+    // Learn whether collection is open before the menu appears, so the very
+    // first tap on "+" already knows (short wait — if the check is slow we
+    // assume open; submit re-checks anyway).
     window._batchPhase = null;
+    window._batchNextStart = null;
     await Promise.race([
       updateCountdownForStore(folder),
       new Promise(r => setTimeout(r, 2500)),
     ]);
-    if (!isOrderWindowOpen()) { showCustomerPage(folder, name, tag); return; }
 
     window._guestFlow = true;
     window._editingOrderId = null;
@@ -4400,10 +4402,10 @@
               <i class="fas fa-times"></i>
             </button>
           </div>
-          ${_getActiveCustomer().phone ? `
+          ${window._guestFlow && !window._editingOrderId ? `
           <div class="op-who">
-            <span>👤 ${_escHtml(_getActiveCustomer().name || _getActiveCustomer().phone)}</span>
-            <a href="javascript:void(0)" onclick="_goIdentifyForCheckout()">طلباتي وبياناتي</a>
+            <span>${_getActiveCustomer().phone ? '👤 ' + _escHtml(_getActiveCustomer().name || _getActiveCustomer().phone) : 'عندك طلب سابق؟'}</span>
+            <a href="javascript:void(0)" onclick="_goIdentifyForCheckout()">${_getActiveCustomer().phone ? 'طلباتي وبياناتي' : 'ادخل رقمك'}</a>
           </div>` : ''}
           <div id="menuItemsBox"></div>
           <!-- Kept as a hidden field (not shown to the customer anymore) so
@@ -4650,9 +4652,20 @@
     updateMenuOrderPreview();
   }
 
+  // Everyone can browse the menu, but while collection is closed nothing can
+  // be added — say so the moment they try, instead of letting a basket build
+  // up that could never be sent.
+  function _blockIfClosed() {
+    if (isOrderWindowOpen()) return false;
+    const when = _formatNextBatchDate(window._batchNextStart);
+    showOrderAlert('🔒 الطلب مقفول حاليًا، وسيتم فتح التجميع قريبًا' + (when ? ' — يبدأ: ' + when : ''));
+    return true;
+  }
+
   function stepMenuQty(idx, delta) {
     const inp  = document.getElementById('miQty' + idx);
     if (!inp) return;
+    if (delta > 0 && _blockIfClosed()) return;
     const step = parseFloat((window._opMenuItems || [])[idx]?.step) || 0.5;
     const cur  = parseFloat(inp.value) || 0;
     inp.value  = Math.max(0, +(cur + delta * step).toFixed(2));
@@ -4663,6 +4676,7 @@
     const inp  = document.getElementById('miQty' + idx);
     const card = document.getElementById('miCard' + idx);
     if (inp)  inp.value = Math.max(0, parseFloat(inp.value) || 0);
+    if (inp && parseFloat(inp.value) > 0 && _blockIfClosed()) inp.value = 0; // typed a quantity while closed
     if (card) card.classList.toggle('has-qty', parseFloat(inp?.value) > 0);
     updateMenuOrderPreview();
     _refreshDeliveryFeeDisplay();
@@ -6074,6 +6088,7 @@
       .then(res => {
         if (!res || !res.success) return;
         window._batchPhase = res.phase || 'no_settings';
+        window._batchNextStart = res.phase === 'before_open' ? res.start : null; // for the "opens soon" message
         _applyOrderWindowGating();
 
         if (res.phase === 'closed' || res.phase === 'before_open') {
