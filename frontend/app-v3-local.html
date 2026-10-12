@@ -3990,13 +3990,24 @@
       latitude: loc.lat, longitude: loc.lng,
     }, document.getElementById('coRemember').checked);
 
-    // Hand over to the normal submit (it shows progress + the success screen on the menu page)
-    showPage('menuPage');
+    // Hand over to the normal submit. Stay on THIS page while it runs (the
+    // button shows progress) and only move to the menu page once the success
+    // screen is ready — otherwise the customer sees the menu again for the
+    // few seconds the request takes.
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تسجيل الطلب...';
     window._checkoutConfirmed = true;
     try { await saveOrder(); }
-    finally {
-      window._checkoutConfirmed = false;
-      btn.disabled = false; btn.innerHTML = prevLabel;
+    finally { window._checkoutConfirmed = false; }
+
+    btn.disabled = false;
+    btn.innerHTML = prevLabel;
+    if (document.querySelector('#menuContainer .order-success-wrap')) {
+      showPage('menuPage');
+    } else {
+      // saveOrder bailed out before placing it (e.g. collection closed meanwhile) —
+      // its message lives on the menu page, so surface it here
+      const why = (document.getElementById('opError')?.textContent || '').replace(/^⚠\s*/, '');
+      fail(why || 'تعذر تسجيل الطلب — حاول تاني');
     }
   }
 
