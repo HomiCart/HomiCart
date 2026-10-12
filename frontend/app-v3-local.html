@@ -831,7 +831,7 @@
       accent-color: #18bfef; width: 16px; height: 16px; cursor: pointer;
     }
     /* Map */
-    #custMap, #editMap {
+    #custMap, #editMap, #coMap {
       height: 240px; border-radius: 12px;
       border: 1.5px solid rgba(255,255,255,.1);
       overflow: hidden; position: relative; z-index: 0;
@@ -1685,6 +1685,15 @@
       backdrop-filter: blur(6px);
     }
     body.has-sticky-bar { padding-bottom: 90px; }
+    .co-existing {
+      margin-bottom: 1rem; padding: .9rem 1rem;
+      background: rgba(245,166,35,.09); border: 1.5px solid rgba(245,166,35,.35); border-radius: 12px;
+      font-family: 'Cairo', sans-serif; color: rgba(255,255,255,.85);
+    }
+    .co-existing-title { font-weight: 800; color: #f5a623; margin-bottom: .25rem; }
+    .co-existing-msg { font-size: .85rem; margin-bottom: .6rem; color: rgba(255,255,255,.7); }
+    .co-existing-order { padding: .6rem 0; border-top: 1px dashed rgba(255,255,255,.12); }
+    .co-existing-items { font-size: .8rem; color: rgba(255,255,255,.6); line-height: 1.6; word-break: break-word; }
     .op-who {
       display: flex; align-items: center; justify-content: space-between; gap: .6rem;
       margin-bottom: .9rem; padding: .55rem .8rem;
@@ -2484,6 +2493,104 @@
     </div>
   </div>
 
+  <!-- ═══ CHECKOUT PAGE — last step of the menu-first flow: order summary +
+       the customer's details (prefilled when known, always editable) → place the order ═══ -->
+  <div id="checkoutPage" class="page">
+    <div class="page-header">
+      <span class="eyebrow">آخر خطوة</span>
+      <h2>تأكيد الطلب</h2>
+      <div class="teal-rule"></div>
+      <p>راجع طلبك وأكمل بياناتك عشان نقدر نوصله</p>
+    </div>
+
+    <div class="cust-form-wrap">
+      <div id="coSummary" class="menu-order-preview" style="display:block"></div>
+
+      <!-- Shown when this phone already has an order in the current batch -->
+      <div id="coOrders"></div>
+
+      <div class="cust-field">
+        <label class="cust-label">رقم الهاتف <span class="req">*</span></label>
+        <input type="tel" id="coPhone" class="cust-input" placeholder="05XXXXXXXX"
+          inputmode="numeric" maxlength="10"
+          oninput="onCoPhoneInput()"
+          onkeydown="custBlockNonDigits(event)"
+          onpaste="coHandlePaste(event)" />
+        <div id="coPhoneHint" style="font-size:.78rem;margin-top:.3rem;min-height:1rem;color:rgba(255,255,255,.35)"></div>
+        <div id="coLookupStatus" class="cust-lookup-status"></div>
+        <div id="coForget" style="display:none;margin-top:.2rem">
+          <a href="javascript:void(0)" onclick="_coForget()"
+            style="font-size:.78rem;color:rgba(255,255,255,.4);text-decoration:underline">
+            مش أنا؟ امسح البيانات المحفوظة
+          </a>
+        </div>
+      </div>
+
+      <div id="coFields" style="display:none;flex-direction:column;gap:1.1rem">
+        <div class="cust-field">
+          <label class="cust-label">الاسم الكامل <span class="req">*</span></label>
+          <input type="text" id="coName" class="cust-input" placeholder="محمد أحمد" />
+        </div>
+        <div class="cust-field">
+          <label class="cust-label">رقم الواتساب <span class="req">*</span></label>
+          <label style="display:flex;align-items:center;gap:.45rem;font-size:.85rem;color:rgba(255,255,255,.6);cursor:pointer">
+            <input type="checkbox" id="coWaSame" checked onchange="onCoWaToggle()"
+              style="width:1.1rem;height:1.1rem;accent-color:#18bfef;cursor:pointer">
+            رقم الواتساب هو نفس رقم الهاتف
+          </label>
+          <input type="tel" id="coWhatsapp" class="cust-input" placeholder="05XXXXXXXX"
+            inputmode="numeric" maxlength="10" style="display:none"
+            oninput="this.value=this.value.replace(/\D/g,'').substring(0,10)" />
+        </div>
+        <div class="cust-field">
+          <label class="cust-label">الإمارة <span class="req">*</span></label>
+          <select id="coEmirate" class="cust-input" onchange="onEmirateChange('coEmirate','areaOptionsCo')">
+            <option value="">اختر الإمارة</option>
+          </select>
+        </div>
+        <div class="cust-field">
+          <label class="cust-label">المنطقة <span class="req">*</span></label>
+          <input type="text" id="coArea" class="cust-input" list="areaOptionsCo"
+            placeholder="اكتب أو اختر المنطقة" autocomplete="off" />
+          <datalist id="areaOptionsCo"></datalist>
+        </div>
+        <div class="cust-field">
+          <label class="cust-label">العنوان التفصيلي <span class="req">*</span></label>
+          <textarea id="coAddress" class="cust-input cust-textarea" rows="2"
+            placeholder="اسم الشارع، رقم المبنى، أي تفاصيل تساعد في التوصيل..."></textarea>
+        </div>
+        <div class="cust-field">
+          <label class="cust-label">
+            <i class="fas fa-map-marker-alt" style="color:#18bfef;margin-left:.35rem"></i>الموقع الجغرافي <span class="req">*</span>
+            <span style="font-size:.78rem;font-weight:400;color:rgba(255,255,255,.4);margin-right:.4rem">(اسحب الدبوس أو اضغط على الخريطة لضبط موقعك)</span>
+          </label>
+          <div id="coMap"></div>
+          <div id="coLocStatus" class="cust-loc-status detecting">
+            <i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد الموقع...
+          </div>
+          <button type="button" class="btn-retry-loc" onclick="_coRequestGPS()">
+            <i class="fas fa-crosshairs"></i>&nbsp;إعادة تحديد GPS
+          </button>
+        </div>
+        <label style="display:flex;align-items:center;gap:.45rem;font-size:.85rem;color:rgba(255,255,255,.6);cursor:pointer">
+          <input type="checkbox" id="coRemember" checked
+            style="width:1.1rem;height:1.1rem;accent-color:#18bfef;cursor:pointer">
+          احفظ بياناتي على هذا الجهاز للمرة الجاية
+        </label>
+      </div>
+
+      <div id="coErr" class="cust-err"></div>
+      <div class="cust-action-btns" id="coBtns" style="display:none">
+        <button type="button" class="btn-cust-secondary" onclick="showPage('menuPage')">
+          <i class="fas fa-arrow-right"></i>&nbsp;رجوع للمنيو
+        </button>
+        <button type="button" class="btn-cust-primary" id="coSubmitBtn" onclick="submitCheckout()">
+          <i class="fas fa-check"></i>&nbsp;تسجيل الطلب
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══ MENU PAGE ═══ -->
   <div id="menuPage" class="page">
     <div class="breadcrumb">
@@ -2677,7 +2784,7 @@
   }
 
   // Populate the emirate <select> elements once the DOM for them exists
-  ['custEmirate', 'editEmirate'].forEach(_populateEmirateSelect);
+  ['custEmirate', 'editEmirate', 'coEmirate'].forEach(_populateEmirateSelect);
 
   // Fallback stores — used ONLY if the live getStoresList call fails/times out.
   // Kept to a single known-stable store; anything deleted/added in admin should
@@ -3262,6 +3369,7 @@
     document.querySelectorAll('input[name="waOpt"]').forEach(r => r.checked = false);
     window._existingCustomerId = null;
     window._custLocation = null;
+    window._custLocConfirmed = false;
     if (_custMap) { _custMap.remove(); _custMap = null; _custMarker = null; }
   }
 
@@ -3467,9 +3575,9 @@
     }
     showPage('menuPage');
     const txt = document.getElementById('opSaveTxt');
-    if (txt) txt.textContent = 'تأكيد الطلب';
+    if (txt) txt.textContent = 'متابعة';
     const err = document.getElementById('opError');
-    if (err) { err.textContent = '✅ تم حفظ بياناتك — راجع طلبك واضغط "تأكيد الطلب"'; err.style.color = '#28c864'; }
+    if (err) { err.textContent = ''; }
     updateMenuOrderPreview();
     document.getElementById('opSaveBtn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
@@ -3525,6 +3633,371 @@
         setTimeout(() => c.classList.add('visible'), 60);
       });
     });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  CHECKOUT — last step of the menu-first flow.
+  //  Order summary + the customer's details (prefilled when known, always
+  //  editable, every field required incl. the map pin) → saves the customer,
+  //  then places the order. The phone can be changed to order for someone
+  //  else: their saved details load (or a blank form for a new number), and
+  //  the device's own remembered identity is never overwritten by that.
+  // ═══════════════════════════════════════════════════════════════
+  let _coMap = null, _coMarker = null, _coLookupTimer = null, _coLookupSeq = 0;
+  window._coLoc = null;
+  window._coLocConfirmed = false; // true only once GPS worked, a saved pin was loaded, or the pin was moved/clicked
+  window._coOriginal = null;      // details as stored — lets us skip re-saving an unchanged customer
+  window._coCustomerId = '';
+  window._coOrders = [];
+  window._checkoutConfirmed = false;
+
+  function _coSetLocStatus(type, html) {
+    const el = document.getElementById('coLocStatus');
+    if (!el) return;
+    el.className = 'cust-loc-status ' + type;
+    el.innerHTML = html;
+  }
+
+  function _coInitMap(lat, lng, confirmed) {
+    if (!window.L) return;
+    if (_coMap) { _coMap.remove(); _coMap = null; _coMarker = null; }
+    _coMap = L.map('coMap', { zoomControl: true }).setView([lat, lng], confirmed ? 16 : 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+      maxZoom: 19
+    }).addTo(_coMap);
+    _coMarker = L.marker([lat, lng], { draggable: true }).addTo(_coMap);
+    window._coLoc = { lat, lng };
+    window._coLocConfirmed = !!confirmed;
+    const moved = p => {
+      window._coLoc = { lat: p.lat, lng: p.lng };
+      window._coLocConfirmed = true;
+      _coSetLocStatus('manual', '<i class="fas fa-map-marker-alt"></i>&nbsp;موقع مخصص — يمكنك ضبط الدبوس بدقة أكبر');
+    };
+    _coMarker.on('dragend', e => moved(e.target.getLatLng()));
+    _coMap.on('click', e => { _coMarker.setLatLng(e.latlng); moved(e.latlng); });
+    // the map is built inside a section that only just became visible
+    [100, 400].forEach(ms => setTimeout(() => { if (_coMap) _coMap.invalidateSize(true); }, ms));
+  }
+
+  function _coRequestGPS() {
+    _coSetLocStatus('detecting', '<i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد موقعك تلقائياً...');
+    if (!navigator.geolocation) {
+      _coSetLocStatus('failed', '<i class="fas fa-exclamation-triangle"></i>&nbsp;المتصفح لا يدعم GPS — اضغط على الخريطة أو حرك الدبوس لتحديد موقعك');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        if (_coMap && _coMarker) {
+          _coMarker.setLatLng([lat, lng]);
+          _coMap.setView([lat, lng], 16);
+          window._coLoc = { lat, lng };
+          window._coLocConfirmed = true;
+        } else {
+          _coInitMap(lat, lng, true);
+        }
+        _coSetLocStatus('success', '<i class="fas fa-check-circle"></i>&nbsp;تم تحديد الموقع ✓ — يمكنك سحب الدبوس لضبطه');
+      },
+      () => _coSetLocStatus('failed', '<i class="fas fa-exclamation-triangle"></i>&nbsp;لم يتم تحديد GPS — اضغط على الخريطة أو حرك الدبوس لتحديد موقعك (مطلوب)'),
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
+  }
+
+  function _coShowFields(show) {
+    document.getElementById('coFields').style.display = show ? 'flex' : 'none';
+    document.getElementById('coBtns').style.display   = show ? '' : 'none';
+    if (!show) {
+      if (_coMap) { _coMap.remove(); _coMap = null; _coMarker = null; }
+      window._coLocConfirmed = false;
+    }
+  }
+
+  function onCoWaToggle() {
+    const same = document.getElementById('coWaSame').checked;
+    document.getElementById('coWhatsapp').style.display = same ? 'none' : '';
+  }
+
+  function coHandlePaste(e) {
+    e.preventDefault();
+    const digits = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').substring(0, 10);
+    e.target.value = digits;
+    onCoPhoneInput();
+  }
+
+  // Fill the form from stored details (or blank for a new number) and show
+  // it with the map: saved pin if there is one, otherwise ask for GPS.
+  function _coFill(c, phone) {
+    document.getElementById('coName').value = c.name || '';
+    const wa   = String(c.whatsapp || '');
+    const same = !wa || wa === phone;
+    document.getElementById('coWaSame').checked = same;
+    document.getElementById('coWhatsapp').value = same ? '' : wa;
+    onCoWaToggle();
+    const parts = _splitAreaString(c.area || '');
+    document.getElementById('coEmirate').value = parts.emirate;
+    onEmirateChange('coEmirate', 'areaOptionsCo');
+    document.getElementById('coArea').value = parts.area;
+    document.getElementById('coAddress').value = c.address || '';
+
+    const lat = parseFloat(c.latitude), lng = parseFloat(c.longitude);
+    const hasLoc = !isNaN(lat) && !isNaN(lng);
+    _coShowFields(true);
+    requestAnimationFrame(() => setTimeout(() => {
+      if (hasLoc) {
+        _coInitMap(lat, lng, true);
+        _coSetLocStatus('success', '<i class="fas fa-check-circle"></i>&nbsp;الموقع المحفوظ — اسحب الدبوس لو عايز تعدله');
+      } else {
+        _coInitMap(_UAE_CENTER[0], _UAE_CENTER[1], false);
+        _coRequestGPS();
+      }
+    }, 60));
+  }
+
+  async function _coFetchOrders(phone) {
+    const sheet = window._opStore?.sheetName || SHEET_NAMES[window._pendingStore?.folder] || '';
+    try {
+      const res = await _callScript('getOrdersByPhone', { phone, sheet }, 15000);
+      return (res?.orders || []).filter(o => o.status === 'New' || o.status === 'جديد');
+    } catch(e) { return []; /* can't check — don't block ordering */ }
+  }
+
+  // This phone already has an order in the batch → offer to add the basket
+  // to it (an extra round) instead of placing a second, separate order.
+  function _coRenderOrders(orders) {
+    window._coOrders = orders;
+    const box = document.getElementById('coOrders');
+    const sub = document.getElementById('coSubmitBtn');
+    if (!orders.length) { box.innerHTML = ''; sub.style.display = ''; return; }
+    box.innerHTML = `
+      <div class="co-existing">
+        <div class="co-existing-title">⚠️ عندك أوردر مسجل في التجميع الحالي</div>
+        <div class="co-existing-msg">بدل أوردر جديد منفصل، ضيف اختياراتك على أوردرك الحالي:</div>
+        ${orders.map((o, i) => `
+          <div class="co-existing-order">
+            <div class="co-existing-items">${_escHtml(o.id)} — ${_escHtml(String(o.items || '').replace(/\n+/g, ' · ').slice(0, 90))}</div>
+            <button type="button" class="btn-add-round" style="margin:.5rem 0 0" onclick="_attachFromCheckout(${i})">
+              <i class="fas fa-plus-circle"></i>&nbsp;ضيف اختياراتي على الأوردر ده
+            </button>
+          </div>`).join('')}
+      </div>`;
+    sub.style.display = 'none';
+  }
+
+  function _attachFromCheckout(i) {
+    const o = window._coOrders[i];
+    if (o) _attachCartToOrder(o.id, o);
+  }
+
+  function _openCheckout() {
+    if (!isOrderWindowOpen()) {
+      alert(getWindowClosedMsg() + '\n\nلا يمكن تقديم طلبات في الوقت الحالي.');
+      return;
+    }
+    const prev = document.getElementById('menuOrderPreview');
+    document.getElementById('coSummary').innerHTML = prev ? prev.innerHTML : '';
+    document.getElementById('coErr').textContent = '';
+    document.getElementById('coOrders').innerHTML = '';
+    window._coOrders = [];
+    const sub = document.getElementById('coSubmitBtn');
+    sub.style.display = ''; sub.disabled = false;
+    clearTimeout(_coLookupTimer); _coLookupSeq++;
+    showPage('checkoutPage');
+
+    const saved   = _getActiveCustomer();
+    const phoneEl = document.getElementById('coPhone');
+    const hintEl  = document.getElementById('coPhoneHint');
+    const statEl  = document.getElementById('coLookupStatus');
+    if (saved.phone) {
+      phoneEl.value = saved.phone;
+      phoneEl.style.borderColor = '#28a745';
+      hintEl.textContent = '✅ رقم صحيح'; hintEl.style.color = '#28a745';
+      statEl.className = 'cust-lookup-status found';
+      statEl.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp;بياناتك المحفوظة — راجعها وعدّل لو عايز';
+      window._coCustomerId = saved.customerId || '';
+      window._coOriginal = {
+        phone: saved.phone, name: saved.name || '', whatsapp: saved.whatsapp || saved.phone,
+        area: saved.area || '', address: saved.address || '',
+        lat: parseFloat(saved.latitude), lng: parseFloat(saved.longitude),
+      };
+      _coFill(saved, saved.phone);
+      document.getElementById('coRemember').checked = true;
+      document.getElementById('coForget').style.display = '';
+      _coFetchOrders(saved.phone).then(orders => {
+        if (phoneEl.value === saved.phone) _coRenderOrders(orders);
+      });
+    } else {
+      phoneEl.value = ''; phoneEl.style.borderColor = '';
+      hintEl.textContent = ''; statEl.className = 'cust-lookup-status'; statEl.textContent = '';
+      window._coOriginal = null; window._coCustomerId = '';
+      _coShowFields(false);
+      document.getElementById('coForget').style.display = 'none';
+      setTimeout(() => phoneEl.focus(), 120);
+    }
+  }
+
+  function onCoPhoneInput() {
+    const el    = document.getElementById('coPhone');
+    const clean = (el.value || '').replace(/\D/g, '').substring(0, 10);
+    if (el.value !== clean) el.value = clean;
+    const hint   = document.getElementById('coPhoneHint');
+    const statEl = document.getElementById('coLookupStatus');
+    clearTimeout(_coLookupTimer);
+    _coLookupSeq++; // invalidates any lookup still in flight for an earlier number
+    statEl.className = 'cust-lookup-status'; statEl.textContent = '';
+
+    if (_isCustPhoneValid(clean)) {
+      el.style.borderColor = '#28a745';
+      hint.textContent = '✅ رقم صحيح'; hint.style.color = '#28a745';
+      statEl.textContent = 'جاري البحث...';
+      _coLookupTimer = setTimeout(() => _coLookup(clean), 500);
+    } else {
+      el.style.borderColor = '';
+      if (!clean) hint.textContent = '';
+      else if (!clean.startsWith('05') && clean.length >= 2) { hint.textContent = '⚠️ يجب أن يبدأ الرقم بـ 05'; hint.style.color = '#f59e0b'; }
+      else if (clean.length === 10) { hint.textContent = '❌ رقم غير صحيح — يجب أن يبدأ بـ 05'; hint.style.color = '#ff6b6b'; }
+      else { hint.textContent = clean.length + ' / 10 رقم'; hint.style.color = 'rgba(255,255,255,.35)'; }
+      _coShowFields(false); // details only make sense for a full number
+      document.getElementById('coOrders').innerHTML = '';
+      document.getElementById('coSubmitBtn').style.display = '';
+    }
+  }
+
+  async function _coLookup(phone) {
+    const seq    = ++_coLookupSeq;
+    const statEl = document.getElementById('coLookupStatus');
+    let cust = null, failed = false, orders = [];
+    try {
+      const [custRes, ordersRes] = await Promise.all([
+        _callScript('getCustomer', { phone }, 15000),
+        _coFetchOrders(phone),
+      ]);
+      if (custRes?.success && custRes.customer) cust = custRes.customer;
+      orders = ordersRes;
+    } catch(e) { failed = true; }
+    if (seq !== _coLookupSeq) return; // number edited while we were looking
+
+    window._coCustomerId = cust?.id || '';
+    if (cust) {
+      window._coOriginal = {
+        phone, name: cust.name || '', whatsapp: cust.whatsapp || phone,
+        area: cust.area || '', address: cust.address || '',
+        lat: parseFloat(cust.latitude), lng: parseFloat(cust.longitude),
+      };
+      _coFill(cust, phone);
+      statEl.className = 'cust-lookup-status found';
+      statEl.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp;تم العثور على بياناتك — راجعها وعدّل لو عايز';
+    } else {
+      window._coOriginal = null;
+      _coFill({}, phone); // blank — never carries another person's details over to a new number
+      statEl.className = 'cust-lookup-status';
+      statEl.textContent = failed ? 'تعذر التحقق من الرقم — كمّل بياناتك' : 'رقم جديد — كمّل بياناتك';
+    }
+    // Only remember on this device when it's the device owner's own number
+    const saved = _getActiveCustomer();
+    document.getElementById('coRemember').checked = !saved.phone || saved.phone === phone;
+    document.getElementById('coForget').style.display = saved.phone ? '' : 'none';
+    _coRenderOrders(orders);
+  }
+
+  function _coForget() {
+    localStorage.removeItem('homiCart_customer');
+    sessionStorage.removeItem('homiCart_sessionCustomer');
+    ['coPhone', 'coName', 'coWhatsapp', 'coArea', 'coAddress'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('coEmirate').value = '';
+    document.getElementById('coWaSame').checked = true;
+    document.getElementById('coPhone').style.borderColor = '';
+    document.getElementById('coPhoneHint').textContent = '';
+    document.getElementById('coLookupStatus').textContent = '';
+    document.getElementById('coOrders').innerHTML = '';
+    document.getElementById('coSubmitBtn').style.display = '';
+    document.getElementById('coForget').style.display = 'none';
+    window._coOriginal = null; window._coCustomerId = '';
+    _coShowFields(false);
+    setTimeout(() => document.getElementById('coPhone').focus(), 80);
+  }
+
+  // Always remembered for this visit; on the device for next time only if
+  // asked — and NEVER removes the device owner's saved identity (unlike
+  // _persistSavedCustomer), so ordering for someone else is safe.
+  function _coPersist(data, remember) {
+    _saveSessionCustomer(data);
+    if (remember) localStorage.setItem('homiCart_customer', JSON.stringify(data));
+  }
+
+  async function submitCheckout() {
+    const errEl = document.getElementById('coErr');
+    const btn   = document.getElementById('coSubmitBtn');
+    const fail  = (msg, focusId) => {
+      errEl.textContent = '⚠ ' + msg;
+      if (focusId) document.getElementById(focusId)?.focus();
+      errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+    if (!isOrderWindowOpen()) {
+      alert(getWindowClosedMsg() + '\n\nلا يمكن تقديم طلبات في الوقت الحالي.');
+      return;
+    }
+
+    const phone    = document.getElementById('coPhone').value.trim();
+    const name     = document.getElementById('coName').value.trim();
+    const waSame   = document.getElementById('coWaSame').checked;
+    const whatsapp = waSame ? phone : document.getElementById('coWhatsapp').value.trim();
+    const emirate  = document.getElementById('coEmirate').value.trim();
+    const areaName = document.getElementById('coArea').value.trim();
+    const address  = document.getElementById('coAddress').value.trim();
+
+    if (!_isCustPhoneValid(phone))    return fail('رقم الهاتف لازم يكون 05XXXXXXXX', 'coPhone');
+    if (!name)                         return fail('الاسم الكامل مطلوب', 'coName');
+    if (!_isCustPhoneValid(whatsapp))  return fail('رقم الواتساب لازم يكون 05XXXXXXXX', 'coWhatsapp');
+    if (!emirate)                      return fail('الإمارة مطلوبة', 'coEmirate');
+    if (!areaName)                     return fail('المنطقة مطلوبة', 'coArea');
+    if (!address)                      return fail('العنوان التفصيلي مطلوب', 'coAddress');
+    if (!window._coLocConfirmed || !window._coLoc)
+      return fail('لازم تحدد موقعك على الخريطة — اسمح بالـ GPS أو اضغط على الخريطة / حرّك الدبوس');
+    errEl.textContent = '';
+
+    const loc  = _coMarker ? _coMarker.getLatLng() : window._coLoc;
+    const area = _composeArea(emirate, areaName);
+    const o    = window._coOriginal;
+    const sameLoc = o && Math.abs(o.lat - loc.lat) < 1e-6 && Math.abs(o.lng - loc.lng) < 1e-6;
+    const unchanged = !!(o && o.phone === phone && o.name === name && o.whatsapp === whatsapp
+                         && o.area === area && o.address === address && sameLoc);
+
+    const prevLabel = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>&nbsp;جاري الحفظ...';
+    let customerId = window._coCustomerId || '';
+    try {
+      if (!unchanged) {
+        const res = await _callScript('createOrUpdateCustomer', {
+          phone, name, area, address, whatsapp,
+          location    : `https://www.google.com/maps?q=${loc.lat},${loc.lng}`,
+          latitude    : String(loc.lat),
+          longitude   : String(loc.lng),
+          userTimezone: 'Asia/Dubai',
+        });
+        if (!res.success) throw new Error(res.message || 'خطأ في الحفظ');
+        customerId = res.customerId || customerId;
+      }
+    } catch(e) {
+      btn.disabled = false; btn.innerHTML = prevLabel;
+      fail('تعذر حفظ بياناتك: ' + (e.message || 'تأكد من الاتصال بالإنترنت'));
+      return;
+    }
+
+    _coPersist({
+      phone, name, area, address, whatsapp, customerId,
+      latitude: loc.lat, longitude: loc.lng,
+    }, document.getElementById('coRemember').checked);
+
+    // Hand over to the normal submit (it shows progress + the success screen on the menu page)
+    showPage('menuPage');
+    window._checkoutConfirmed = true;
+    try { await saveOrder(); }
+    finally {
+      window._checkoutConfirmed = false;
+      btn.disabled = false; btn.innerHTML = prevLabel;
+    }
   }
 
   // ── Go directly to order page (used by both existing + new customers) ──
@@ -3607,6 +4080,9 @@
   function retryLocation() { requestGPS(); }
 
   function setLocStatus(type, html) {
+    // The map starts with a default pin in the middle of the UAE — only a GPS fix or
+    // the customer placing the pin counts as a real location.
+    if (type === 'success' || type === 'manual') window._custLocConfirmed = true;
     const el = document.getElementById('custLocStatus');
     if (!el) return;
     el.className = 'cust-loc-status ' + type;
@@ -3648,6 +4124,7 @@
   }
 
   function _setEditLocStatus(type, html) {
+    if (type === 'success' || type === 'manual') window._editLocConfirmed = true;
     const el = document.getElementById('editLocStatus');
     if (!el) return;
     el.className = 'cust-loc-status ' + type;
@@ -3685,6 +4162,7 @@
     document.getElementById('editArea').value     = editAreaParts.area;
     document.getElementById('editAddress').value  = c.address  || '';
     document.getElementById('editFormErr').textContent = '';
+    window._editLocConfirmed = false; // set again once a saved pin loads / GPS works / the pin is placed
     _showStep('editFormWrap', true);
 
     // Init edit map after browser renders the div (needs 2 frames to get real dimensions)
@@ -3725,6 +4203,7 @@
     if (!emirate) { errEl.textContent = '⚠ الإمارة مطلوبة'; return; }
     if (!areaName){ errEl.textContent = '⚠ المنطقة مطلوبة'; return; }
     if (!address) { errEl.textContent = '⚠ العنوان مطلوب'; return; }
+    if (!window._editLocConfirmed) { errEl.textContent = '⚠ لازم تحدد موقعك على الخريطة — اسمح بالـ GPS أو اضغط على الخريطة / حرّك الدبوس'; return; }
     errEl.textContent = '';
 
     const btn = document.getElementById('editSaveBtn');
@@ -4180,6 +4659,7 @@
     if (!emirate) { errEl.textContent = '⚠ الإمارة مطلوبة'; document.getElementById('custEmirate').focus(); return; }
     if (!areaName){ errEl.textContent = '⚠ المنطقة مطلوبة'; document.getElementById('custArea').focus();    return; }
     if (!address) { errEl.textContent = '⚠ العنوان التفصيلي مطلوب';   document.getElementById('custAddress').focus(); return; }
+    if (!window._custLocConfirmed) { errEl.textContent = '⚠ لازم تحدد موقعك على الخريطة — اسمح بالـ GPS أو اضغط على الخريطة / حرّك الدبوس'; return; }
     errEl.textContent = '';
 
     const btn = document.getElementById('custSubmitBtn');
@@ -4234,6 +4714,9 @@
   function goBack() {
     const onMenu = document.getElementById('menuPage')?.classList.contains('active');
     const onCust = document.getElementById('customerPage')?.classList.contains('active');
+
+    // Checkout page → back to the basket (nothing is lost)
+    if (document.getElementById('checkoutPage')?.classList.contains('active')) { showPage('menuPage'); return; }
 
     // Identifying mid-checkout → back to the basket (nothing is lost)
     if (onCust && window._returnToCart && document.querySelector('.ordering-layout')) {
@@ -4418,7 +4901,7 @@
           <div class="ordering-btns">
             <button class="btn-op-save" id="opSaveBtn" onclick="saveOrder()">
               <i class="fas fa-check"></i>
-              <span id="opSaveTxt">${_getActiveCustomer().phone ? 'سجل الطلب' : 'متابعة'}</span>
+              <span id="opSaveTxt">متابعة</span>
             </button>
             <button class="btn-op-cancel" onclick="cancelOrderMode()">
               <i class="fas fa-xmark"></i> إلغاء
@@ -5152,8 +5635,7 @@
     document.body.classList.add('has-sticky-bar'); // leaves room so the bar never covers the last buttons
     document.getElementById('opStickyLabel').textContent = hasDelivery ? 'الإجمالي (مع التوصيل)' : 'إجمالي الأصناف';
     document.getElementById('opStickyTotal').textContent = grandTotal + ' درهم';
-    const known = window._editingOrderId || _getActiveCustomer().phone;
-    document.getElementById('opStickyBtnTxt').textContent = known ? 'تأكيد الطلب' : 'متابعة';
+    document.getElementById('opStickyBtnTxt').textContent = window._editingOrderId ? 'حفظ' : 'متابعة';
   }
 
   // Sticky bar button: if delivery still has to be picked, take the customer
@@ -5514,38 +5996,14 @@
       return;
     }
 
-    // Menu-first visitors reach this point with a finished basket:
-    //  • unknown visitor → ask for their details now (the basket stays put)
-    //  • known customer → they were never shown "your orders", so make sure
-    //    this isn't a second order in the batch; if it is, send them to their
-    //    order, where the basket can be added to it as an extra round.
-    if (!window._editingOrderId) {
-      const who = _getActiveCustomer();
-      if (!who.phone) {
-        err.textContent = '';
-        _goIdentifyForCheckout();
-        return;
-      }
-      if (window._guestFlow) {
-        const chkBtn = document.getElementById('opSaveBtn');
-        const chkTxt = document.getElementById('opSaveTxt');
-        if (chkBtn.disabled) return;
-        const prevLabel = chkTxt ? chkTxt.textContent : '';
-        chkBtn.disabled = true;
-        if (chkTxt) chkTxt.textContent = 'لحظة...';
-        let hasActive = false;
-        try {
-          const chk = await _callScript('getOrdersByPhone', { phone: who.phone, sheet: window._opStore.sheetName }, 10000);
-          hasActive = (chk?.orders || []).some(o => o.status === 'New');
-        } catch(e) { /* can't check — don't block ordering */ }
-        chkBtn.disabled = false;
-        if (chkTxt) chkTxt.textContent = prevLabel;
-        if (hasActive) {
-          err.textContent = '';
-          _goIdentifyForCheckout();
-          return;
-        }
-      }
+    // A finished basket for a NEW order goes to the checkout page first: it
+    // shows the summary + the customer's details (prefilled if known, always
+    // editable) and only its "تسجيل الطلب" button comes back here with
+    // _checkoutConfirmed set. Edits/additions to an existing order skip it.
+    if (!window._editingOrderId && !window._checkoutConfirmed) {
+      err.textContent = '';
+      _openCheckout();
+      return;
     }
 
     // If the chosen delivery option requires an active order from another vendor first
