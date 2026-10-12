@@ -99,11 +99,11 @@
 
 		#intro .actions {
 			display: flex;
-			flex-direction: row;
+			flex-direction: column;
 			justify-content: center;
 			align-items: center;
 			flex-wrap: wrap;
-			gap: 1rem;
+			gap: 1.1rem;
 			margin-top: 2rem;
 		}
 
@@ -135,6 +135,31 @@
 		}
 		/* Keep #intro selector for backwards compatibility */
 		#intro .hero-btn-primary { font-size: 1.08rem; }
+
+		/* Big main call-to-action under the hero text */
+		.hero-btn-primary.hero-btn-big {
+			font-size: 1.4rem;
+			padding: 1.1rem 3.4rem;
+		}
+		#intro .hero-btn-primary.hero-btn-big { font-size: 1.4rem; }
+
+		/* Small, quiet pill beneath it — "شرح فكرة الموقع" */
+		.hero-btn-secondary {
+			display: inline-flex;
+			align-items: center;
+			background: rgba(255,255,255,.14);
+			color: #fff !important;
+			font-family: 'Alexandria', sans-serif !important;
+			font-size: .88rem;
+			font-weight: 600;
+			padding: .5rem 1.5rem;
+			border-radius: 50px;
+			border: 1px solid rgba(255,255,255,.4);
+			text-decoration: none;
+			backdrop-filter: blur(4px);
+			transition: background .25s ease, border-color .25s ease;
+		}
+		.hero-btn-secondary:hover { background: rgba(255,255,255,.26); border-color: #fff; }
 
 		/* ── Cloud badge above hero title ── */
 		.hero-cloud-wrap {
@@ -303,12 +328,19 @@
 
 		/* Mobile: stack buttons full-width */
 		@media (max-width: 480px) {
-			#intro .hero-btn-primary,
-			#intro .hero-btn-secondary {
+			#intro .hero-btn-primary {
 				width: 100%;
 				justify-content: center;
 				font-size: 1.35rem;
 				padding: 1rem 1.8rem;
+			}
+			/* the small "شرح فكرة الموقع" pill stays small and centred */
+			#intro .hero-btn-secondary {
+				width: auto;
+				align-self: center;
+				justify-content: center;
+				font-size: .9rem;
+				padding: .5rem 1.6rem;
 			}
 			#intro .actions { gap: .75rem; }
 		}
@@ -564,6 +596,16 @@
 				font-size: 1.35rem !important;
 				padding: 1rem 1.8rem;
 			}
+			/* main "تصفح المتاجر المتاحة" button spans the row on a phone */
+			#intro .hero-btn-primary.hero-btn-big {
+				width: 100% !important;
+				font-size: 1.45rem !important;
+				padding: 1.15rem 1.2rem;
+			}
+			#intro .hero-btn-secondary {
+				font-size: .9rem !important;
+				padding: .5rem 1.6rem;
+			}
 
 			/* Explanation pill */
 			#explanation-article header.major h2 {
@@ -662,17 +704,17 @@
 		</p>
 
 		<ul class="actions">
-			<li>
-				<a href="javascript:void(0)" class="hero-btn-primary" onclick="openExplanation()">
-					ازاي هقدر أوفر ؟
-				</a>
-			</li>
-			<li>
-				<a href="app-v3-local.html" class="hero-btn-primary">
-					<i class="fas fa-shopping-cart"></i> اطلب الآن
-				</a>
-			</li>
-		</ul>
+				<li>
+					<a href="app-v3-local.html" class="hero-btn-primary hero-btn-big">
+						<i class="fas fa-store"></i> تصفح المتاجر المتاحة
+					</a>
+				</li>
+				<li>
+					<a href="javascript:void(0)" class="hero-btn-secondary" onclick="openExplanation()">
+						شرح فكرة الموقع
+					</a>
+				</li>
+			</ul>
 
 	</div><!-- #intro -->
 
@@ -887,7 +929,7 @@
 	   Inline styles override everything, even cached stylesheets.          */
 	(function forceMobileStyles() {
 		if (window.innerWidth > 736) return; // desktop/large tablet — skip
-		var btns = document.querySelectorAll('#intro .hero-btn-primary');
+		var btns = document.querySelectorAll('#intro .hero-btn-primary:not(.hero-btn-big)');
 		btns.forEach(function(btn) {
 			btn.style.setProperty('font-size', '1.35rem', 'important');
 			btn.style.setProperty('width',     '65%',    'important');
