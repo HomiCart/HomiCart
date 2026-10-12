@@ -1671,6 +1671,30 @@
       transition: border-color .2s, background .2s;
     }
     .add-sub-order-btn:hover { border-color: rgba(24,191,239,.8); background: rgba(24,191,239,.06); }
+    /* position:fixed, not sticky — body/html both set overflow-x:hidden, which
+       turns body into a scroll container that never scrolls, so sticky never pins. */
+    .op-sticky-bar {
+      position: fixed; left: 50%; transform: translateX(-50%); z-index: 60;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+      width: min(560px, calc(100vw - 24px));
+      display: flex; align-items: center; justify-content: space-between; gap: .8rem;
+      padding: .7rem .9rem;
+      background: rgba(13,21,32,.96);
+      border: 1px solid rgba(24,191,239,.35); border-radius: 14px;
+      box-shadow: 0 -6px 22px rgba(0,0,0,.4);
+      backdrop-filter: blur(6px);
+    }
+    body.has-sticky-bar { padding-bottom: 90px; }
+    .op-sticky-info { display: flex; flex-direction: column; line-height: 1.35; }
+    .op-sticky-label { font-family: 'Cairo', sans-serif; font-size: .72rem; color: rgba(255,255,255,.5); }
+    .op-sticky-total { font-family: 'Alexandria', sans-serif; font-size: 1.05rem; font-weight: 800; color: #18bfef; }
+    .op-sticky-btn {
+      background: linear-gradient(135deg, #18bfef 0%, #0d9bcb 100%);
+      color: #fff; border: none; border-radius: 50px; cursor: pointer;
+      font-family: 'Alexandria', sans-serif; font-size: .92rem; font-weight: 700;
+      padding: .7rem 1.4rem; white-space: nowrap;
+      box-shadow: 0 4px 16px rgba(24,191,239,.3);
+    }
     .menu-items-footer {
       display: flex; justify-content: space-between; align-items: center;
       margin-top: .7rem;
@@ -2859,6 +2883,10 @@
   function showPage(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
+    // The order panel's fixed total bar only exists on the menu page
+    document.body.classList.remove('has-sticky-bar');
+    const stickyBar = document.getElementById('opStickyBar');
+    if (pageId === 'menuPage' && stickyBar && stickyBar.style.display !== 'none') document.body.classList.add('has-sticky-bar');
     const backBtn = document.getElementById('backBtn');
     backBtn.style.display = pageId === 'storePage' ? 'none' : 'inline-flex';
     // Reset back button label to "رجوع" when entering menu page normally
@@ -2878,7 +2906,7 @@
   async function renderStores() {
     // Step 1 — Draw ALL cards immediately so UI is instant
     const realHtml = stores.map(s => `
-      <div class="store-card" id="card-${s.id}" onclick="showCustomerPage('${s.folder}', '${s.name}', '${s.tag}')">
+      <div class="store-card" id="card-${s.id}" onclick="openStore('${s.folder}', '${s.name}', '${s.tag}')">
         <div class="store-card-bg" id="card-bg-${s.id}" ${s.bgImage ? `style="background-image:url('${s.bgImage}')"` : ''}></div>
         <div class="store-card-overlay"></div>
         <div class="store-badge"><i class="fas fa-tag"></i>${s.tag}</div>
@@ -3298,6 +3326,11 @@
   // ── Show customer page ──────────────────────────────────
   function showCustomerPage(folder, name, tag) {
     window._pendingStore = { folder, name, tag };
+    window._returnToCart = false; // _goIdentifyForCheckout turns this on again right after calling us
+    ['btnStartOrder', 'btnStartOrderSuccess'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b && b.dataset.orig) b.innerHTML = b.dataset.orig;
+    });
     document.getElementById('custStoreName').textContent = name;
     document.getElementById('custPhone').value = '';
     document.getElementById('rememberMeCheck').checked = true;
@@ -3348,6 +3381,7 @@
 
   // ── "طلباتي وتعديلها" from customer info page ─────────
   async function goToMyOrdersFromCustomerPage() {
+    window._returnToCart = false;
     const store = window._pendingStore;
     if (!store) return;
     window._editingOrderId = null;
@@ -3367,10 +3401,126 @@
     setTimeout(() => showMyOrders(), 200);
   }
 
+  // ── Menu-first entry ─────────────────────────────────────────────────
+  // A visitor who hasn't identified themselves yet lands straight on the
+  // priced menu and builds their basket first; their details are only asked
+  // at the very end (see _goIdentifyForCheckout). Anyone with a saved phone
+  // keeps the original flow (their orders/profile come first), and so does a
+  // closed collection (nothing to order — the closed notice lives there).
+  async function openStore(folder, name, tag) {
+    window._pendingStore = { folder, name, tag };
+    window._returnToCart = false;
+    window._guestFlow    = false;
+
+    if (_getSavedPhone()) { showCustomerPage(folder, name, tag); return; }
+
+    // Know whether collection is open before offering to order (short wait —
+    // if the check is slow we just assume open; submit re-checks anyway).
+    window._batchPhase = null;
+    await Promise.race([
+      updateCountdownForStore(folder),
+      new Promise(r => setTimeout(r, 2500)),
+    ]);
+    if (!isOrderWindowOpen()) { showCustomerPage(folder, name, tag); return; }
+
+    window._guestFlow = true;
+    window._editingOrderId = null;
+    await selectStore(folder, name, tag);
+    await new Promise(r => setTimeout(r, 150));
+    orderNow(folder);
+  }
+
+  // The basket is done but we don't know who's ordering: park it (the order
+  // panel stays in the DOM, untouched) and open the phone/registration step.
+  function _goIdentifyForCheckout() {
+    const s = window._pendingStore;
+    if (!s) return;
+    showCustomerPage(s.folder, s.name, s.tag);
+    window._returnToCart = true;
+    ['btnStartOrder', 'btnStartOrderSuccess'].forEach(id => {
+      const b = document.getElementById(id);
+      if (!b) return;
+      if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
+      b.innerHTML = '<i class="fas fa-arrow-left"></i>&nbsp;رجوع لطلبي وتأكيده';
+    });
+  }
+
+  // Identified — back to the untouched basket, ready to confirm.
+  function _resumeCart() {
+    window._returnToCart = false;
+    if (!isOrderWindowOpen()) {
+      alert(getWindowClosedMsg() + '\n\nلا يمكن تقديم طلبات في الوقت الحالي.');
+      return;
+    }
+    showPage('menuPage');
+    const txt = document.getElementById('opSaveTxt');
+    if (txt) txt.textContent = 'تأكيد الطلب';
+    const err = document.getElementById('opError');
+    if (err) { err.textContent = '✅ تم حفظ بياناتك — راجع طلبك واضغط "تأكيد الطلب"'; err.style.color = '#28c864'; }
+    updateMenuOrderPreview();
+    document.getElementById('opSaveBtn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // The identified customer already has an order in this batch: instead of a
+  // separate second order, the basket becomes an extra round on that order
+  // (same machinery as _addRoundToOrder, but keeping the live cards as-is).
+  function _attachCartToOrder(orderId, order) {
+    if (!isOrderWindowOpen()) {
+      alert(getWindowClosedMsg() + '\n\nلا يمكن إضافة طلب في الوقت الحالي.');
+      return;
+    }
+    if ((window._opSubOrders || []).length) {
+      showOrderAlert('اختياراتك فيها أكتر من طلب منفصل — ادمجهم في طلب واحد الأول، أو عدّل طلبك الحالي من هنا.');
+      return;
+    }
+    const existingRounds = _parseOrderAsRounds(order);
+    if (existingRounds.length >= SUBORDER_MAX) {
+      showOrderAlert(`تم الوصول للحد الأقصى (${SUBORDER_MAX} طلبات) في نفس الأوردر`);
+      return;
+    }
+    window._returnToCart = false;
+    window._editingOrderId = orderId;
+    window._opSubOrders = existingRounds.map(r => ({ roundIndex: r.roundIndex, label: r.label, lines: r.lines, structured: r.structured, rows: r.rows, total: r.total }));
+    window._opEditingRoundIndex = existingRounds.length; // the basket = next free slot
+    _opSaved = false;
+    showPage('menuPage');
+    _renderSubOrdersSummary();
+    updateMenuOrderPreview();
+    _refreshDeliveryFeeDisplay();
+    const txt = document.getElementById('opSaveTxt');
+    if (txt) txt.textContent = 'حفظ الطلب الجديد';
+    const err = document.getElementById('opError');
+    if (err) {
+      err.textContent = `➕ اختياراتك هتتضاف على أوردرك (${orderId}) وتبقى "${SUBORDER_LABELS[existingRounds.length]}" — باقي الطلبات هتفضل زي ما هي`;
+      err.style.color = '#28a745';
+    }
+    document.getElementById('opSaveBtn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // Back out of the menu-first basket to the stores list.
+  function _leaveGuestCompose() {
+    const hasItems = buildMenuOrderLines().length || (window._opSubOrders || []).length;
+    if (hasItems && !confirm('اختياراتك هتتمسح لو رجعت — متأكد؟')) return;
+    window._guestFlow = false;
+    window._returnToCart = false;
+    currentStore = null;
+    hideCountdown();
+    showPage('storePage');
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.store-card').forEach(c => {
+        c.classList.remove('visible');
+        setTimeout(() => c.classList.add('visible'), 60);
+      });
+    });
+  }
+
   // ── Go directly to order page (used by both existing + new customers) ──
   async function goToOrderPage() {
     const store = window._pendingStore;
     if (!store) return;
+
+    // Identified mid-checkout: the basket is still sitting in the order panel
+    if (window._returnToCart && document.getElementById('menuItemsBox')) { _resumeCart(); return; }
 
     // Check order window before proceeding
     if (!isOrderWindowOpen()) {
@@ -3828,9 +3978,11 @@
           // order at any time (not just while first composing it) — one
           // "add" affordance per order, shown after its round-card(s),
           // hidden once it's already at the 4-round cap.
+          // (Menu-first visitors who already have an order arrive here with a
+          // finished basket: the same button then adds that basket to the order.)
           const addRoundHtml = (o) => _parseOrderAsRounds(o).length >= SUBORDER_MAX ? '' : `
             <button class="btn-add-round" id="add-round-${o.id}">
-              <i class="fas fa-plus-circle"></i>&nbsp;إضافة طلب جديد على نفس الأوردر
+              <i class="fas fa-plus-circle"></i>&nbsp;${window._returnToCart ? 'ضيف اختياراتي على الأوردر ده' : 'إضافة طلب جديد على نفس الأوردر'}
             </button>`;
 
           const listEl = document.getElementById('curOrdersList');
@@ -3856,6 +4008,7 @@
             });
             const addBtn = document.getElementById('add-round-' + o.id);
             if (addBtn) addBtn.addEventListener('click', () => {
+              if (window._returnToCart) { _attachCartToOrder(o.id, o); return; }
               _showStep('stepCurrentOrder', false);
               _addRoundToOrder(o.id, o, window._pendingStore);
             });
@@ -3892,6 +4045,7 @@
   // rounds ride along untouched as locked _opSubOrders and get silently
   // recombined back into the same row when saved (see saveOrder's blocks).
   async function _beginEditRound(orderId, order, roundIndex, storeInfo) {
+    window._returnToCart = false;
     const rounds = roundIndex != null ? _parseOrderRounds(order) : null;
     const target = rounds ? rounds.find(r => r.roundIndex === roundIndex) : null;
     const others = rounds ? rounds.filter(r => r.roundIndex !== roundIndex) : [];
@@ -4065,21 +4219,36 @@
 
   /* ── Go back ── */
   function goBack() {
+    const onMenu = document.getElementById('menuPage')?.classList.contains('active');
+    const onCust = document.getElementById('customerPage')?.classList.contains('active');
+
+    // Identifying mid-checkout → back to the basket (nothing is lost)
+    if (onCust && window._returnToCart && document.querySelector('.ordering-layout')) {
+      window._returnToCart = false;
+      showPage('menuPage');
+      return;
+    }
+
     // Level 3 → Level 2 : ordering view → back to menu + discounts cards
-    if (document.querySelector('.ordering-layout')) {
+    if (onMenu && document.querySelector('.ordering-layout')) {
       cancelOrderMode();
       return;
     }
 
     // Level 2 → Level 1 : menu page → back to customer info page
-    if (document.getElementById('menuPage')?.classList.contains('active')) {
+    // (menu-first visitors never went through it — they go to the stores list)
+    if (onMenu && !window._guestFlow) {
       currentStore = null;
       showPage('customerPage');
       return;
     }
+    if (onMenu && window._guestFlow) {
+      _leaveGuestCompose();
+      return;
+    }
 
     // Customer page → back to stores list
-    if (document.getElementById('customerPage')?.classList.contains('active')) {
+    if (onCust) {
       showPage('storePage');
       requestAnimationFrame(() => {
         document.querySelectorAll('.store-card').forEach(c => {
@@ -4146,6 +4315,7 @@
     if (!cfg) return;
     window._opStore = { storeKey, cfg, sheetName: SHEET_NAMES[storeKey] || storeKey };
     _opSaved = false; _opTempId = null;
+    document.body.classList.remove('has-sticky-bar'); // the rebuilt panel starts with no basket
 
     // Starting a genuinely new (non-edit) order must never carry over a
     // previous edit session's pending prefill data — otherwise a stray late
@@ -4230,10 +4400,19 @@
           <div class="ordering-btns">
             <button class="btn-op-save" id="opSaveBtn" onclick="saveOrder()">
               <i class="fas fa-check"></i>
-              <span id="opSaveTxt">سجل الطلب</span>
+              <span id="opSaveTxt">${_getActiveCustomer().phone ? 'سجل الطلب' : 'متابعة'}</span>
             </button>
             <button class="btn-op-cancel" onclick="cancelOrderMode()">
               <i class="fas fa-xmark"></i> إلغاء
+            </button>
+          </div>
+          <div class="op-sticky-bar" id="opStickyBar" style="display:none">
+            <div class="op-sticky-info">
+              <span class="op-sticky-label" id="opStickyLabel">الإجمالي</span>
+              <span class="op-sticky-total" id="opStickyTotal"></span>
+            </div>
+            <button type="button" class="op-sticky-btn" id="opStickyBtn" onclick="_stickyContinue()">
+              <span id="opStickyBtnTxt">متابعة</span> <i class="fas fa-arrow-left"></i>
             </button>
           </div>
         </div>
@@ -4823,6 +5002,7 @@
   // (window._editingOrderId is set) and recombines everything into the
   // SAME order row via saveOrder's blocks builder — no new submit path needed.
   async function _addRoundToOrder(orderId, order, storeInfo) {
+    window._returnToCart = false;
     if (!isOrderWindowOpen()) {
       alert(getWindowClosedMsg() + '\n\nلا يمكن إضافة طلب في الوقت الحالي.');
       return;
@@ -4932,6 +5112,33 @@
     }, 30000);
   }
 
+  // Sticky "total + continue" bar at the bottom of the order form — keeps the
+  // running total and the next step in view while scrolling a long menu.
+  function _updateStickyBar(grandTotal, hasDelivery) {
+    const bar = document.getElementById('opStickyBar');
+    if (!bar) return;
+    if (grandTotal == null) { bar.style.display = 'none'; document.body.classList.remove('has-sticky-bar'); return; }
+    bar.style.display = '';
+    document.body.classList.add('has-sticky-bar'); // leaves room so the bar never covers the last buttons
+    document.getElementById('opStickyLabel').textContent = hasDelivery ? 'الإجمالي (مع التوصيل)' : 'إجمالي الأصناف';
+    document.getElementById('opStickyTotal').textContent = grandTotal + ' درهم';
+    const known = window._editingOrderId || _getActiveCustomer().phone;
+    document.getElementById('opStickyBtnTxt').textContent = known ? 'تأكيد الطلب' : 'متابعة';
+  }
+
+  // Sticky bar button: if delivery still has to be picked, take the customer
+  // to it instead of bouncing them with an error; otherwise carry on.
+  function _stickyContinue() {
+    if (window._opDeliveryOptions?.length && !window._opDeliveryChoice) {
+      const box = document.getElementById('deliveryOptionsBox');
+      if (box) { box.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      const err = document.getElementById('opError');
+      if (err) { err.style.color = ''; err.textContent = 'اختار طريقة التوصيل الأول'; }
+      return;
+    }
+    saveOrder();
+  }
+
   function updateMenuOrderPreview() {
     const preview = document.getElementById('menuOrderPreview');
     if (!preview) return;
@@ -4940,6 +5147,7 @@
     if (!current.rows.length && !subOrders.length) {
       preview.style.display = 'none';
       preview.innerHTML = '';
+      _updateStickyBar(null);
       return;
     }
 
@@ -4947,6 +5155,7 @@
     const hasUnknownPrice = current.hasUnknownPrice || subOrders.some(so => so.rows.some(r => r.lineTotal == null));
     const deliveryFee = window._opDeliveryChoice ? _computeDeliveryFee(window._opDeliveryChoice) : null;
     const grandTotal  = +(itemsTotal + (deliveryFee || 0)).toFixed(2);
+    _updateStickyBar(grandTotal, deliveryFee != null);
 
     // Group rows under a "الطلب الأول/الثاني/..." label only once the
     // customer has actually used "إضافة أوردر بفاتورة منفصلة" — otherwise
@@ -5189,6 +5398,9 @@
 
   /* ── Cancel order mode → restore normal menu view ────────────── */
   function cancelOrderMode() {
+    // Menu-first visitors have no preview page behind the basket — their
+    // "back" is the stores list.
+    if (window._guestFlow && !window._editingOrderId) { _leaveGuestCompose(); return; }
     if (_opSaved && _opTempId && window._opStore) {
       _callScript('cancelOrder', { tempId: _opTempId, sheetName: window._opStore.sheetName })
         .catch(() => {});
@@ -5249,19 +5461,34 @@
     );
 
     const err = document.getElementById('opError');
+    // The error line sits at the bottom of the form — make sure it's seen
+    // even when "متابعة" was pressed from the sticky bar further up.
+    const fail = msg => {
+      err.style.color = '';
+      err.textContent = msg;
+      err.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
     if (!items) {
-      err.textContent = 'يرجى تحديد كمية لمنتج واحد على الأقل';
+      fail('يرجى تحديد كمية لمنتج واحد على الأقل');
       return;
     }
     if (!window._opDeliveryOptionsLoaded) {
       // Don't let a fast click race the delivery-options fetch — that's how
       // an order could end up saved with no delivery fee line at all (see
       // orderNow/_opDeliveryOptionsLoaded).
-      err.textContent = 'برجاء الانتظار لحظة... جاري تحميل بيانات التوصيل';
+      fail('برجاء الانتظار لحظة... جاري تحميل بيانات التوصيل');
       return;
     }
     if (window._opDeliveryOptions?.length && !window._opDeliveryChoice) {
-      err.textContent = 'يرجى اختيار طريقة التوصيل المفضلة';
+      fail('يرجى اختيار طريقة التوصيل المفضلة');
+      return;
+    }
+
+    // Menu-first visitors reach this point with a finished basket but no
+    // identity yet — ask for their details now (the basket stays put).
+    if (!window._editingOrderId && !_getActiveCustomer().phone) {
+      err.textContent = '';
+      _goIdentifyForCheckout();
       return;
     }
 
@@ -5431,6 +5658,7 @@
     }));
 
     // ── Show success screen inside menuContainer (same place as ordering layout) ──
+    document.body.classList.remove('has-sticky-bar');
     document.getElementById('menuContainer').innerHTML = `
       <div class="order-success-wrap">
         <div class="op-success-header">
@@ -5798,7 +6026,9 @@
     setBatchClosedNotice(null);
     hideCountdown();
 
-    _callScript('getStoreOrderWindow', { store: apiKey }, 12000)
+    // Returned so openStore can wait for the answer before deciding which
+    // entry flow to offer; other callers just ignore it.
+    return _callScript('getStoreOrderWindow', { store: apiKey }, 12000)
       .then(res => {
         if (!res || !res.success) return;
         window._batchPhase = res.phase || 'no_settings';
