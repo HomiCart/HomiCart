@@ -419,6 +419,33 @@ select option { background:#0d1a28; color:#fff; }
         </div>
       </div>
 
+      <!-- ══ RED-LOCATION REVIEW ══ -->
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(239,68,68,.25);border-radius:14px;padding:1.4rem;margin-bottom:1.5rem;border-top:3px solid #ef4444">
+        <div style="font-family:'Alexandria',sans-serif;font-size:1rem;font-weight:800;color:#fff;display:flex;align-items:center;gap:.5rem">
+          <span>📍</span> مراجعة المواقع الحمراء
+        </div>
+        <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin:.3rem 0 .9rem;line-height:1.7">
+          العملاء اللي السيستم علّم عليهم أحمر (لوكيشنهم مش متوافق مع المنطقة اللي كتبوها). افتحي الخريطة وشوفي:
+          لو اللوكيشن <b style="color:#fff">صح</b> دوسي "✅ صح" وهيتشال من الأحمر ومش هيتعلّم تاني (إلا لو غيّر لوكيشنه أو منطقته).
+          لو <b style="color:#fff">غلط</b> سيبيه أحمر وهاتي اللوكيشن الصح من العميل.
+        </div>
+        <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:center">
+          <button id="redLocBtn" onclick="loadRedLocations()"
+            style="background:linear-gradient(135deg,#ef4444,#c0392b);border:none;color:#fff;font-family:'Alexandria',sans-serif;font-size:.9rem;font-weight:800;padding:.7rem 1.4rem;border-radius:10px;cursor:pointer;white-space:nowrap">
+            <i class="fas fa-map-marker-alt"></i> تحميل القائمة
+          </button>
+          <label style="font-size:.78rem;color:rgba(255,255,255,.55);display:flex;align-items:center;gap:.4rem;cursor:pointer">
+            <input type="checkbox" id="redLocAll"> اعرض كل العملاء المعلّمين (مش بس اللي عندهم أوردر جاري)
+          </label>
+        </div>
+        <div id="redLocList" style="margin-top:1rem"></div>
+
+        <details id="learnedBox" ontoggle="if(this.open) loadLearnedPairs()" style="margin-top:1rem;border-top:1px dashed rgba(255,255,255,.12);padding-top:.8rem">
+          <summary style="cursor:pointer;font-size:.82rem;color:rgba(255,255,255,.6)">الأسماء الدارجة المحفوظة</summary>
+          <div id="learnedList" style="margin-top:.6rem"></div>
+        </details>
+      </div>
+
       <div class="section-head">
         <div class="section-title"><i class="fas fa-store"></i> الطلبات حسب المتجر</div>
       </div>
@@ -2038,6 +2065,119 @@ async function markDeliveredByPhones() {
   } finally {
     btn.disabled = false;
   }
+}
+
+// ════════════════════════════════════════════════════════
+//  RED-LOCATION REVIEW
+// ════════════════════════════════════════════════════════
+let _redList = [];
+
+async function loadRedLocations() {
+  const btn = document.getElementById('redLocBtn');
+  const box = document.getElementById('redLocList');
+  const all = document.getElementById('redLocAll').checked;
+  btn.disabled = true;
+  box.innerHTML = '<div style="color:rgba(255,255,255,.5);font-size:.85rem">جاري التحميل... (أول مرة ممكن ياخد شوية)</div>';
+  try {
+    const res = await api('getRedLocationCustomers', all ? { all: '1' } : {}, 90000);
+    if (!res.success) { box.innerHTML = ''; toast('خطأ: ' + res.message, 'error'); return; }
+    _redList = res.customers || [];
+    renderRedLocations(res);
+  } catch(e) {
+    box.innerHTML = '';
+    toast('تعذر التحميل: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderRedLocations(res) {
+  const box = document.getElementById('redLocList');
+  const notes = [];
+  if (res && res.cleared) notes.push(`${res.cleared} عميل اتشالوا من الأحمر تلقائي (الاسم الدارج محفوظ قبل كده)`);
+  if (res && res.pending) notes.push(`فيه ${res.pending} عميل لسه ما اتفحصوش على الخريطة — دوسي "تحميل القائمة" تاني`);
+  const noteHtml = notes.map(n => `<div style="font-size:.75rem;color:#f59e0b;margin-bottom:.5rem">${_mvEsc(n)}</div>`).join('');
+  if (!_redList.length) {
+    box.innerHTML = noteHtml + '<div style="color:#28c864;font-size:.9rem">مفيش عملاء معلّمين أحمر ✓</div>';
+    return;
+  }
+  box.innerHTML = noteHtml + `<div style="font-size:.78rem;color:rgba(255,255,255,.5);margin-bottom:.5rem">${_redList.length} عميل</div>` +
+    _redList.map(c => {
+      const id  = _mvEsc(c.id);
+      const typed = _mvEsc(String(c.area || '').split(' - ').pop());
+      const det = (c.detected && c.detected.length) ? _mvEsc(c.detected.join(' | ')) : '';
+      const map = 'https://www.google.com/maps?q=' + encodeURIComponent(c.lat + ',' + c.lng);
+      const btnCss = 'font-family:Alexandria,sans-serif;font-size:.78rem;font-weight:700;padding:.45rem .9rem;border-radius:8px;cursor:pointer;white-space:nowrap;';
+      return `<div id="red-${id}" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:.8rem 1rem;margin-bottom:.6rem">
+        <div style="display:flex;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
+          <b style="color:#fff">${_mvEsc(c.name)}</b>
+          <span dir="ltr" style="color:rgba(255,255,255,.55);font-size:.82rem">${_mvEsc(String(c.phone).replace(/^'/, ''))}</span>
+        </div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.75);margin:.4rem 0;line-height:1.8">
+          كتب المنطقة: <b style="color:#fff">${typed || '—'}</b><br>
+          الخريطة شايفاها: <b style="color:${det ? '#18bfef' : 'rgba(255,255,255,.4)'}">${det || 'ما رجعتش اسم منطقة'}</b>
+          ${c.address ? '<br><span style="color:rgba(255,255,255,.45)">العنوان: ' + _mvEsc(c.address) + '</span>' : ''}
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <a href="${map}" target="_blank" rel="noopener" style="${btnCss}background:rgba(24,191,239,.12);border:1px solid rgba(24,191,239,.5);color:#18bfef;text-decoration:none"><i class="fas fa-map"></i> افتح الخريطة</a>
+          <button onclick="reviewRedLocation('${id}', false)" style="${btnCss}background:rgba(40,200,100,.15);border:1px solid rgba(40,200,100,.5);color:#28c864">✅ صح</button>
+          ${det ? `<button onclick="reviewRedLocation('${id}', true)" style="${btnCss}background:rgba(40,200,100,.15);border:1px solid rgba(40,200,100,.5);color:#28c864" title="كل اللي يكتب نفس الاسم وموقعه في نفس المنطقة ما يتعلّمش أحمر">✅ صح + احفظ الاسم الدارج</button>` : ''}
+          <button onclick="skipRedLocation('${id}')" style="${btnCss}background:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.55)">تخطّي (هراجعه)</button>
+        </div>
+      </div>`;
+    }).join('');
+}
+
+async function reviewRedLocation(id, learn) {
+  const row = document.getElementById('red-' + id);
+  if (row) row.style.opacity = '.5';
+  try {
+    const res = await api('reviewLocationOk', learn ? { id, learn: '1' } : { id }, 60000);
+    if (!res.success) { if (row) row.style.opacity = ''; toast('خطأ: ' + res.message, 'error'); return; }
+    _redList = _redList.filter(c => c.id !== id);
+    if (res.learned) {
+      toast(res.clearedOthers ? `اتحفظ الاسم الدارج ✓ واتشال ${res.clearedOthers} عميل كمان من الأحمر` : 'اتحفظ الاسم الدارج ✓', 'success');
+      if (res.clearedOthers) { loadRedLocations(); return; }
+    } else {
+      toast('اتشال من الأحمر ✓', 'success');
+    }
+    renderRedLocations();
+  } catch(e) {
+    if (row) row.style.opacity = '';
+    toast('تعذر التنفيذ: ' + e.message, 'error');
+  }
+}
+
+function skipRedLocation(id) {
+  const row = document.getElementById('red-' + id);
+  if (row) row.remove();
+}
+
+async function loadLearnedPairs() {
+  const box = document.getElementById('learnedList');
+  box.innerHTML = '<span style="color:rgba(255,255,255,.4);font-size:.8rem">جاري التحميل...</span>';
+  try {
+    const res = await api('getLearnedAreaPairs');
+    if (!res.success) { box.textContent = 'خطأ: ' + res.message; return; }
+    if (!res.pairs.length) { box.innerHTML = '<span style="color:rgba(255,255,255,.4);font-size:.8rem">مفيش أسماء محفوظة لسه</span>'; return; }
+    box.innerHTML = res.pairs.map((p, i) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.35rem 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:.8rem;color:rgba(255,255,255,.75)">
+        <span>كتب <b style="color:#fff">${_mvEsc(p.typedLabel)}</b> ⇄ الخريطة <b style="color:#18bfef">${_mvEsc(p.detectedLabel)}</b></span>
+        <button onclick="removeLearnedPair(${i})" style="background:none;border:1px solid rgba(239,68,68,.5);color:#ef4444;border-radius:6px;font-size:.72rem;padding:.25rem .6rem;cursor:pointer">حذف</button>
+      </div>`).join('');
+    box._pairs = res.pairs;
+  } catch(e) { box.textContent = 'تعذر التحميل: ' + e.message; }
+}
+
+async function removeLearnedPair(i) {
+  const box = document.getElementById('learnedList');
+  const p = box._pairs && box._pairs[i];
+  if (!p) return;
+  if (!confirm(`حذف "${p.typedLabel}" من الأسماء المحفوظة؟ (العملاء اللي اتأكدتي منهم قبل كده هيفضلوا مش أحمر)`)) return;
+  try {
+    const res = await api('removeLearnedAreaPair', { typed: p.typed });
+    if (res.success) { toast('اتحذف ✓', 'success'); loadLearnedPairs(); }
+    else toast('خطأ: ' + res.message, 'error');
+  } catch(e) { toast('تعذر التنفيذ: ' + e.message, 'error'); }
 }
 
 // ════════════════════════════════════════════════════════
