@@ -1719,6 +1719,16 @@
       font-size: .74rem; color: rgba(255,255,255,.32);
       font-family: 'Cairo', sans-serif;
     }
+    .menu-items-status {
+      text-align: center; padding: 1.4rem 1rem; margin: .6rem 0;
+      font-family: 'Cairo', sans-serif; font-size: .9rem; color: rgba(255,255,255,.6);
+      background: rgba(255,255,255,.04); border: 1px dashed rgba(255,255,255,.15); border-radius: 12px;
+    }
+    .menu-items-status.err { color: #ff8a8a; border-color: rgba(255,100,100,.4); }
+    .menu-items-status.err .menu-clear-btn {
+      font-size: .85rem; color: #fff; background: rgba(255,100,100,.25);
+      border: 1px solid rgba(255,100,100,.5); border-radius: 8px; padding: .5rem 1.1rem;
+    }
     .menu-clear-btn {
       font-size: .72rem; color: rgba(255,100,100,.5);
       background: none; border: none; cursor: pointer;
@@ -5016,20 +5026,49 @@
 
     // Load menu items in background
     window._opInvoiceNote = '';
-    const menuItemsPromise = _callScript('getMenuItems', { store: _noteStore }, 6000).then(res => {
-      const all = res?.items || [];
-      window._opInvoiceNote = all.find(i => i.isInvoiceNote)?.text || '';
-      const items = all.filter(i => !i.isInvoiceNote && (i.isDivider || (i.enabled !== false && i.name)));
-      window._opMenuItems = items;
-      if (!items.length) return;
-      renderMenuItemsBox(items);
-    }).catch(() => {});
+    const menuItemsPromise = _loadMenuItems(_noteStore);
 
     // Callers that need to act only once menu items + delivery options have
     // actually loaded (e.g. prefilling quantity cards when editing an order)
     // can await this instead of guessing with a fixed setTimeout — the real
     // network calls above can take much longer than a few hundred ms.
     return Promise.all([deliveryOptionsPromise, menuItemsPromise]);
+  }
+
+  /* ── Fetch + render the priced items. The menu IS the order form now, so a
+        failed load must never be silent: show progress, retry on its own, and
+        finally an explicit message with a retry button (it used to give up
+        quietly after 6s, leaving an empty form and a confusing error). ── */
+  function _loadMenuItems(sheetName, attempt = 1) {
+    const stillHere = () => window._opStore && window._opStore.sheetName === sheetName;
+    const box = document.getElementById('menuItemsBox');
+    if (box && attempt === 1) {
+      box.innerHTML = '<div class="menu-items-status"><i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحميل القائمة...</div>';
+    }
+    return _callScript('getMenuItems', { store: sheetName }, 12000).then(res => {
+      if (!res || res.success === false || !Array.isArray(res.items)) throw new Error((res && res.message) || 'رد غير صالح من الخادم');
+      if (!stillHere()) return;
+      const all = res.items;
+      window._opInvoiceNote = all.find(i => i.isInvoiceNote)?.text || '';
+      const items = all.filter(i => !i.isInvoiceNote && (i.isDivider || (i.enabled !== false && i.name)));
+      window._opMenuItems = items;
+      const b = document.getElementById('menuItemsBox');
+      if (!items.length) { if (b) b.innerHTML = ''; return; } // image-only menu: nothing to list
+      renderMenuItemsBox(items);
+    }).catch(err => {
+      if (!stillHere()) return;
+      if (attempt < 3) return _loadMenuItems(sheetName, attempt + 1);
+      const b = document.getElementById('menuItemsBox');
+      if (b) b.innerHTML = `<div class="menu-items-status err">
+          <div>⚠️ تعذر تحميل قائمة الأصناف</div>
+          <div style="font-size:.78rem;opacity:.75;margin:.3rem 0 .6rem">${_escHtml(String((err && err.message) || ''))}</div>
+          <button type="button" class="menu-clear-btn" onclick="_retryMenuItems()"><i class="fas fa-redo"></i> إعادة المحاولة</button>
+        </div>`;
+    });
+  }
+
+  function _retryMenuItems() {
+    if (window._opStore) _loadMenuItems(window._opStore.sheetName);
   }
 
   /* ── Render customer-facing menu items picker ─────────────── */
