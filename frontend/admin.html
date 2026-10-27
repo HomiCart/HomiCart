@@ -8,6 +8,7 @@
   <meta http-equiv="Expires" content="0">
   <title>HomiCart — لوحة التحكم v2</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;600;700;800&family=Cairo:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -2823,6 +2824,171 @@ function _mvEsc(s) {
 
 // Slots orders that arrived after the route was already sent into it —
 // without renumbering anything (see insertLateOrders in AdminRoutes.gs).
+// ════════════════════════════════════════════════════════
+//  INVOICE IMAGES — one PNG per customer (per vendor), zipped
+//  Source: the "الفاتورة" column of the last routing's export sheet
+// ════════════════════════════════════════════════════════
+function _invParse(text) {
+  const info = { no: '', rows: [], total: '' };
+  const lines = String(text || '').split('\n').map(l => l.trim()).filter(Boolean);
+  const stripEmoji = s => s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}️]/gu, '').trim();
+  const priceRe = /^(.*?)\s*—\s*([\d.,]+)\s*درهم\s*$/;
+  let pending = '';
+  const flush = () => { if (pending) { info.rows.push({ kind: 'text', name: pending }); pending = ''; } };
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i], line = stripEmoji(raw);
+    let m;
+    if (/^🧾/.test(raw)) { const n = raw.match(/رقم\s*(\S+)/); if (n) info.no = n[1]; continue; }
+    if (/الإجمالي|الاجمالي/.test(line)) {
+      flush();
+      m = line.match(/([\d.,]+)/);
+      if (!m && lines[i + 1]) { const nx = lines[i + 1].match(/^([\d.,]+)/); if (nx) { m = nx; i++; } }
+      info.total = m ? m[1] : '';
+      continue;
+    }
+    if ((m = line.match(/^—\s*(.+?)\s*—$/))) { flush(); info.rows.push({ kind: 'head', name: m[1] }); continue; }
+    if ((m = line.match(priceRe))) { const nm = (pending ? pending + ' ' : '') + m[1]; pending = ''; info.rows.push({ kind: 'item', name: nm, price: m[2] }); continue; }
+    if ((m = line.match(/^([\d.,]+)\s*درهم$/)) && pending) { info.rows.push({ kind: 'item', name: pending, price: m[1] }); pending = ''; continue; }
+    flush();
+    pending = line;
+  }
+  flush();
+  return info;
+}
+
+function _invWrap(ctx, text, maxW) {
+  const words = String(text).split(/\s+/), out = [];
+  let cur = '';
+  words.forEach(w => {
+    const t = cur ? cur + ' ' + w : w;
+    if (cur && ctx.measureText(t).width > maxW) { out.push(cur); cur = w; } else cur = t;
+  });
+  if (cur) out.push(cur);
+  return out.length ? out : [''];
+}
+
+function _invDraw(inv) {
+  const info = _invParse(inv.invoice);
+  const W = 760, PAD = 44, FONT = 'Cairo, Alexandria, sans-serif';
+  const meas = document.createElement('canvas').getContext('2d');
+  meas.direction = 'rtl';
+
+  // layout pass: wrap each row, compute total height
+  const itemFont = '600 25px ' + FONT, itemMaxW = W - PAD * 2 - 170;
+  meas.font = itemFont;
+  const rows = info.rows.map(r => {
+    if (r.kind === 'item') { const ls = _invWrap(meas, r.name, itemMaxW); return Object.assign({}, r, { lines: ls, h: 20 + ls.length * 36 }); }
+    if (r.kind === 'head') return Object.assign({}, r, { lines: [r.name], h: 56 });
+    return Object.assign({}, r, { lines: _invWrap(meas, r.name, W - PAD * 2), h: 20 + 34 });
+  });
+  const HEAD_H = 170, INFO_H = 96, TOTAL_H = 120, FOOT_H = 70;
+  const bodyH = rows.reduce((s, r) => s + r.h, 0) || 60;
+  const H = HEAD_H + INFO_H + bodyH + TOTAL_H + FOOT_H;
+
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  x.direction = 'rtl'; x.textBaseline = 'middle';
+  x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H);
+
+  // header band
+  const g = x.createLinearGradient(0, 0, W, 0);
+  g.addColorStop(0, '#0d9bcb'); g.addColorStop(1, '#18bfef');
+  x.fillStyle = g; x.fillRect(0, 0, W, HEAD_H);
+  x.fillStyle = '#ffffff';
+  x.textAlign = 'right'; x.font = '800 44px ' + FONT;
+  x.fillText('فاتورة رقم ' + (inv.no || info.no), W - PAD, 62);
+  x.font = '600 26px ' + FONT;
+  x.fillText(inv.vendorName || inv.vendor || '', W - PAD, 118);
+  x.textAlign = 'left'; x.direction = 'ltr'; x.font = '800 34px ' + FONT;
+  x.fillText('HomiCart', PAD, 62);
+  x.direction = 'rtl';
+
+  // customer
+  let y = HEAD_H;
+  x.fillStyle = '#f2f7fa'; x.fillRect(0, y, W, INFO_H);
+  x.fillStyle = '#6b7c88'; x.textAlign = 'right'; x.font = '500 22px ' + FONT;
+  x.fillText('العميل', W - PAD, y + 30);
+  x.fillStyle = '#16232d'; x.font = '800 32px ' + FONT;
+  x.fillText(inv.name || '', W - PAD, y + 66);
+  y += INFO_H;
+
+  // body
+  rows.forEach(r => {
+    if (r.kind === 'head') {
+      x.fillStyle = '#e6f6fc'; x.fillRect(PAD, y + 8, W - PAD * 2, 40);
+      x.fillStyle = '#0d9bcb'; x.textAlign = 'center'; x.font = '700 22px ' + FONT;
+      x.fillText(r.name, W / 2, y + 29);
+    } else if (r.kind === 'item') {
+      x.fillStyle = '#16232d'; x.textAlign = 'right'; x.font = itemFont;
+      r.lines.forEach((ln, i) => x.fillText(ln, W - PAD, y + 28 + i * 36));
+      x.textAlign = 'left'; x.direction = 'ltr'; x.font = '700 25px ' + FONT;
+      x.fillText(r.price + ' درهم', PAD, y + 28);
+      x.direction = 'rtl';
+    } else {
+      x.fillStyle = '#6b7c88'; x.textAlign = 'right'; x.font = '500 22px ' + FONT;
+      r.lines.forEach((ln, i) => x.fillText(ln, W - PAD, y + 26 + i * 34));
+    }
+    y += r.h;
+    x.strokeStyle = '#e4ecf0'; x.lineWidth = 1.5;
+    x.beginPath(); x.moveTo(PAD, y); x.lineTo(W - PAD, y); x.stroke();
+  });
+  if (!rows.length) y += 60;
+
+  // total
+  x.fillStyle = '#16232d'; x.fillRect(PAD, y + 20, W - PAD * 2, 80);
+  x.fillStyle = '#ffffff'; x.textAlign = 'right'; x.font = '700 28px ' + FONT;
+  x.fillText('الإجمالي', W - PAD - 24, y + 60);
+  x.fillStyle = '#18bfef'; x.textAlign = 'left'; x.direction = 'ltr'; x.font = '800 38px ' + FONT;
+  x.fillText((info.total || '—') + ' درهم', PAD + 24, y + 60);
+  x.direction = 'rtl';
+  y += TOTAL_H;
+
+  x.fillStyle = '#8fa0ab'; x.textAlign = 'center'; x.font = '500 21px ' + FONT;
+  x.fillText('شكراً لثقتكم — HomiCart', W / 2, y + 30);
+  return c;
+}
+
+async function downloadInvoiceImages() {
+  const vendors = Array.from(document.querySelectorAll('#mvVendorList input[type=checkbox]:checked')).map(cb => cb.dataset.key);
+  if (!vendors.length) { toast('اختر تاجر واحد على الأقل', 'error'); return; }
+  if (typeof JSZip === 'undefined') { toast('مكتبة الضغط ما اتحمّلتش — اعملي Refresh وجرّبي تاني', 'error'); return; }
+  const btn = document.getElementById('mv-inv-btn');
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ جاري تجهيز الفواتير...';
+  try {
+    const res = await api('getVendorInvoices', { vendors: vendors.join(',') }, 90000);
+    if (!res.success) throw new Error(res.message || 'تعذر تحميل الفواتير');
+    const list = res.invoices || [];
+    if (!list.length) throw new Error('مفيش فواتير — اعملي التجميع الأول');
+    try { await Promise.all([document.fonts.load('800 40px Cairo'), document.fonts.load('600 25px Cairo'), document.fonts.load('500 22px Cairo')]); } catch (e) {}
+
+    const zip = new JSZip();
+    const seen = {};
+    for (let i = 0; i < list.length; i++) {
+      const inv = list[i];
+      const blob = await new Promise(r => _invDraw(inv).toBlob(r, 'image/png'));
+      const clean = s => String(s || '').replace(/[\\/:*?"<>|\n\r]+/g, ' ').trim();
+      let base = 'رقم ' + clean(inv.no) + ' - ' + clean(inv.name) + (vendors.length > 1 ? ' - ' + clean(inv.vendorName) : '');
+      seen[base] = (seen[base] || 0) + 1;
+      if (seen[base] > 1) base += ' (' + seen[base] + ')';
+      zip.file(base + '.png', blob);
+      btn.textContent = '⏳ ' + (i + 1) + ' / ' + list.length;
+    }
+    const out = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(out);
+    a.download = 'فواتير-' + new Date().toISOString().slice(0, 10) + '.zip';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('✅ تم تحميل ' + list.length + ' فاتورة', 'success');
+  } catch (e) {
+    toast('خطأ: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = label;
+  }
+}
+
 async function runInsertLateOrders() {
   var checked = Array.from(document.querySelectorAll('#mvVendorList input[type=checkbox]:checked'))
     .map(function(cb) { return cb.dataset.key; });
@@ -3134,6 +3300,15 @@ function mvPrint(key) {
     </button>
     <div style="font-size:.7rem;color:rgba(255,255,255,.35);margin-bottom:.8rem;text-align:center;line-height:1.6">
       للأوردرات اللي جت بعد ما الأرقام اتبعتت للتاجر — بتاخد رقم أقرب محطة + حرف (مثل 6b)
+    </div>
+
+    <!-- Invoice images: one PNG per customer, zipped -->
+    <button id="mv-inv-btn" onclick="downloadInvoiceImages()"
+      style="width:100%;padding:11px;background:rgba(24,191,239,.1);color:#18bfef;border:1.5px solid rgba(24,191,239,.45);border-radius:9px;cursor:pointer;font-size:13px;font-weight:800;font-family:'Cairo',sans-serif;margin-bottom:.4rem">
+      🧾 تحميل الفواتير كصور (ملف ZIP)
+    </button>
+    <div style="font-size:.7rem;color:rgba(255,255,255,.35);margin-bottom:.8rem;text-align:center;line-height:1.6">
+      صورة لكل عميل من آخر تجميع، للتجار المختارين فوق — جاهزة للإرسال على الواتس
     </div>
 
     <!-- Results -->
