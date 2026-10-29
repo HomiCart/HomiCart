@@ -370,6 +370,44 @@ select option { background:#0d1a28; color:#fff; }
         </div>
       </div>
 
+      <!-- ══ MASTER BATCH CONTROL ══ -->
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(24,191,239,.22);border-radius:14px;padding:1.4rem;margin-bottom:1.5rem;border-top:3px solid #18bfef">
+        <div style="font-family:'Alexandria',sans-serif;font-size:1rem;font-weight:800;color:#fff;display:flex;align-items:center;gap:.5rem">
+          <span>🎛️</span> التحكم الموحد في الدورات
+        </div>
+        <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin:.3rem 0 .9rem;line-height:1.7">
+          افتحي أو اقفلي أو مدّدي الدورة لكل المتاجر المختارة مرة واحدة. كل متجر بيحتفظ بدورته ووقته الخاص، وتقدري تتحكمي فيه لوحده من صفحته زي ما هي.
+        </div>
+        <div id="masterStores" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.9rem"></div>
+        <div style="display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:.9rem">
+          <div style="flex:1;min-width:190px">
+            <label style="font-size:.72rem;color:rgba(255,255,255,.45);display:block;margin-bottom:3px">وقت الفتح (للدورة الجديدة)</label>
+            <input type="datetime-local" id="ms-start"
+              style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none;box-sizing:border-box">
+          </div>
+          <div style="flex:1;min-width:190px">
+            <label style="font-size:.72rem;color:rgba(255,255,255,.45);display:block;margin-bottom:3px">وقت الإغلاق (للفتح والتمديد)</label>
+            <input type="datetime-local" id="ms-end"
+              style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none;box-sizing:border-box">
+          </div>
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+          <button id="masterBtn-open" onclick="masterBatch('open')"
+            style="flex:1;min-width:150px;background:linear-gradient(135deg,#28c864,#1f9d4e);border:none;color:#fff;font-family:'Alexandria',sans-serif;font-size:.85rem;font-weight:800;padding:.7rem 1rem;border-radius:10px;cursor:pointer">
+            ▶ فتح دورة جديدة للكل
+          </button>
+          <button id="masterBtn-extend" onclick="masterBatch('extend')"
+            style="flex:1;min-width:150px;background:linear-gradient(135deg,#18bfef,#0d9bcb);border:none;color:#fff;font-family:'Alexandria',sans-serif;font-size:.85rem;font-weight:800;padding:.7rem 1rem;border-radius:10px;cursor:pointer">
+            ⏱ تمديد الكل
+          </button>
+          <button id="masterBtn-close" onclick="masterBatch('close')"
+            style="flex:1;min-width:150px;background:linear-gradient(135deg,#ef4444,#c0392b);border:none;color:#fff;font-family:'Alexandria',sans-serif;font-size:.85rem;font-weight:800;padding:.7rem 1rem;border-radius:10px;cursor:pointer">
+            🔒 إغلاق الكل
+          </button>
+        </div>
+        <div id="masterResult" style="margin-top:.9rem;font-size:.82rem;line-height:1.9"></div>
+      </div>
+
       <!-- ══ MULTI-VENDOR DELIVERY CARD ══ -->
       <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,165,0,.2);border-radius:14px;padding:1.4rem;margin-bottom:1.5rem;border-top:3px solid #f59e0b">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem">
@@ -608,6 +646,7 @@ async function loadStoresList() {
   } catch(e) { /* use cached STORES from localStorage */ }
   renderStoresSidebar();
   renderStorePages();
+  renderMasterStores();
 }
 
 function renderStoresSidebar() {
@@ -2312,6 +2351,104 @@ function closeExtendModal() {
   document.getElementById('extendModal').style.display = 'none';
   _extendStore   = null;
   _extendBatches = [];
+}
+
+// ════════════════════════════════════════════════════════
+//  MASTER BATCH CONTROL — open / close / extend all selected stores
+//  Each store keeps its own batch + window; this just runs the same
+//  per-store calls (startNewBatch, closeBatch, extendBatch, ...) in a loop.
+// ════════════════════════════════════════════════════════
+function renderMasterStores() {
+  const box = document.getElementById('masterStores');
+  if (!box) return;
+  const prev = {};
+  box.querySelectorAll('input[type=checkbox]').forEach(cb => { prev[cb.dataset.key] = cb.checked; });
+  box.innerHTML = STORES.map(s => `
+    <label style="display:flex;align-items:center;gap:.45rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:.45rem .8rem;cursor:pointer;font-size:.85rem;color:#fff">
+      <input type="checkbox" data-key="${s.key}" data-name="${_mvEsc(s.name)}" ${prev[s.key] === false ? '' : 'checked'}>
+      <span class="store-dot" style="background:${s.color}"></span>${_mvEsc(s.name)}
+    </label>`).join('');
+  const startEl = document.getElementById('ms-start'), endEl = document.getElementById('ms-end');
+  if (startEl && !startEl.value) startEl.value = _toDatetimeLocal(new Date().toISOString());
+  if (endEl && !endEl.value) endEl.value = _toDatetimeLocal(new Date(Date.now() + 24 * 3600000).toISOString());
+}
+
+async function masterBatch(kind) {
+  const picked = Array.from(document.querySelectorAll('#masterStores input[type=checkbox]:checked'))
+    .map(cb => ({ key: cb.dataset.key, name: cb.dataset.name }));
+  if (!picked.length) { toast('اختاري متجر واحد على الأقل', 'error'); return; }
+
+  const start = document.getElementById('ms-start').value;
+  const end   = document.getElementById('ms-end').value;
+  if (kind === 'open') {
+    if (!start || !end) { alert('يرجى تحديد وقت الفتح والإغلاق'); return; }
+    if (new Date(end) <= new Date(start)) { alert('وقت الإغلاق يجب أن يكون بعد وقت الفتح'); return; }
+  }
+  if (kind === 'extend') {
+    if (!end) { alert('يرجى تحديد وقت الإغلاق الجديد'); return; }
+    if (new Date(end) <= new Date()) { alert('وقت الإغلاق الجديد لازم يكون في المستقبل'); return; }
+  }
+
+  const names = picked.map(p => '• ' + p.name).join('\n');
+  const msgs = {
+    open:   'فتح دورة جديدة للمتاجر دي؟\n\n' + names + '\n\nالدورة القديمة لكل متجر هتتقفل وأوردرات "جديد" فيها هتتحول لـ"جاري التحضير".',
+    close:  'إغلاق الدورة الحالية للمتاجر دي؟\n\n' + names + '\n\nأوردرات "جديد" هتتحول لـ"جاري التحضير".',
+    extend: 'تمديد الدورة الحالية للمتاجر دي؟\n\n' + names + '\n\nأوردرات "جاري التحضير" في الدورة هترجع لـ"جديد" (و"تم التوصيل" ما بيتلمسش).'
+  };
+  if (!confirm(msgs[kind])) return;
+
+  const btns = ['open', 'extend', 'close'].map(k => document.getElementById('masterBtn-' + k));
+  btns.forEach(b => b.disabled = true);
+  const out = document.getElementById('masterResult');
+  const lines = [];
+  const render = (pending) => {
+    out.innerHTML = lines.join('') + (pending ? '<div style="color:rgba(255,255,255,.5)">⏳ ' + _mvEsc(pending) + '</div>' : '');
+  };
+  const ok  = (n, t) => lines.push('<div style="color:#28c864">✓ ' + _mvEsc(n) + ' — ' + _mvEsc(t) + '</div>');
+  const bad = (n, t) => lines.push('<div style="color:#ff6060">✗ ' + _mvEsc(n) + ' — ' + _mvEsc(t) + '</div>');
+  let good = 0;
+
+  for (const p of picked) {
+    render(p.name + '...');
+    try {
+      if (kind === 'open') {
+        const b = await api('startNewBatch', { store: p.key }, 30000);
+        if (!b.success) throw new Error(b.message || 'فشل إنشاء الدورة');
+        const w = await api('setStoreOrderWindow', { store: p.key, start: new Date(start).toISOString(), end: new Date(end).toISOString() }, 20000);
+        if (w && w.success === false) throw new Error(w.message || 'فشل ضبط الوقت');
+        ok(p.name, 'دورة جديدة' + (b.autoClosedOrders > 0 ? ' — ' + b.autoClosedOrders + ' طلب تحول لـ"جاري التحضير"' : ''));
+      } else if (kind === 'close') {
+        const c = await api('closeBatch', { store: p.key }, 30000);
+        if (!c.success) throw new Error(c.message || 'فشل الإغلاق');
+        ok(p.name, 'اتقفلت — ' + (c.ordersUpdated || 0) + ' طلب تحول لـ"جاري التحضير"');
+      } else {
+        const a = await api('getActiveBatch', { store: p.key }, 20000);
+        if (!a.batchId) throw new Error('مفيش دورة نشطة أو سابقة — اتخطّى');
+        const newEnd = new Date(end).toISOString();
+        const e = await api('extendBatch', { store: p.key, newEnd, batchId: a.batchId }, 30000);
+        if (!e.success) throw new Error(e.message || 'فشل التمديد');
+        try {
+          const w = await api('getStoreOrderWindow', { store: p.key }, 15000);
+          if (w && w.start) await api('setStoreOrderWindow', { store: p.key, start: new Date(_toDatetimeLocal(w.start)).toISOString(), end: newEnd }, 20000);
+        } catch (_) { /* non-critical — batch already extended */ }
+        ok(p.name, 'اتمددت' + (e.revertedOrders > 0 ? ' — ' + e.revertedOrders + ' طلب رجع لـ"جديد"' : ''));
+      }
+      good++;
+    } catch (err) {
+      bad(p.name, err.message);
+    }
+    // refresh that store's own page if it was already opened
+    try {
+      const pg = document.getElementById('page-store-' + p.key);
+      if (pg && pg.innerHTML.trim()) {
+        loadStoreWindow(p.key); loadBatchStatus(p.key); loadStoreOrders(p.key);
+        loadBatchDropdown(p.key); loadProcBatchDropdown(p.key);
+      }
+    } catch (_) {}
+  }
+  render('');
+  btns.forEach(b => b.disabled = false);
+  toast(good === picked.length ? '✓ تم لكل المتاجر (' + good + ')' : 'تم ' + good + ' من ' + picked.length + ' — راجعي النتيجة تحت', good === picked.length ? 'success' : 'error');
 }
 
 // ── Batch auto-close watcher ─────────────────────────────────
