@@ -3004,6 +3004,11 @@ function _invWrap(ctx, text, maxW) {
   return out.length ? out : [''];
 }
 
+// Today's date (UAE time) as DD/MM/YYYY — stamped on every invoice at export time.
+function _invToday() {
+  return new Date().toLocaleDateString('en-GB', { timeZone: 'Asia/Dubai', day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 function _invDraw(inv) {
   const info = _invParse(inv.invoice);
   const W = 760, PAD = 44, FONT = 'Cairo, Alexandria, sans-serif';
@@ -3038,7 +3043,7 @@ function _invDraw(inv) {
   x.font = '600 26px ' + FONT;
   x.fillText(inv.vendorName || inv.vendor || '', W - PAD, 118);
   x.textAlign = 'left'; x.direction = 'ltr'; x.font = '800 34px ' + FONT;
-  x.fillText('HomiCart', PAD, 62);
+  x.fillText(inv.date || _invToday(), PAD, 62);
   x.direction = 'rtl';
 
   // customer
@@ -3082,7 +3087,7 @@ function _invDraw(inv) {
   y += TOTAL_H;
 
   x.fillStyle = '#8fa0ab'; x.textAlign = 'center'; x.font = '500 21px ' + FONT;
-  x.fillText('شكراً لثقتكم — HomiCart', W / 2, y + 30);
+  x.fillText('شكراً لثقتكم', W / 2, y + 30);
   return c;
 }
 
