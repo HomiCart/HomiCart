@@ -5250,10 +5250,15 @@
     return (window._opSubOrders || []).reduce((s, so) => s + so.total, 0);
   }
 
+  // The index the live cards stand for: normally the next free slot, but
+  // while editing one round of an existing order it is that round's own slot
+  // (see _beginEditRound / _addRoundToOrder).
+  function _liveRoundIndex() {
+    return window._opEditingRoundIndex != null ? window._opEditingRoundIndex : (window._opSubOrders || []).length;
+  }
+
   function addAnotherSubOrder() {
-    // Only meaningful when creating fresh orders — an edit always targets
-    // one existing row, submitted as a single update (see saveOrder).
-    if (window._editingOrderId) return;
+    const editing = !!window._editingOrderId;
     const lines = buildMenuOrderLines();
     if (!lines.length) {
       showOrderAlert('اختار صنف واحد على الأقل قبل ما تضيف طلب جديد');
@@ -5262,14 +5267,24 @@
     window._opSubOrders = window._opSubOrders || [];
     if (window._opSubOrders.length >= SUBORDER_MAX - 1) return; // already at 4 total
     const invoice = buildMenuOrderInvoice();
+    const slot = _liveRoundIndex();
     window._opSubOrders.push({
-      roundIndex: window._opSubOrders.length,
-      label     : SUBORDER_LABELS[window._opSubOrders.length],
+      roundIndex: slot,
+      label     : SUBORDER_LABELS[slot],
       lines     : lines,
       structured: buildMenuOrderStructured(),
       rows      : invoice.rows,
       total     : invoice.total,
+      added     : true, // made in this session — the only kind that can be removed while editing
     });
+    if (editing) {
+      // Fresh cards stand for the next free slot; and the prefilled edit text
+      // must not come back if the menu re-renders (see renderMenuItemsBox).
+      window._opSubOrders.sort((a, b) => a.roundIndex - b.roundIndex);
+      window._opEditingRoundIndex = window._opSubOrders.length;
+      window._opPendingEditItems = null;
+      window._opPendingEditStructured = null;
+    }
     clearAllMenuQty();
     _renderSubOrdersSummary();
     updateMenuOrderPreview();
@@ -5278,9 +5293,13 @@
 
   function removeSubOrder(idx) {
     if (!window._opSubOrders) return;
+    // While editing, rounds that were already part of the order are locked
+    // (cancelling one is its own action in "طلباتي").
+    if (window._editingOrderId && !window._opSubOrders[idx]?.added) return;
     window._opSubOrders.splice(idx, 1);
     // Relabel the remaining ones so they stay sequential
     window._opSubOrders.forEach((so, i) => { so.label = SUBORDER_LABELS[i]; so.roundIndex = i; });
+    if (window._editingOrderId) window._opEditingRoundIndex = window._opSubOrders.length;
     _renderSubOrdersSummary();
     updateMenuOrderPreview();
     _refreshDeliveryFeeDisplay();
@@ -5290,20 +5309,16 @@
     const box = document.getElementById('subOrdersSummary');
     const addBtnWrap = document.getElementById('addSubOrderWrap');
     if (!box) return;
-    // Not offered while editing — an edit always recombines back into the
-    // SAME order row (see saveOrder), and _opSubOrders here holds the
-    // OTHER, untouched rounds of that order (see _beginEditRound), not a
-    // removable in-progress list — so no chips/add-button are shown at all.
-    if (window._editingOrderId) {
-      box.innerHTML = '';
-      if (addBtnWrap) addBtnWrap.style.display = 'none';
-      return;
-    }
+    // While editing, _opSubOrders holds the OTHER rounds of the order (locked,
+    // shown without a remove button — see _beginEditRound) plus any round the
+    // customer adds during this edit (removable). An edit still recombines
+    // back into the SAME order row (see saveOrder).
+    const editing = !!window._editingOrderId;
     const subOrders = window._opSubOrders || [];
     box.innerHTML = subOrders.map((so, i) => `
       <div class="sub-order-chip">
-        <span>✅ ${so.label} — ${so.lines.length} ${so.lines.length === 1 ? 'صنف' : 'أصناف'} — ${so.total} درهم</span>
-        <button type="button" onclick="removeSubOrder(${i})" title="حذف"><i class="fas fa-times"></i></button>
+        <span>${editing && !so.added ? '🔒' : '✅'} ${so.label} — ${so.lines.length} ${so.lines.length === 1 ? 'صنف' : 'أصناف'} — ${so.total} درهم</span>
+        ${editing && !so.added ? '' : `<button type="button" onclick="removeSubOrder(${i})" title="حذف"><i class="fas fa-times"></i></button>`}
       </div>`).join('');
     if (addBtnWrap) {
       const nextIdx = subOrders.length;
@@ -5312,7 +5327,7 @@
         addBtnWrap.style.display = 'none';
       } else {
         addBtnWrap.style.display = '';
-        if (btn) btn.innerHTML = `<i class="fas fa-plus"></i> إضافة ${SUBORDER_LABELS[nextIdx + 1] ? 'أوردر ' + ['تاني','تالت','رابع'][nextIdx] : 'أوردر'} بفاتورة منفصلة`;
+        if (btn) btn.innerHTML = `<i class="fas fa-plus"></i> إضافة ${editing ? 'أوردر جديد' : (SUBORDER_LABELS[nextIdx + 1] ? 'أوردر ' + ['تاني','تالت','رابع'][nextIdx] : 'أوردر')} بفاتورة منفصلة`;
       }
     }
   }
@@ -5722,10 +5737,11 @@
     // Group rows under a "الطلب الأول/الثاني/..." label only once the
     // customer has actually used "إضافة أوردر بفاتورة منفصلة" — otherwise
     // this looks exactly like the plain single-order preview as before.
-    const blocks = subOrders.map(so => ({ label: so.label, rows: so.rows }));
+    const blocks = subOrders.map(so => ({ idx: so.roundIndex, label: so.label, rows: so.rows }));
     if (current.rows.length) {
-      blocks.push({ label: subOrders.length ? SUBORDER_LABELS[subOrders.length] : null, rows: current.rows });
+      blocks.push({ idx: _liveRoundIndex(), label: subOrders.length ? SUBORDER_LABELS[_liveRoundIndex()] : null, rows: current.rows });
     }
+    blocks.sort((a, b) => a.idx - b.idx);
     const feeShares = deliveryFee != null ? _splitFeeAcrossBlocks(deliveryFee, blocks.length) : [];
     const rowsHtml = rows => rows.map(r => `
       <div class="invoice-row">
