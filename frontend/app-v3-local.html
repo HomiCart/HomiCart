@@ -3120,7 +3120,7 @@
     document.getElementById('menuContainer').innerHTML = `
       <div class="loading-state">
         <i class="fas fa-spinner"></i>
-        <span>جاري تحميل المنيو...</span>
+        <span>لحظات...</span>
       </div>`;
     showPage('menuPage');
 
@@ -3131,106 +3131,14 @@
     const menuImages     = [];
     const discountImages = await fetchImages(discountSource);
 
-    // ── Build order card (replaces the old menu-photo card) ─────
-    const menuCard = `
-      <div class="no-discount-card">
-        <div class="no-discount-icon"><i class="fas fa-shopping-cart"></i></div>
-        <div class="no-discount-title">اطلب من ${name}</div>
-        <div class="no-discount-msg">
-          اختار الأصناف والكميات من القائمة وسجّل طلبك.
-        </div>
-        <a class="btn-order-now" href="javascript:void(0)" onclick="orderNow('${folder}')">
-          <i class="fas fa-shopping-cart"></i> اطلب الآن
-        </a>
-      </div>`;
-
-    // ── Build discounts card ───────────────────────────────────
-    let discountCard = '';
-    if (discountImages.length) {
-      const firstImg = _imgUrl(discountImages[0].url);
-      const count    = discountImages.length;
-      discountCard = `
-        <div class="menu-preview-card discount-preview-card" onclick="openSlideshow(window._discountImages, 0)">
-          <div class="menu-preview-bg" style="background-image:url('${firstImg}')"></div>
-          <div class="menu-preview-overlay"></div>
-          <div class="menu-preview-content">
-            <div class="menu-preview-badge">
-              <i class="fas fa-tag"></i>
-              ${count} ${count === 1 ? 'عرض' : 'عروض'}
-            </div>
-            <div class="menu-preview-title">عروض وخصومات</div>
-            <div class="card-btns">
-              <button class="btn-view-menu" onclick="event.stopPropagation(); openSlideshow(window._discountImages, 0)">
-                <i class="fas fa-percent"></i> عرض العروض
-              </button>
-              <a class="btn-order-now" href="javascript:void(0)" onclick="event.stopPropagation(); orderNow('${folder}')">
-                <i class="fas fa-shopping-cart"></i> اطلب الآن
-              </a>
-            </div>
-          </div>
-        </div>`;
-    } else {
-      discountCard = `
-        <div class="no-discount-card">
-          <div class="no-discount-icon"><i class="fas fa-tag"></i></div>
-          <div class="no-discount-title">عروض وخصومات</div>
-          <div class="no-discount-msg">
-            عذراً، لا توجد عروض أو خصومات متاحة حالياً.<br>تابعنا للحصول على أحدث العروض قريباً.
-          </div>
-          <span class="no-discount-soon"><i class="fas fa-clock"></i> قريباً</span>
-          <a class="btn-order-now" href="javascript:void(0)" onclick="orderNow('${folder}')">
-            <i class="fas fa-shopping-cart"></i> اطلب الآن
-          </a>
-        </div>`;
-    }
-
-    // Cache for slideshow access
+    // The order form's side column reads these (offer photos).
     window._menuImages     = menuImages;
     window._discountImages = discountImages;
 
-    document.getElementById('menuContainer').innerHTML = `
-      <div class="cards-row">${menuCard}${discountCard}</div>
-      <div class="how-to-order" id="howToOrder">
-        <div class="how-to-order-title">
-          <i class="fas fa-lightbulb"></i> معلومات التوصيل
-        </div>
-        <div class="how-to-order-text" id="howToOrderText"></div>
-      </div>
-      <div class="admin-note" id="adminNoteBox">
-        <div class="admin-note-title" id="adminNoteTitle"></div>
-        <div class="admin-note-text" id="adminNoteText"></div>
-      </div>`;
-
-    // Staggered entrance animation for both cards
-    requestAnimationFrame(() => {
-      document.querySelectorAll('.menu-preview-card').forEach((card, i) => {
-        setTimeout(() => card.classList.add('visible'), 60 + i * 140);
-      });
-    });
-
-    // Load store note in background
-    const apiKey = SHEET_NAMES[folder] || folder;
-    _callScript('getStoreNote', { store: apiKey }, 6000).then(res => {
-      if (res?.success && res.note && res.note.trim()) {
-        const el = document.getElementById('howToOrderText');
-        const box = document.getElementById('howToOrder');
-        if (el) el.textContent = res.note.trim();
-        if (box) box.classList.add('visible');
-      }
-    }).catch(() => {});
-
-    // Load admin note in background (separate, admin-controlled)
-    _callScript('getAdminNote', { store: apiKey }, 6000).then(res => {
-      const cfg = res?.config;
-      if (cfg?.enabled && cfg.text && cfg.text.trim()) {
-        const titleEl = document.getElementById('adminNoteTitle');
-        const textEl  = document.getElementById('adminNoteText');
-        const box     = document.getElementById('adminNoteBox');
-        if (titleEl) titleEl.innerHTML = `<i class="fas fa-bullhorn"></i> ${cfg.title || 'ملاحظة من الأدمن'}`;
-        if (textEl)  textEl.textContent = cfg.text.trim();
-        if (box) box.classList.add('visible');
-      }
-    }).catch(() => {});
+    // No store landing cards any more (they flashed an "اطلب الآن" button at
+    // customers who already had an order while their orders were being
+    // looked up): every caller goes straight on to the order form, "طلباتي"
+    // or the customer page, which render over the spinner above.
   }
 
   /* ══════════════════════════════════════════════════════════
@@ -3420,8 +3328,12 @@
     const phone = _getSavedPhone();
     if (!phone) return null;
     try {
-      const res = await _callScript('getOrdersByPhone', { phone, sheet: SHEET_NAMES[folder] || folder }, 10000);
+      const sheet = SHEET_NAMES[folder] || folder;
+      const res = await _callScript('getOrdersByPhone', { phone, sheet }, 10000);
       if (!res || res.success === false) return null;
+      // lookupCustomer (the customer page we may be about to show) reuses this
+      // instead of asking the server for the same thing a second time
+      window._ordersPrefetch = { phone, sheet, at: Date.now(), orders: res.orders || [] };
       return (res.orders || []).filter(o => _orderActivity(o));
     } catch (e) { return null; }
   }
@@ -4441,9 +4353,13 @@
     const storeSheet = SHEET_NAMES[window._pendingStore?.folder] || window._opStore?.sheetName || '';
     try {
       // Fetch customer info + orders for THIS store only in parallel
+      const pre = window._ordersPrefetch;
+      window._ordersPrefetch = null; // single use — later lookups must be fresh
+      const fresh = pre && pre.phone === phone && pre.sheet === storeSheet && Date.now() - pre.at < 30000;
       const [custRes, ordersRes] = await Promise.all([
         _callScript('getCustomer',       { phone },                      15000),
-        _callScript('getOrdersByPhone',  { phone, sheet: storeSheet },   15000),
+        fresh ? Promise.resolve({ success: true, orders: pre.orders })
+              : _callScript('getOrdersByPhone',  { phone, sheet: storeSheet },   15000),
       ]);
 
       if (custRes.success && custRes.customer) {
