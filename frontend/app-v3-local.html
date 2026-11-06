@@ -3398,6 +3398,34 @@
     return {};
   }
 
+  // Is this order one the customer should be looking at instead of starting
+  // another? 'new' = still editable (any date); 'preparing' = already being
+  // prepared but placed in the cycle that is open right now (e.g. collected
+  // for tomorrow's delivery while the window stayed open), so it can't be
+  // edited and a second order would just mean a second delivery fee.
+  // An older Preparing order from a previous cycle doesn't count.
+  function _orderActivity(o) {
+    const st = o && o.status;
+    if (st === 'New' || st === 'جديد') return 'new';
+    if ((st === 'Preparing' || st === 'جاري التحضير') && window._batchPhase === 'open' && window._batchStart) {
+      const t = new Date(o.date).getTime(), start = new Date(window._batchStart).getTime();
+      if (!isNaN(t) && !isNaN(start) && t >= start) return 'preparing';
+    }
+    return null;
+  }
+
+  // The customer's orders in this store that should block a fresh order.
+  // null = couldn't check (no saved phone, or the lookup failed / timed out).
+  async function _fetchActiveOrdersFor(folder) {
+    const phone = _getSavedPhone();
+    if (!phone) return null;
+    try {
+      const res = await _callScript('getOrdersByPhone', { phone, sheet: SHEET_NAMES[folder] || folder }, 10000);
+      if (!res || res.success === false) return null;
+      return (res.orders || []).filter(o => _orderActivity(o));
+    } catch (e) { return null; }
+  }
+
   function _getSavedPhone() {
     const phone = (_getActiveCustomer().phone || '').toString().trim();
     return _isCustPhoneValid(phone) ? phone : '';
@@ -3490,8 +3518,8 @@
   // Everyone lands straight on the priced menu and builds their basket
   // first. A visitor we don't know is asked for phone/details only at the
   // very end (see _goIdentifyForCheckout); a returning customer (saved
-  // phone) isn't asked anything — saveOrder only checks they don't already
-  // have an order in this batch. The menu shows whether collection is open
+  // phone) isn't asked anything — a customer who already has an order in this
+  // cycle is taken straight to it (edit / cancel / add another) instead. The menu shows whether collection is open
   // or closed; when closed, the first attempt to add something explains
   // that (see _blockIfClosed).
   async function openStore(folder, name, tag) {
@@ -3511,8 +3539,18 @@
 
     window._guestFlow = true;
     window._editingOrderId = null;
+    // A returning customer who already has an order in this cycle must not be
+    // offered a blank menu (that is how a second order — and a second
+    // delivery fee — got placed): look their orders up while the menu loads.
+    const activeP = _fetchActiveOrdersFor(folder);
     await selectStore(folder, name, tag);
     await new Promise(r => setTimeout(r, 150));
+    const active = await Promise.race([activeP, new Promise(r => setTimeout(() => r(null), 4000))]);
+    if (active && active.length) {
+      window._guestFlow = false;
+      showCustomerPage(folder, name, tag); // auto-looks the saved phone up and shows the current order(s)
+      return;
+    }
     orderNow(folder);
   }
 
@@ -3726,10 +3764,13 @@
 
   async function _coFetchOrders(phone) {
     const sheet = window._opStore?.sheetName || SHEET_NAMES[window._pendingStore?.folder] || '';
-    try {
-      const res = await _callScript('getOrdersByPhone', { phone, sheet }, 15000);
-      return (res?.orders || []).filter(o => o.status === 'New' || o.status === 'جديد');
-    } catch(e) { return []; /* can't check — don't block ordering */ }
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await _callScript('getOrdersByPhone', { phone, sheet }, 15000);
+        if (res && res.success !== false) return (res.orders || []).filter(o => _orderActivity(o));
+      } catch(e) { /* retry once */ }
+    }
+    return []; // can't check — don't block ordering
   }
 
   // This phone already has an order in the batch → offer to add the basket
@@ -3739,17 +3780,27 @@
     const box = document.getElementById('coOrders');
     const sub = document.getElementById('coSubmitBtn');
     if (!orders.length) { box.innerHTML = ''; sub.style.display = ''; return; }
+    const editable  = orders.map((o, i) => ({ o, i })).filter(x => _orderActivity(x.o) === 'new');
+    const preparing = orders.filter(o => _orderActivity(o) === 'preparing');
     box.innerHTML = `
       <div class="co-existing">
+        ${editable.length ? `
         <div class="co-existing-title">⚠️ عندك أوردر مسجل في التجميع الحالي</div>
-        <div class="co-existing-msg">بدل أوردر جديد منفصل، ضيف اختياراتك على أوردرك الحالي:</div>
-        ${orders.map((o, i) => `
+        <div class="co-existing-msg">بدل أوردر جديد منفصل (وتوصيل تاني)، ضيف اختياراتك على أوردرك الحالي:</div>
+        ${editable.map(({ o, i }) => `
           <div class="co-existing-order">
             <div class="co-existing-items">${_escHtml(o.id)} — ${_escHtml(String(o.items || '').replace(/\n+/g, ' · ').slice(0, 90))}</div>
             <button type="button" class="btn-add-round" style="margin:.5rem 0 0" onclick="_attachFromCheckout(${i})">
               <i class="fas fa-plus-circle"></i>&nbsp;ضيف اختياراتي على الأوردر ده
             </button>
-          </div>`).join('')}
+          </div>`).join('')}` : ''}
+        ${preparing.length ? `
+        <div class="co-existing-title">⛔ عندك أوردر جاري تحضيره في التجميع الحالي</div>
+        <div class="co-existing-msg">مش هينفع نسجل أوردر جديد (هيبقى توصيل تاني)، ولا نعدّل على اللي جاري تحضيره. لو محتاج أي تغيير كلمنا.</div>
+        ${preparing.map(o => `
+          <div class="co-existing-order">
+            <div class="co-existing-items">${_escHtml(o.id)} — ${_escHtml(String(o.items || '').replace(/\n+/g, ' · ').slice(0, 90))}</div>
+          </div>`).join('')}` : ''}
       </div>`;
     sub.style.display = 'none';
   }
@@ -3793,6 +3844,11 @@
       _coFill(saved, saved.phone);
       document.getElementById('coRemember').checked = true;
       document.getElementById('coForget').style.display = '';
+      // Hold the confirm button until we know whether this phone already has
+      // an order — otherwise a quick tap placed a second one before the
+      // check came back.
+      sub.style.display = 'none';
+      document.getElementById('coOrders').innerHTML = '<div class="co-existing-msg" style="opacity:.7">⏳ بنتأكد من طلباتك الحالية...</div>';
       _coFetchOrders(saved.phone).then(orders => {
         if (phoneEl.value === saved.phone) _coRenderOrders(orders);
       });
@@ -3925,6 +3981,22 @@
     if (!window._coLocConfirmed || !window._coLoc)
       return fail('لازم تحدد موقعك على الخريطة — اسمح بالـ GPS أو اضغط على الخريطة / حرّك الدبوس');
     errEl.textContent = '';
+
+    // Last look before placing: has this phone got an order in the meantime
+    // (another tab, a slow first lookup, a double tap)?
+    {
+      const prevTxt = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>&nbsp;بنتأكد من طلباتك...';
+      const current = await _coFetchOrders(phone);
+      btn.disabled = false;
+      btn.innerHTML = prevTxt;
+      if (current.length) {
+        _coRenderOrders(current);
+        document.getElementById('coOrders').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
 
     const loc  = _coMarker ? _coMarker.getLatLng() : window._coLoc;
     const area = _composeArea(emirate, areaName);
@@ -4401,9 +4473,10 @@
         statusEl.className = 'cust-lookup-status found';
         statusEl.innerHTML = '<i class="fas fa-check-circle"></i>&nbsp;مرحباً! تم العثور على بياناتك';
 
-        // Filter "New" orders
+        // Orders to show as "current": editable New ones, plus ones already
+        // Preparing in the cycle that is open now (read-only)
         const allOrders  = ordersRes?.orders || [];
-        const newOrders  = allOrders.filter(o => o.status === 'New' || o.status === 'جديد');
+        const newOrders  = allOrders.filter(o => _orderActivity(o));
 
         if (newOrders.length > 0) {
           // ── Show current-order panel ──
@@ -4411,10 +4484,13 @@
           // A multi-round order (see _parseOrderRounds) shows as several
           // cards, so count actual visible cards, not just order rows.
           const totalCards = newOrders.reduce((s, o) => s + (_parseOrderRounds(o)?.length || 1), 0);
+          const onlyPreparing = newOrders.every(o => _orderActivity(o) === 'preparing');
           document.getElementById('curOrderSubtitle').textContent =
-            totalCards === 1
-              ? 'لديك طلب مسجل حالياً'
-              : `لديك ${totalCards} طلبات مسجلة حالياً`;
+            onlyPreparing
+              ? (totalCards === 1 ? 'طلبك جاري تحضيره' : 'طلباتك جاري تحضيرها')
+              : totalCards === 1
+                ? 'لديك طلب مسجل حالياً'
+                : `لديك ${totalCards} طلبات مسجلة حالياً`;
 
           // Render order cards — one round becomes several cards sharing the
           // same order id (see _parseOrderRounds); a plain order is one card.
@@ -4422,7 +4498,7 @@
             <div class="cur-order-card" id="cur-card-${o.id}${r ? '-r' + r.roundIndex : ''}">
               <div class="cur-order-meta">
                 <span class="cur-order-id">${o.id}${r ? ` <span style="opacity:.6;font-weight:600">· ${r.label}</span>` : ''}</span>
-                <span class="cur-order-badge">جديد</span>
+                <span class="cur-order-badge">${_orderActivity(o) === 'preparing' ? 'جاري التحضير' : 'جديد'}</span>
                 <span class="cur-order-date">${dateStr}</span>
               </div>
               <div class="cur-order-items">${_renderInvoiceLinesHtml(r ? r.breakdownText : (o.invoiceBreakdown || o.items))}</div>
@@ -4435,6 +4511,10 @@
                   ${o.deliveryOption ? `<span>🚚 ${o.deliveryOption}</span>` : ''}
                   ${o.paymentMethod ? `<span>💳 ${o.paymentMethod}</span>` : ''}
                 </div>` : ''}
+              ${_orderActivity(o) === 'preparing' ? `
+              <div class="cust-window-note" style="display:block;margin-top:.6rem">
+                ⛔ الطلب ده جاري تحضيره — مش هينفع تعديله أو تسجيل أوردر جديد دلوقتي. لو محتاج أي تغيير كلمنا.
+              </div>` : `
               <div class="cur-order-actions" style="margin-top:.6rem">
                 <button class="btn-cur-edit">
                   <i class="fas fa-pen"></i>&nbsp;تعديل
@@ -4444,7 +4524,7 @@
                     <i class="fas fa-times-circle"></i>&nbsp;${r ? 'إلغاء هذا الطلب' : 'إلغاء الطلب'}
                   </button>
                 </div>
-              </div>
+              </div>`}
             </div>`;
 
           // A friend/second round can be added to an already-submitted
@@ -4453,7 +4533,7 @@
           // hidden once it's already at the 4-round cap.
           // (Menu-first visitors who already have an order arrive here with a
           // finished basket: the same button then adds that basket to the order.)
-          const addRoundHtml = (o) => _parseOrderAsRounds(o).length >= SUBORDER_MAX ? '' : `
+          const addRoundHtml = (o) => (_orderActivity(o) === 'preparing' || _parseOrderAsRounds(o).length >= SUBORDER_MAX) ? '' : `
             <button class="btn-add-round" id="add-round-${o.id}">
               <i class="fas fa-plus-circle"></i>&nbsp;${window._returnToCart && _cartHasItems() ? 'ضيف اختياراتي على الأوردر ده' : 'إضافة طلب جديد على نفس الأوردر'}
             </button>`;
@@ -6652,6 +6732,7 @@
       .then(res => {
         if (!res || !res.success) return;
         window._batchPhase = res.phase || 'no_settings';
+        window._batchStart = res.start || null;
         window._batchNextStart = res.phase === 'before_open' ? res.start : null; // for the "opens soon" message
         _applyOrderWindowGating();
 
