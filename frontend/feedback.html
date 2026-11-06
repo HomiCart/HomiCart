@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>رأيك يهمنا — HomiCart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;600;700;800&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #060b12; --card: rgba(255,255,255,.045); --line: rgba(255,255,255,.1);
+      --text: #fff; --muted: rgba(255,255,255,.58); --teal: #18bfef; --teal-d: #0d9bcb;
+      --green: #28c864; --amber: #f5a623; --red: #ef4444; --star: #f5b83d;
+    }
+    html, body { background: var(--bg); color: var(--text); font-family: 'Cairo', sans-serif; direction: rtl; }
+    body { min-height: 100vh; padding: 0 16px 56px;
+      background: radial-gradient(900px 420px at 50% -120px, rgba(24,191,239,.16), transparent 70%), var(--bg); }
+    .wrap { max-width: 640px; margin: 0 auto; }
+
+    .top { display: flex; align-items: center; justify-content: space-between; padding: 18px 0 6px; }
+    .brand { font-family: 'Alexandria', sans-serif; font-weight: 800; font-size: 1.15rem;
+      background: linear-gradient(135deg, var(--teal), var(--teal-d)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .back { color: var(--muted); font-size: .85rem; text-decoration: none; }
+    .back:hover { color: var(--teal); }
+
+    header.hero { text-align: center; padding: 26px 0 22px; }
+    header.hero h1 { font-family: 'Alexandria', sans-serif; font-size: 1.7rem; font-weight: 800; margin-bottom: .6rem; }
+    header.hero p { color: var(--muted); font-size: .95rem; line-height: 1.9; max-width: 520px; margin: 0 auto; }
+
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px 18px; margin-bottom: 16px; }
+    .card h2 { font-family: 'Alexandria', sans-serif; font-size: 1.05rem; font-weight: 700; margin-bottom: .35rem; display: flex; gap: .5rem; align-items: center; }
+    .card .sub { color: var(--muted); font-size: .85rem; line-height: 1.8; margin-bottom: 1rem; }
+    .num { background: var(--teal); color: #04202b; width: 26px; height: 26px; border-radius: 50%; display: inline-flex;
+      align-items: center; justify-content: center; font-size: .85rem; font-weight: 800; flex-shrink: 0; }
+
+    /* store blocks */
+    .store { border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-top: 12px; background: rgba(255,255,255,.025); }
+    .store-name { font-weight: 700; font-size: .98rem; margin-bottom: .6rem; display: flex; align-items: center; gap: .5rem; }
+    .store-tag { color: var(--muted); font-weight: 500; font-size: .78rem; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { font-family: 'Cairo', sans-serif; font-size: .88rem; font-weight: 600; color: rgba(255,255,255,.82);
+      background: rgba(255,255,255,.05); border: 1.5px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer; transition: all .15s; }
+    .chip:hover { border-color: rgba(24,191,239,.5); }
+    .chip.on { color: #04202b; background: var(--teal); border-color: var(--teal); }
+    .chip.on.none    { background: var(--green); border-color: var(--green); }
+    .chip.on.solved  { background: var(--amber); border-color: var(--amber); }
+    .chip.on.unsolved{ background: var(--red);   border-color: var(--red); color: #fff; }
+    .chip.on.na      { background: rgba(255,255,255,.2); border-color: rgba(255,255,255,.3); color: #fff; }
+
+    textarea, input[type=tel] { width: 100%; background: rgba(255,255,255,.05); border: 1.5px solid var(--line); border-radius: 12px;
+      color: #fff; font-family: 'Cairo', sans-serif; font-size: .95rem; padding: 11px 13px; outline: none; transition: border-color .15s; }
+    textarea { min-height: 96px; resize: vertical; line-height: 1.8; }
+    textarea:focus, input[type=tel]:focus { border-color: var(--teal); }
+    textarea::placeholder, input::placeholder { color: rgba(255,255,255,.32); }
+    .detail { margin-top: 10px; display: none; }
+    .detail.show { display: block; }
+    .detail label { display: block; font-size: .82rem; color: var(--muted); margin-bottom: 5px; }
+
+    /* ratings */
+    .rate { padding: 12px 0; border-top: 1px dashed rgba(255,255,255,.1); }
+    .rate:first-of-type { border-top: 0; padding-top: 4px; }
+    .rate-label { font-weight: 600; font-size: .93rem; margin-bottom: 6px; }
+    .stars { display: flex; gap: 4px; direction: ltr; justify-content: flex-end; align-items: center; }
+    .star { background: none; border: 0; cursor: pointer; font-size: 2rem; line-height: 1; color: rgba(255,255,255,.2); padding: 2px 3px; transition: transform .1s, color .1s; }
+    .star:hover { transform: scale(1.12); }
+    .star.on { color: var(--star); }
+    .rate-word { min-width: 74px; text-align: center; font-size: .8rem; color: var(--muted); direction: rtl; }
+
+    .phone-hint { color: var(--muted); font-size: .8rem; margin-top: 7px; line-height: 1.7; }
+    /* honeypot for bots — hidden without a far-off position (that made the RTL page scroll sideways) */
+    .hp { position: absolute; top: 0; right: 0; width: 0; height: 0; opacity: 0; overflow: hidden; pointer-events: none; }
+
+    .err { color: #ff8a8a; font-size: .9rem; margin: 6px 0 10px; min-height: 1.2rem; text-align: center; line-height: 1.7; }
+    .btn { width: 100%; border: 0; cursor: pointer; font-family: 'Alexandria', sans-serif; font-weight: 800; font-size: 1.05rem; color: #fff;
+      background: linear-gradient(135deg, var(--teal), var(--teal-d)); border-radius: 999px; padding: 15px; box-shadow: 0 6px 22px rgba(24,191,239,.3); }
+    .btn:disabled { opacity: .6; cursor: default; }
+    .privacy { color: var(--muted); font-size: .8rem; text-align: center; margin-top: 12px; line-height: 1.8; }
+
+    .thanks { text-align: center; padding: 56px 8px; display: none; }
+    .thanks.show { display: block; }
+    .thanks .big { font-size: 3.4rem; margin-bottom: .6rem; }
+    .thanks h2 { font-family: 'Alexandria', sans-serif; font-size: 1.5rem; margin-bottom: .7rem; }
+    .thanks p { color: var(--muted); line-height: 1.9; max-width: 420px; margin: 0 auto 1.4rem; }
+    .thanks a { display: inline-block; text-decoration: none; }
+    .loading { color: var(--muted); text-align: center; padding: 14px; font-size: .9rem; }
+    @media (max-width: 420px) { header.hero h1 { font-size: 1.45rem; } .chip { font-size: .84rem; padding: 8px 12px; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <span class="brand">HomiCart</span>
+    <a class="back" href="../index.html">← رجوع للموقع</a>
+  </div>
+
+  <div id="formView">
+    <header class="hero">
+      <h1>رأيك يهمنا 💬</h1>
+      <p>دقيقة واحدة بس. قولنا إيه اللي حصل معاك بصراحة — حتى لو الشكوى على المتجر أو علينا إحنا أو على التنسيق، مفيش مشكلة خالص.</p>
+    </header>
+
+    <!-- 1: shops -->
+    <section class="card">
+      <h2><span class="num">1</span> المشاكل اللي واجهتك مع المتاجر</h2>
+      <p class="sub">اختار لكل متجر: حصلت مشكلة ولا لأ؟ ولو حصلت، اتحلت ولا لسه؟</p>
+      <div id="stores"><div class="loading">جاري التحميل...</div></div>
+    </section>
+
+    <!-- 2: ratings of the organiser / site -->
+    <section class="card">
+      <h2><span class="num">2</span> تقييمك للتنظيم والموقع</h2>
+      <p class="sub">اضغط على النجوم (٥ نجوم هي الأحسن).</p>
+      <div class="rate"><div class="rate-label">تنظيم الطلبات والجروب</div><div class="stars" data-rate="r_org"></div></div>
+      <div class="rate"><div class="rate-label">التعامل مع الناس (الرد والمساعدة)</div><div class="stars" data-rate="r_people"></div></div>
+      <div class="rate"><div class="rate-label">تصميم الموقع وسهولة استخدامه</div><div class="stars" data-rate="r_design"></div></div>
+      <div class="rate">
+        <div class="rate-label">الموقع بيتحدّث بشكل كافي ومرضي؟ <span style="color:var(--muted);font-weight:500;font-size:.8rem">(متاجر، عروض، معلومات الطلب)</span></div>
+        <div class="chips" id="updates">
+          <button type="button" class="chip" data-v="enough">آه، كافي ومرضي</button>
+          <button type="button" class="chip" data-v="more">محتاج تحديثات أكتر</button>
+          <button type="button" class="chip" data-v="unaware">مش متابع</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3: free text -->
+    <section class="card">
+      <h2><span class="num">3</span> حاجة تانية؟</h2>
+      <p class="sub">أي شكوى أو اقتراح، أو لو مبسوط قولنا إيه اللي عجبك.</p>
+      <textarea id="notes" maxlength="2000" placeholder="اكتب هنا بحرية..."></textarea>
+    </section>
+
+    <!-- 4: optional phone -->
+    <section class="card">
+      <h2><span class="num">4</span> رقم هاتفك <span style="color:var(--muted);font-weight:500;font-size:.85rem">(اختياري)</span></h2>
+      <input type="tel" id="phone" inputmode="numeric" maxlength="16" placeholder="05XXXXXXXX" autocomplete="tel">
+      <p class="phone-hint">سيب رقمك لو عايزنا نتواصل معاك ونحل المشكلة. ولو مش عايز، رأيك بيوصلنا من غير اسم.</p>
+    </section>
+
+    <div class="hp" aria-hidden="true"><input type="text" id="website" name="website" tabindex="-1" autocomplete="off"></div>
+
+    <div class="err" id="err"></div>
+    <button class="btn" id="send" type="button">ابعت رأيي</button>
+    <p class="privacy">رأيك بيوصل لصاحبة المنصة بس، ومش بيتنشر.</p>
+  </div>
+
+  <div class="thanks" id="thanksView">
+    <div class="big">💙</div>
+    <h2>شكراً ليك، رأيك وصل</h2>
+    <p id="thanksMsg">بنقرأ كل رد بنفسنا، وبنستفيد منه علشان التجميع الجاي يبقى أحسن.</p>
+    <a class="btn" href="../index.html">رجوع للموقع</a>
+  </div>
+</div>
+
+<script>
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRW2K-GbHfawvZMpxk5ExfyYg5EIhFpUgTy-nHaMjtNR1ZiWn-9BuZpRSWACTEGLqNlA/exec';
+const FALLBACK_STORES = [
+  { key: 'AlRoknAlMasry', name: 'الركن المصري',    icon: '🥩', tag: 'لحوم طازجة' },
+  { key: 'AlFalaki',      name: 'الفلكى للدواجن',  icon: '🐓', tag: 'طيور طازجة' },
+];
+const STATUS = [
+  ['na',       'ماطلبتش منهم'],
+  ['none',     'مفيش مشاكل'],
+  ['solved',   'فيه مشكلة واتحلت'],
+  ['unsolved', 'فيه مشكلة ولسه ماتحلتش'],
+];
+const RATE_WORDS = ['', 'ضعيف', 'مقبول', 'كويس', 'ممتاز', 'رائع'];
+
+const qs    = new URLSearchParams(location.search);
+const SRC   = ['order', 'home', 'group'].includes(qs.get('src')) ? qs.get('src') : 'home';
+const FIRST = qs.get('store') || '';
+
+const state = { stores: {}, rates: { r_org: 0, r_people: 0, r_design: 0 }, updates: '' };
+let STORES = [];
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const $ = id => document.getElementById(id);
+
+/* ── shops ── */
+function renderStores() {
+  const list = STORES.slice();
+  const i = list.findIndex(s => s.key === FIRST);
+  if (i > 0) list.unshift(list.splice(i, 1)[0]);          // the shop they just ordered from comes first
+  $('stores').innerHTML = list.map(s => `
+    <div class="store" data-key="${esc(s.key)}">
+      <div class="store-name"><span>${esc(s.icon || '🛒')}</span> ${esc(s.name)} ${s.tag ? `<span class="store-tag">· ${esc(s.tag)}</span>` : ''}</div>
+      <div class="chips">${STATUS.map(([v, t]) => `<button type="button" class="chip ${v}" data-v="${v}">${t}</button>`).join('')}</div>
+      <div class="detail"><label>احكيلنا إيه اللي حصل (المشكلة كانت إيه؟ حصلت إمتى؟)</label>
+        <textarea maxlength="1500" placeholder="مثلاً: اللحمة وصلت متأخرة / الوزن مش مظبوط / حاجة ناقصة..."></textarea></div>
+    </div>`).join('');
+  list.forEach(s => { state.stores[s.key] = { name: s.name, status: '', text: '' }; });
+}
+
+$('stores').addEventListener('click', e => {
+  const chip = e.target.closest('.chip'); if (!chip) return;
+  const box = chip.closest('.store'), key = box.dataset.key, v = chip.dataset.v;
+  const on = state.stores[key].status !== v;                 // tapping the same answer again clears it
+  state.stores[key].status = on ? v : '';
+  box.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', on && c === chip));
+  box.querySelector('.detail').classList.toggle('show', on && (v === 'solved' || v === 'unsolved'));
+});
+$('stores').addEventListener('input', e => {
+  const ta = e.target.closest('textarea'); if (!ta) return;
+  state.stores[ta.closest('.store').dataset.key].text = ta.value;
+});
+
+/* ── star ratings ── */
+document.querySelectorAll('.stars').forEach(box => {
+  const key = box.dataset.rate;
+  box.innerHTML = '<span class="rate-word"></span>' +
+    [5, 4, 3, 2, 1].map(n => `<button type="button" class="star" data-n="${n}" aria-label="${n} من 5">★</button>`).join('');
+  box.addEventListener('click', e => {
+    const b = e.target.closest('.star'); if (!b) return;
+    const n = +b.dataset.n;
+    state.rates[key] = state.rates[key] === n ? 0 : n;       // tap the same star again to clear
+    paintStars(box, state.rates[key]);
+  });
+});
+function paintStars(box, n) {
+  box.querySelectorAll('.star').forEach(s => s.classList.toggle('on', +s.dataset.n <= n));
+  box.querySelector('.rate-word').textContent = RATE_WORDS[n] || '';
+}
+
+$('updates').addEventListener('click', e => {
+  const chip = e.target.closest('.chip'); if (!chip) return;
+  state.updates = state.updates === chip.dataset.v ? '' : chip.dataset.v;
+  $('updates').querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.v === state.updates));
+});
+
+/* ── submit ── */
+function normalizePhone(raw) {
+  let d = String(raw || '').replace(/[٠-٩]/g, x => '٠١٢٣٤٥٦٧٨٩'.indexOf(x)).replace(/\D/g, '');
+  if (!d) return { ok: true, value: '' };
+  if (d.startsWith('00971')) d = d.slice(5);
+  else if (d.startsWith('971')) d = d.slice(3);
+  if (/^5\d{8}$/.test(d)) d = '0' + d;
+  return /^05\d{8}$/.test(d) ? { ok: true, value: d } : { ok: false, value: '' };
+}
+
+async function post(body, timeoutMs) {
+  const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow', signal: ctrl.signal,
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return JSON.parse(await res.text());
+  } finally { clearTimeout(t); }
+}
+
+$('send').addEventListener('click', async () => {
+  const err = $('err'); err.textContent = '';
+  const ph = normalizePhone($('phone').value);
+  if (!ph.ok) { err.textContent = 'رقم الهاتف مش مظبوط (05XXXXXXXX) — سيبه فاضي لو مش عايز تسيبه.'; $('phone').focus(); return; }
+
+  const stores = STORES.map(s => ({ key: s.key, name: s.name, status: state.stores[s.key].status, text: state.stores[s.key].text.trim() }));
+  const notes = $('notes').value.trim();
+  const answered = stores.some(s => s.status && s.status !== 'na') || Object.values(state.rates).some(Boolean) || state.updates || notes;
+  if (!answered) { err.textContent = 'اختار أي إجابة أو اكتب ملاحظة قبل ما تبعت.'; return; }
+
+  const payload = {
+    action: 'submitFeedback', src: SRC, phone: ph.value, stores: JSON.stringify(stores),
+    r_org: state.rates.r_org || '', r_people: state.rates.r_people || '', r_design: state.rates.r_design || '',
+    updates: state.updates, notes, website: $('website').value,
+  };
+  const btn = $('send'); btn.disabled = true; btn.textContent = 'جاري الإرسال...';
+  let res = null, lastErr = '';
+  for (let attempt = 0; attempt < 2 && !(res && res.success); attempt++) {   // the server ignores an identical retry, so a 2nd try can't double it
+    try { res = await post(payload, 25000); if (res && res.success === false) { lastErr = res.message || ''; break; } }
+    catch (e) { lastErr = e.message; }
+  }
+  if (res && res.success) {
+    const hadUnsolved = stores.some(s => s.status === 'unsolved');
+    $('thanksMsg').textContent = hadUnsolved
+      ? (ph.value ? 'هنتواصل معاك على رقمك علشان نحاول نحل المشكلة.' : 'لو عايزنا نتواصل معاك ونحل المشكلة، ابعت رأي تاني ومعاه رقمك.')
+      : 'بنقرأ كل رد بنفسنا، وبنستفيد منه علشان التجميع الجاي يبقى أحسن.';
+    $('formView').style.display = 'none'; $('thanksView').classList.add('show');
+    window.scrollTo(0, 0);
+    return;
+  }
+  btn.disabled = false; btn.textContent = 'ابعت رأيي';
+  err.textContent = /Unknown action/.test(lastErr) ? '⚠ الخدمة لسه بتتجهّز — جرّب تبعت رأيك كمان شوية.'
+    : lastErr && res ? '⚠ ' + lastErr
+    : '⚠ الرد ماوصلش (مشكلة في الاتصال) — إجاباتك لسه موجودة، دوس "ابعت رأيي" تاني.';
+});
+
+/* ── boot: shop list from the backend, with a built-in fallback ── */
+(async function init() {
+  try {
+    const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 7000);
+    const res = await fetch(APPS_SCRIPT_URL + '?action=getStoresList', { redirect: 'follow', signal: ctrl.signal });
+    clearTimeout(t);
+    const j = JSON.parse(await res.text());
+    if (j && j.success && Array.isArray(j.stores) && j.stores.length) {
+      STORES = j.stores.map(s => ({ key: s.key, name: s.name, icon: s.icon, tag: s.tag }));
+    }
+  } catch (e) { /* fall through */ }
+  if (!STORES.length) STORES = FALLBACK_STORES;
+  renderStores();
+})();
+</script>
+</body>
+</html>

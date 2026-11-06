@@ -279,6 +279,41 @@ select option { background:#0d1a28; color:#fff; }
   .page { padding:1rem; }
   .topbar { padding:.8rem 1rem; }
 }
+/* ── Customer feedback tab ── */
+.fb-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.8rem; margin-bottom:1.2rem; }
+.fb-stat { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:.9rem 1rem; }
+.fb-stat b { display:block; font-family:'Alexandria',sans-serif; font-size:1.5rem; font-weight:800; color:#18bfef; }
+.fb-stat span { font-size:.78rem; color:rgba(255,255,255,.5); }
+.fb-stat.red b { color:#ff6b6b; }
+.fb-filters { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1.2rem; }
+.fb-chip { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); color:rgba(255,255,255,.75); border-radius:999px;
+  padding:.4rem .95rem; font-family:'Cairo',sans-serif; font-size:.82rem; font-weight:600; cursor:pointer; }
+.fb-chip.on { background:#18bfef; border-color:#18bfef; color:#04202b; }
+.fb-item { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:1rem 1.1rem; margin-bottom:.9rem; }
+.fb-item.is-unsolved { border-right:4px solid #ef4444; }
+.fb-item.is-solved   { border-right:4px solid #f5a623; }
+.fb-item.is-none     { border-right:4px solid #28c864; }
+.fb-head { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; justify-content:space-between; margin-bottom:.7rem; }
+.fb-meta { font-size:.8rem; color:rgba(255,255,255,.5); display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; }
+.fb-pill { font-size:.72rem; font-weight:700; border-radius:999px; padding:.15rem .65rem; background:rgba(255,255,255,.1); color:#fff; }
+.fb-pill.unsolved { background:rgba(239,68,68,.25); color:#ff9a9a; }
+.fb-pill.solved   { background:rgba(245,166,35,.25); color:#ffc766; }
+.fb-pill.none     { background:rgba(40,200,100,.22); color:#6fe3a0; }
+.fb-pill.st-new   { background:rgba(24,191,239,.22); color:#7fdcf7; }
+.fb-pill.st-contacted { background:rgba(245,166,35,.22); color:#ffc766; }
+.fb-pill.st-resolved  { background:rgba(40,200,100,.22); color:#6fe3a0; }
+.fb-contact a { color:#25d366; text-decoration:none; font-weight:700; font-size:.85rem; }
+.fb-store { background:rgba(255,255,255,.04); border-radius:10px; padding:.6rem .8rem; margin-bottom:.5rem; font-size:.88rem; line-height:1.8; }
+.fb-store-name { font-weight:700; margin-left:.5rem; }
+.fb-rates { display:flex; flex-wrap:wrap; gap:1rem; font-size:.82rem; color:rgba(255,255,255,.65); margin:.5rem 0; }
+.fb-rates .star { color:#f5b83d; letter-spacing:1px; }
+.fb-notes { font-size:.9rem; line-height:1.9; white-space:pre-wrap; margin:.4rem 0; color:rgba(255,255,255,.88); }
+.fb-actions { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin-top:.7rem; }
+.fb-actions input { flex:1; min-width:160px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:.45rem .7rem; color:#fff; font-family:'Cairo',sans-serif; font-size:.82rem; outline:none; }
+.fb-btn { border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:#fff; border-radius:8px; padding:.4rem .8rem; font-family:'Cairo',sans-serif; font-size:.8rem; font-weight:600; cursor:pointer; }
+.fb-btn:hover { background:rgba(255,255,255,.12); }
+.fb-btn.go { border-color:rgba(40,200,100,.5); color:#6fe3a0; }
+.nav-badge { margin-right:auto; background:#ef4444; color:#fff; border-radius:999px; font-size:.68rem; padding:1px 7px; font-weight:700; }
 </style>
 </head>
 <body>
@@ -299,6 +334,9 @@ select option { background:#0d1a28; color:#fff; }
       <div class="nav-section-label">عام</div>
       <div class="nav-item active" onclick="switchPage('overview')">
         <i class="fas fa-chart-pie"></i><span>نظرة عامة</span>
+      </div>
+      <div class="nav-item" onclick="switchPage('feedback')">
+        <i class="fas fa-comments"></i><span>آراء العملاء</span><span id="fbBadge" class="nav-badge" style="display:none"></span>
       </div>
 
       <div class="nav-section-label" style="margin-top:.5rem;display:flex;align-items:center;justify-content:space-between;padding-left:.8rem">
@@ -323,6 +361,21 @@ select option { background:#0d1a28; color:#fff; }
           <i class="fas fa-sync-alt"></i> تحديث
         </button>
       </div>
+    </div>
+
+    <!-- ══ CUSTOMER FEEDBACK PAGE ══ -->
+    <div id="page-feedback" class="page">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem">
+        <div style="font-size:.82rem;color:rgba(255,255,255,.45);line-height:1.8">
+          الردود من صفحة "رأيك يهمنا" (بتظهر بعد الطلب). لينك الصفحة للجروب:
+          <a href="feedback.html?src=group" target="_blank" style="color:#18bfef" id="fbGroupLink">feedback.html?src=group</a>
+          <button class="fb-btn" style="margin-right:.4rem" onclick="copyFeedbackLink()"><i class="fas fa-copy"></i> نسخ</button>
+        </div>
+        <button class="fb-btn" onclick="loadFeedback()"><i class="fas fa-sync-alt"></i> تحديث</button>
+      </div>
+      <div class="fb-stats" id="fbStats"></div>
+      <div class="fb-filters" id="fbFilters"></div>
+      <div id="fbList"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div></div>
     </div>
 
     <!-- ══ OVERVIEW PAGE ══ -->
@@ -572,13 +625,14 @@ function switchPage(id) {
     .find(n => n.getAttribute('onclick')?.includes(id));
   if (clickedNav) clickedNav.classList.add('active');
 
-  const titles = { overview:'📊 نظرة عامة', 'store-AlRoknAlMasry':'🔴 الركن المصري', 'store-AlFayoumi':'🟡 الفيومي' };
+  const titles = { overview:'📊 نظرة عامة', feedback:'💬 آراء العملاء', 'store-AlRoknAlMasry':'🔴 الركن المصري', 'store-AlFayoumi':'🟡 الفيومي' };
   document.getElementById('topbarTitle').textContent = titles[id] || id;
 
   if (id.startsWith('store-')) {
     const storeKey = id.replace('store-','');
     renderStorePage(storeKey);
   }
+  if (id === 'feedback') loadFeedback();
 }
 
 // ════════════════════════════════════════════════════════
@@ -2278,6 +2332,7 @@ setTimeout(hideOverlay, 6000);
       if (!tr?.hasToken) document.getElementById('ghTokenSection').style.display = 'block';
     } catch(e) { /* hide banner on error */ }
     document.getElementById('lastRefresh').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
+    loadFeedback(true); // quietly, just to show the "new responses" badge in the sidebar
   } catch(e) {
     console.warn('[Admin] init error:', e.message);
   } finally {
@@ -2449,6 +2504,108 @@ async function masterBatch(kind) {
   render('');
   btns.forEach(b => b.disabled = false);
   toast(good === picked.length ? '✓ تم لكل المتاجر (' + good + ')' : 'تم ' + good + ' من ' + picked.length + ' — راجعي النتيجة تحت', good === picked.length ? 'success' : 'error');
+}
+
+// ════════════════════════════════════════════════════════
+//  CUSTOMER FEEDBACK — the "آراء العملاء" tab
+//  Rows come from the "Feedback" sheet (see submitFeedback / getFeedback in the backend).
+// ════════════════════════════════════════════════════════
+let FB_ITEMS = [], FB_FILTER = 'all';
+const FB_PROBLEM = { none: 'مفيش مشاكل', solved: 'مشكلة واتحلت', unsolved: 'مشكلة ولسه ماتحلتش' };
+const FB_FILTERS = [['all', 'الكل'], ['unsolved', '🔴 مشاكل لسه ماتحلتش'], ['solved', '🟡 مشاكل واتحلت'], ['none', '🟢 مفيش مشاكل'], ['fresh', '🆕 لسه ماتراجعتش']];
+
+function _fbStars(n) { n = +n || 0; return n ? '★'.repeat(n) + '☆'.repeat(5 - n) + ' ' + n + '/5' : '—'; }
+function _fbAvg(key) {
+  const v = FB_ITEMS.map(i => +i[key]).filter(x => x > 0);
+  return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : '—';
+}
+
+async function loadFeedback(silent) {
+  const box = document.getElementById('fbList');
+  if (!silent && box) box.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+  try {
+    const res = await api('getFeedback', {}, 25000);
+    if (!res.success) throw new Error(res.message || 'تعذر تحميل الآراء');
+    FB_ITEMS = res.items || [];
+    renderFeedback();
+  } catch (e) {
+    if (silent || !box) return;
+    const old = /Unknown action/.test(e.message);
+    box.innerHTML = '<div class="empty-state" style="color:#ff8a8a">' +
+      _mvEsc(old ? 'الباك إند لسه ماتحدّثش — الصقي ملف HomiCart_Backend_ALL.txt الجديد في Apps Script واعملي Deploy.' : e.message) + '</div>';
+  }
+}
+
+function renderFeedback() {
+  const fresh  = FB_ITEMS.filter(i => i.status === 'جديد').length;
+  const badge  = document.getElementById('fbBadge');
+  badge.textContent = fresh; badge.style.display = fresh ? '' : 'none';
+
+  const open = FB_ITEMS.filter(i => i.worst === 'unsolved' && i.status !== 'تم الحل').length;
+  document.getElementById('fbStats').innerHTML =
+    '<div class="fb-stat"><b>' + FB_ITEMS.length + '</b><span>كل الردود</span></div>' +
+    '<div class="fb-stat"><b>' + fresh + '</b><span>لسه ماتراجعتش</span></div>' +
+    '<div class="fb-stat red"><b>' + open + '</b><span>مشاكل لسه ماتحلتش</span></div>' +
+    '<div class="fb-stat"><b>' + _fbAvg('rOrg') + '</b><span>تقييم التنظيم والجروب</span></div>' +
+    '<div class="fb-stat"><b>' + _fbAvg('rPeople') + '</b><span>تقييم التعامل</span></div>' +
+    '<div class="fb-stat"><b>' + _fbAvg('rDesign') + '</b><span>تقييم تصميم الموقع</span></div>';
+
+  document.getElementById('fbFilters').innerHTML = FB_FILTERS.map(f =>
+    '<button class="fb-chip' + (FB_FILTER === f[0] ? ' on' : '') + '" onclick="setFbFilter(\'' + f[0] + '\')">' + f[1] + '</button>').join('');
+
+  const shown = FB_ITEMS.filter(i =>
+    FB_FILTER === 'all' ? true : FB_FILTER === 'fresh' ? i.status === 'جديد' : i.worst === FB_FILTER);
+  const box = document.getElementById('fbList');
+  if (!shown.length) {
+    box.innerHTML = '<div class="empty-state">' + (FB_ITEMS.length ? 'مفيش ردود في الفلتر ده' : 'لسه مفيش ردود') + '</div>';
+    return;
+  }
+  const stCode = { 'جديد': 'st-new', 'تم التواصل': 'st-contacted', 'تم الحل': 'st-resolved' };
+  box.innerHTML = shown.map(i => {
+    const wa = i.phone ? 'https://wa.me/971' + String(i.phone).replace(/\D/g, '').replace(/^0/, '') : '';
+    const stores = (i.stores || []).map(s =>
+      '<div class="fb-store"><span class="fb-store-name">' + _mvEsc(s.name || s.key) + '</span>' +
+      '<span class="fb-pill ' + _mvEsc(s.status) + '">' + _mvEsc(FB_PROBLEM[s.status] || s.status) + '</span>' +
+      (s.text ? '<div>' + _mvEsc(s.text) + '</div>' : '') + '</div>').join('');
+    const rated = i.rOrg || i.rPeople || i.rDesign;
+    return '<div class="fb-item ' + (i.worst ? 'is-' + _mvEsc(i.worst) : '') + '">' +
+      '<div class="fb-head"><div class="fb-meta"><span>' + _mvEsc(i.date) + '</span><span class="fb-pill">' + _mvEsc(i.src || '—') + '</span>' +
+        '<span class="fb-pill ' + (stCode[i.status] || 'st-new') + '">' + _mvEsc(i.status) + '</span></div>' +
+        '<div class="fb-contact">' + (i.phone
+          ? _mvEsc(i.customerName || 'عميلة') + ' · <span dir="ltr">' + _mvEsc(i.phone) + '</span> <a href="' + wa + '" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> واتساب</a>'
+          : '<span style="color:rgba(255,255,255,.4);font-size:.82rem">بدون رقم</span>') + '</div></div>' +
+      stores +
+      (rated ? '<div class="fb-rates"><span>التنظيم والجروب: <span class="star">' + _fbStars(i.rOrg) + '</span></span>' +
+        '<span>التعامل: <span class="star">' + _fbStars(i.rPeople) + '</span></span>' +
+        '<span>التصميم: <span class="star">' + _fbStars(i.rDesign) + '</span></span></div>' : '') +
+      (i.updates ? '<div style="font-size:.82rem;color:rgba(255,255,255,.65)">تحديث الموقع: <b>' + _mvEsc(i.updates) + '</b></div>' : '') +
+      (i.notes ? '<div class="fb-notes">' + _mvEsc(i.notes) + '</div>' : '') +
+      '<div class="fb-actions"><input id="fbNote-' + _mvEsc(i.id) + '" placeholder="ملاحظة خاصة بيكي (مش بتظهر للعميلة)" value="' + _mvEsc(i.adminNote) + '">' +
+        '<button class="fb-btn" onclick="setFbStatus(\'' + _mvEsc(i.id) + '\',\'contacted\')">تم التواصل</button>' +
+        '<button class="fb-btn go" onclick="setFbStatus(\'' + _mvEsc(i.id) + '\',\'resolved\')">تم الحل ✓</button>' +
+        '<button class="fb-btn" onclick="setFbStatus(\'' + _mvEsc(i.id) + '\',\'new\')">رجّعيه جديد</button></div></div>';
+  }).join('');
+}
+
+function setFbFilter(f) { FB_FILTER = f; renderFeedback(); }
+
+async function setFbStatus(id, status) {
+  const note = (document.getElementById('fbNote-' + id) || {}).value || '';
+  try {
+    const res = await api('updateFeedbackStatus', { id, status, note }, 20000);
+    if (!res.success) throw new Error(res.message || 'فشل الحفظ');
+    const it = FB_ITEMS.find(x => x.id === id);
+    if (it) { it.status = { new: 'جديد', contacted: 'تم التواصل', resolved: 'تم الحل' }[status]; it.adminNote = note; }
+    renderFeedback();
+    toast('اتحفظ ✓', 'success');
+  } catch (e) { toast('تعذر الحفظ: ' + e.message, 'error'); }
+}
+
+function copyFeedbackLink() {
+  const url = new URL('feedback.html?src=group', location.href).href;
+  const done = () => toast('اللينك اتنسخ — ابعتيه في الجروب', 'success');
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, () => prompt('انسخي اللينك:', url));
+  else prompt('انسخي اللينك:', url);
 }
 
 // ── Batch auto-close watcher ─────────────────────────────────

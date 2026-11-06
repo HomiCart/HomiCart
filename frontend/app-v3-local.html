@@ -1804,6 +1804,20 @@
     }
     .order-success-btns .btn-op-save,
     .order-success-btns .btn-op-cancel { flex: 1; min-width: 140px; }
+    /* Quiet "tell us what you think" card under the confirmation — shown only once the order is done */
+    .fb-card {
+      margin-top: 1.4rem; padding: .9rem 1.1rem; border-radius: 14px;
+      background: rgba(255,255,255,.025); border: 1px dashed rgba(255,255,255,.16);
+      display: flex; align-items: center; justify-content: space-between; gap: .8rem; flex-wrap: wrap;
+    }
+    .fb-card-text { flex: 1; min-width: 180px; font-family: 'Cairo', sans-serif; }
+    .fb-card-title { font-size: .92rem; font-weight: 700; color: rgba(255,255,255,.85); }
+    .fb-card-sub { font-size: .78rem; color: rgba(255,255,255,.45); margin-top: .15rem; line-height: 1.6; }
+    .fb-card-link {
+      font-family: 'Cairo', sans-serif; font-size: .85rem; font-weight: 700; color: #18bfef; text-decoration: none; white-space: nowrap;
+      border: 1px solid rgba(24,191,239,.4); border-radius: 999px; padding: .45rem 1rem;
+    }
+    .fb-card-link:hover { background: rgba(24,191,239,.1); }
     /* ── My Orders List ── */
     .my-orders-wrap { max-width: 680px; margin: 1.5rem auto; padding: 0 1rem 3rem; }
     .my-orders-title {
@@ -6349,6 +6363,13 @@
           <button class="btn-op-cancel" onclick="returnToHome()">
             <i class="fas fa-home"></i>&nbsp;الصفحة الرئيسية
           </button>
+        </div>
+        <div class="fb-card">
+          <div class="fb-card-text">
+            <div class="fb-card-title">ساعدنا نتحسن 💬</div>
+            <div class="fb-card-sub">قولنا رأيك في دقيقة — وأي مشكلة واجهتك مع المتاجر أو التنسيق.</div>
+          </div>
+          <a class="fb-card-link" href="feedback.html?src=order&store=${encodeURIComponent(store.sheetName || '')}" target="_blank" rel="noopener">اكتب رأيك</a>
         </div>
       </div>`;
     window.scrollTo({ top: 0, behavior: 'smooth' });
