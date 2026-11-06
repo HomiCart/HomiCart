@@ -4823,6 +4823,54 @@
     }
   }
 
+  // Same as _callScript but the parameters travel in a POST body, so a big
+  // order (several rounds, long notes) can't overflow the URL length limit —
+  // that failed silently before. The backend's doPost routes to the same
+  // handlers (text/plain keeps it a "simple" request: no CORS preflight).
+  async function _postScript(action, data, timeoutMs = 30000) {
+    const body = { action };
+    Object.entries(data || {}).forEach(([k, v]) => { if (v !== '' && v != null) body[k] = String(v); });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', redirect: 'follow', signal: controller.signal,
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(body),
+      });
+      const text = await res.text();
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return JSON.parse(text);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // After a write call that threw (timeout / dropped connection / bad reply)
+  // the order may still have been saved. Looks the customer's orders up in
+  // the sheet and finds the one carrying exactly this item text.
+  //   → { checked: true, order }  looked it up fine (order is null if missing)
+  //   → { checked: false }        couldn't reach the server to look
+  async function _findSavedOrder(phone, sheetName, itemsText, maxAgeMs) {
+    const want = String(itemsText || '').trim();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt) await new Promise(r => setTimeout(r, 2500));
+      try {
+        const res = await _callScript('getOrdersByPhone', { phone, sheet: sheetName }, 15000);
+        if (!res || res.success === false) continue;
+        const now = Date.now();
+        const hit = (res.orders || []).find(o => {
+          if (String(o.items || '').trim() !== want || o.status !== 'New') return false;
+          const ts = parseInt(String(o.id || '').replace(/^O/, ''), 10);
+          return isNaN(ts) || Math.abs(now - ts) <= maxAgeMs;
+        });
+        if (hit) return { checked: true, order: hit };
+        if (attempt === 2) return { checked: true, order: null };
+      } catch (_) { /* try again */ }
+    }
+    return { checked: false };
+  }
+
   /* ── Open ORDER view: thumbnails on left, form on right ────── */
   let _opSaved = false;
   let _opTempId = null;
@@ -6165,13 +6213,26 @@
     });
     const invoiceBreakdown = invoiceLines.join('\n');
 
-    // Fire the request — 30 second timeout
+    // Fire the request — 30 second timeout. The success screen is shown ONLY
+    // once the server confirmed the order (or a lookup in the sheet found it
+    // after a dropped reply) — never on a failed/timed-out call, which used
+    // to look exactly like success to the customer while nothing was saved.
     let serverOrderId = null;
+    let sendFailed = null;   // exception from the write call
+    let retryPayload = null; // the submitOrder parameters, kept for one automatic retry
+    const failBack = (text) => {
+      clearInterval(countdownTimer);
+      btn.disabled = false;
+      document.getElementById('opSaveTxt').textContent = isEditing ? 'حفظ التعديلات' : 'تأكيد الطلب';
+      err.style.color = '';
+      err.textContent = text;
+      err.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
     try {
       let result;
       if (isEditing) {
         // ── EDIT: update same row, generate NEW OrderID ──────
-        result = await _callScript('updateOrderWithNewId', {
+        result = await _postScript('updateOrderWithNewId', {
           orderId : window._editingOrderId,
           items   : items,
           itemsStructured: itemsStructured,
@@ -6181,17 +6242,14 @@
           sheet   : store.sheetName,
         }, 30000);
         if (result.success) serverOrderId = result.newOrderId || window._editingOrderId;
-        else if (result.message) {
-          // Status no longer "New" or window closed
-          clearInterval(countdownTimer);
-          btn.disabled = false;
-          document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
-          err.textContent = '⚠ ' + result.message;
+        else {
+          // Status no longer "New" or window closed (or a server error)
+          failBack('⚠ ' + (result.message || 'تعذر حفظ التعديل — حاولي مرة تانية'));
           return;
         }
       } else {
         // ── NEW ORDER — one row, all rounds combined inside it ──
-        result = await _callScript('submitOrder', {
+        retryPayload = {
           phone       : customer.phone    || '',
           name        : customer.name     || '',
           area        : customer.area     || '',
@@ -6209,19 +6267,49 @@
           sheet       : store.sheetName,   // ← fallback for older code
           vendor      : store.cfg?.name || store.storeKey,
           userTimezone: 'Asia/Dubai',
-        }, 30000);
-        if (result.success) serverOrderId = result.orderId;
-        else if (result.phase) {
-          // Window closed server-side
-          clearInterval(countdownTimer);
-          btn.disabled = false;
-          document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
-          err.textContent = '⚠ ' + result.message;
+        };
+        result = await _postScript('submitOrder', retryPayload, 30000);
+        if (result.success && result.orderId) serverOrderId = result.orderId;
+        else {
+          // Window closed server-side, validation, or a server error
+          failBack('⚠ ' + (result.message || 'تعذر تسجيل الطلب — حاولي مرة تانية'));
           return;
         }
       }
     } catch(e) {
-      console.warn('[saveOrder] fetch issue:', e.message, '— may still have saved');
+      sendFailed = e;
+      console.warn('[saveOrder] write call failed:', e.message, '— checking whether it was saved anyway');
+    }
+
+    if (!serverOrderId && sendFailed) {
+      // The reply never made it back — but the order may well have been
+      // saved. Look it up in the sheet before telling the customer anything.
+      document.getElementById('opSaveTxt').textContent = 'بنتأكد إن الطلب اتسجل...';
+      const lookupPhone = (_getActiveCustomer().phone || '').trim();
+      let found = await _findSavedOrder(lookupPhone, store.sheetName, items, 10 * 60 * 1000);
+      if (found.checked && !found.order && !isEditing) {
+        // Definitely not saved → one automatic retry (the server ignores an
+        // identical order from the same customer within 60s, so a late-landing
+        // first attempt can't create a double).
+        document.getElementById('opSaveTxt').textContent = 'بنعيد المحاولة...';
+        try {
+          const retry = await _postScript('submitOrder', retryPayload, 30000);
+          if (retry.success && retry.orderId) serverOrderId = retry.orderId;
+        } catch (_) {
+          found = await _findSavedOrder(lookupPhone, store.sheetName, items, 10 * 60 * 1000);
+        }
+      }
+      if (!serverOrderId && found.order) serverOrderId = found.order.id;
+      if (!serverOrderId) {
+        failBack(found.checked
+          ? (isEditing
+              ? '⚠ التعديل ما اتسجلش (مشكلة في الاتصال). اختياراتك لسه موجودة — دوسي "حفظ التعديلات" تاني.'
+              : '⚠ الطلب ما اتسجلش (مشكلة في الاتصال). اختياراتك لسه موجودة — دوسي "تأكيد الطلب" تاني.')
+          : (isEditing
+              ? '⚠ مقدرناش نتأكد إن التعديل اتسجل (النت ضعيف). شوفي "طلباتي" الأول قبل ما تعيدي.'
+              : '⚠ مقدرناش نتأكد إن الطلب اتسجل (النت ضعيف). شوفي "طلباتي" الأول — لو مش موجود دوسي "تأكيد الطلب" تاني.'));
+        return;
+      }
     }
 
     clearInterval(countdownTimer);
