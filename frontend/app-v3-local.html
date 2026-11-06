@@ -1720,6 +1720,12 @@
       padding: .7rem 1.4rem; white-space: nowrap;
       box-shadow: 0 4px 16px rgba(24,191,239,.3);
     }
+    .op-sticky-total { white-space: nowrap; }
+    /* The longer "اضغط لاستكمال الطلب" label must not squeeze the total on phones */
+    @media (max-width: 420px) {
+      .op-sticky-bar { gap: .5rem; }
+      .op-sticky-btn { font-size: .82rem; padding: .7rem 1rem; }
+    }
     .menu-items-footer {
       display: flex; justify-content: space-between; align-items: center;
       margin-top: .7rem;
@@ -3539,7 +3545,7 @@
     }
     showPage('menuPage');
     const txt = document.getElementById('opSaveTxt');
-    if (txt) txt.textContent = 'متابعة';
+    if (txt) txt.textContent = 'اضغط لاستكمال الطلب';
     const err = document.getElementById('opError');
     if (err) { err.textContent = ''; }
     updateMenuOrderPreview();
@@ -4916,7 +4922,7 @@
           <div class="ordering-btns">
             <button class="btn-op-save" id="opSaveBtn" onclick="saveOrder()">
               <i class="fas fa-check"></i>
-              <span id="opSaveTxt">متابعة</span>
+              <span id="opSaveTxt">اضغط لاستكمال الطلب</span>
             </button>
             <button class="btn-op-cancel" onclick="cancelOrderMode()">
               <i class="fas fa-xmark"></i> إلغاء
@@ -4928,7 +4934,7 @@
               <span class="op-sticky-total" id="opStickyTotal"></span>
             </div>
             <button type="button" class="op-sticky-btn" id="opStickyBtn" onclick="_stickyContinue()">
-              <span id="opStickyBtnTxt">متابعة</span> <i class="fas fa-arrow-left"></i>
+              <span id="opStickyBtnTxt">اضغط لاستكمال الطلب</span> <i class="fas fa-arrow-left"></i>
             </button>
           </div>
         </div>
@@ -5694,7 +5700,7 @@
     document.body.classList.add('has-sticky-bar'); // leaves room so the bar never covers the last buttons
     document.getElementById('opStickyLabel').textContent = hasDelivery ? 'الإجمالي (مع التوصيل)' : 'إجمالي الأصناف';
     document.getElementById('opStickyTotal').textContent = grandTotal + ' درهم';
-    document.getElementById('opStickyBtnTxt').textContent = window._editingOrderId ? 'حفظ' : 'متابعة';
+    document.getElementById('opStickyBtnTxt').textContent = window._editingOrderId ? 'حفظ' : 'اضغط لاستكمال الطلب';
   }
 
   // Sticky bar button: if delivery still has to be picked, take the customer
@@ -6123,7 +6129,7 @@
     if (!isOrderWindowOpen()) {
       clearInterval(countdownTimer);
       btn.disabled = false;
-      document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
+      document.getElementById('opSaveTxt').textContent = 'اضغط لاستكمال الطلب';
       err.textContent = getWindowClosedMsg();
       return;
     }
@@ -6169,7 +6175,7 @@
     const failBack = (text) => {
       clearInterval(countdownTimer);
       btn.disabled = false;
-      document.getElementById('opSaveTxt').textContent = isEditing ? 'حفظ التعديلات' : 'تأكيد الطلب';
+      document.getElementById('opSaveTxt').textContent = isEditing ? 'حفظ التعديلات' : 'اضغط لاستكمال الطلب';
       err.style.color = '';
       err.textContent = text;
       err.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -6250,10 +6256,10 @@
         failBack(found.checked
           ? (isEditing
               ? '⚠ التعديل ما اتسجلش (مشكلة في الاتصال). اختياراتك لسه موجودة — دوسي "حفظ التعديلات" تاني.'
-              : '⚠ الطلب ما اتسجلش (مشكلة في الاتصال). اختياراتك لسه موجودة — دوسي "تأكيد الطلب" تاني.')
+              : '⚠ الطلب ما اتسجلش (مشكلة في الاتصال). اختياراتك لسه موجودة — دوسي "تسجيل الطلب" تاني.')
           : (isEditing
               ? '⚠ مقدرناش نتأكد إن التعديل اتسجل (النت ضعيف). شوفي "طلباتي" الأول قبل ما تعيدي.'
-              : '⚠ مقدرناش نتأكد إن الطلب اتسجل (النت ضعيف). شوفي "طلباتي" الأول — لو مش موجود دوسي "تأكيد الطلب" تاني.'));
+              : '⚠ مقدرناش نتأكد إن الطلب اتسجل (النت ضعيف). شوفي "طلباتي" الأول — لو مش موجود دوسي "تسجيل الطلب" تاني.'));
         return;
       }
     }
@@ -6577,7 +6583,7 @@
     document.getElementById('opSuccessView').style.display = 'none';
     document.getElementById('opWriteView').style.display   = '';
     document.getElementById('opItemsInput').value = '';
-    document.getElementById('opSaveTxt').textContent = 'تأكيد الطلب';
+    document.getElementById('opSaveTxt').textContent = 'اضغط لاستكمال الطلب';
     document.getElementById('opSaveBtn').disabled = false;
     _opSaved = false;
     hideCountdown();
