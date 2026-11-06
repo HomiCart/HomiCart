@@ -1703,13 +1703,6 @@
     .co-existing-msg { font-size: .85rem; margin-bottom: .6rem; color: rgba(255,255,255,.7); }
     .co-existing-order { padding: .6rem 0; border-top: 1px dashed rgba(255,255,255,.12); }
     .co-existing-items { font-size: .8rem; color: rgba(255,255,255,.6); line-height: 1.6; word-break: break-word; }
-    .op-who {
-      display: flex; align-items: center; justify-content: space-between; gap: .6rem;
-      margin-bottom: .9rem; padding: .55rem .8rem;
-      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 11px;
-      font-family: 'Cairo', sans-serif; font-size: .82rem; color: rgba(255,255,255,.75);
-    }
-    .op-who a { color: #18bfef; font-weight: 700; text-decoration: none; white-space: nowrap; }
     .op-sticky-info { display: flex; flex-direction: column; line-height: 1.35; }
     .op-sticky-label { font-family: 'Cairo', sans-serif; font-size: .72rem; color: rgba(255,255,255,.5); }
     .op-sticky-total { font-family: 'Alexandria', sans-serif; font-size: 1.05rem; font-weight: 800; color: #18bfef; }
@@ -2525,12 +2518,37 @@
     </div>
 
     <div class="cust-form-wrap">
+      <button type="button" class="btn-cust-secondary" onclick="coBackToMenu()" style="margin-bottom:1rem">
+        <i class="fas fa-arrow-right"></i>&nbsp;إلغاء والرجوع للمنيو
+      </button>
+
       <div id="coSummary" class="menu-order-preview" style="display:block"></div>
 
       <!-- Shown when this phone already has an order in the current batch -->
       <div id="coOrders"></div>
 
-      <div class="cust-field">
+      <!-- Returning customer: a short read-only summary instead of the whole form
+           (no map / location link); "تعديل بياناتي" opens the full form -->
+      <div id="coMini" style="display:none">
+        <div class="cust-info-card">
+          <div class="cust-info-row"><span class="cust-info-label">الاسم</span><span id="coMiniName"></span></div>
+          <div class="cust-info-row"><span class="cust-info-label">الهاتف</span><span id="coMiniPhone"></span></div>
+          <div class="cust-info-row" id="coMiniWaRow" style="display:none"><span class="cust-info-label">واتساب</span><span id="coMiniWa"></span></div>
+          <div class="cust-info-row"><span class="cust-info-label">المنطقة</span><span id="coMiniArea"></span></div>
+          <div class="cust-info-row"><span class="cust-info-label">العنوان</span><span id="coMiniAddress"></span></div>
+        </div>
+        <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;margin:.2rem 0 1rem">
+          <button type="button" class="btn-cust-secondary" onclick="coEditMini()">
+            <i class="fas fa-pen"></i>&nbsp;تعديل بياناتي
+          </button>
+          <a href="javascript:void(0)" onclick="_coForget()"
+            style="font-size:.78rem;color:rgba(255,255,255,.4);text-decoration:underline">
+            مش أنا؟ امسح البيانات المحفوظة
+          </a>
+        </div>
+      </div>
+
+      <div class="cust-field" id="coPhoneField">
         <label class="cust-label">رقم الهاتف <span class="req">*</span></label>
         <input type="tel" id="coPhone" class="cust-input" placeholder="05XXXXXXXX"
           inputmode="numeric" maxlength="10"
@@ -2602,10 +2620,7 @@
 
       <div id="coErr" class="cust-err"></div>
       <div class="cust-action-btns" id="coBtns" style="display:none">
-        <button type="button" class="btn-cust-secondary" onclick="showPage('menuPage')">
-          <i class="fas fa-arrow-right"></i>&nbsp;رجوع للمنيو
-        </button>
-        <button type="button" class="btn-cust-primary" id="coSubmitBtn" onclick="submitCheckout()">
+        <button type="button" class="btn-cust-primary" id="coSubmitBtn" style="width:100%" onclick="submitCheckout()">
           <i class="fas fa-check"></i>&nbsp;تسجيل الطلب
         </button>
       </div>
@@ -3379,7 +3394,7 @@
   // ── Show customer page ──────────────────────────────────
   function showCustomerPage(folder, name, tag) {
     window._pendingStore = { folder, name, tag };
-    window._returnToCart = false; // _goIdentifyForCheckout turns this on again right after calling us
+    window._returnToCart = false;
     ['btnStartOrder', 'btnStartOrderSuccess'].forEach(id => {
       const b = document.getElementById(id);
       if (b && b.dataset.orig) b.innerHTML = b.dataset.orig;
@@ -3429,11 +3444,12 @@
   // ── Menu-first entry ─────────────────────────────────────────────────
   // Everyone lands straight on the priced menu and builds their basket
   // first. A visitor we don't know is asked for phone/details only at the
-  // very end (see _goIdentifyForCheckout); a returning customer (saved
-  // phone) isn't asked anything — a customer who already has an order in this
-  // cycle is taken straight to it (edit / cancel / add another) instead. The menu shows whether collection is open
-  // or closed; when closed, the first attempt to add something explains
-  // that (see _blockIfClosed).
+  // very end (see _openCheckout); a returning customer (saved phone) sees
+  // only a short read-only summary of their details there. A customer who
+  // already has an order in this cycle is taken straight to it (edit /
+  // cancel / add another) instead. The menu shows whether collection is
+  // open or closed; when closed, the first attempt to add something
+  // explains that (see _blockIfClosed).
   async function openStore(folder, name, tag) {
     window._pendingStore = { folder, name, tag };
     window._returnToCart = false;
@@ -3468,22 +3484,6 @@
 
   function _cartHasItems() {
     return !!(buildMenuOrderLines().length || (window._opSubOrders || []).length);
-  }
-
-  // Park the basket (the order panel stays in the DOM, untouched) and open
-  // the phone/registration step — used when we don't know who's ordering, or
-  // the customer already has an order and should see it first.
-  function _goIdentifyForCheckout() {
-    const s = window._pendingStore;
-    if (!s) return;
-    showCustomerPage(s.folder, s.name, s.tag);
-    window._returnToCart = true;
-    ['btnStartOrder', 'btnStartOrderSuccess'].forEach(id => {
-      const b = document.getElementById(id);
-      if (!b) return;
-      if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
-      b.innerHTML = '<i class="fas fa-arrow-left"></i>&nbsp;رجوع لطلبي وتأكيده';
-    });
   }
 
   // Identified — back to the untouched basket, ready to confirm.
@@ -3624,6 +3624,35 @@
     );
   }
 
+  // Returning customer: short read-only summary instead of the form.
+  function _coSetMini(on, c, phone) {
+    document.getElementById('coMini').style.display       = on ? '' : 'none';
+    document.getElementById('coPhoneField').style.display = on ? 'none' : '';
+    if (!on) return;
+    const wa = String((c && c.whatsapp) || '');
+    document.getElementById('coMiniName').textContent    = c.name || '';
+    document.getElementById('coMiniPhone').textContent   = phone;
+    document.getElementById('coMiniWa').textContent      = wa;
+    document.getElementById('coMiniWaRow').style.display = wa && wa !== phone ? '' : 'none';
+    document.getElementById('coMiniArea').textContent    = c.area || '';
+    document.getElementById('coMiniAddress').textContent = c.address || '';
+    document.getElementById('coBtns').style.display = '';
+  }
+
+  // "تعديل بياناتي": swap the summary for the full form + map, pin where it was saved.
+  function coEditMini() {
+    _coSetMini(false);
+    _coShowFields(true);
+    const loc = window._coLoc;
+    requestAnimationFrame(() => setTimeout(() => {
+      if (!loc) { _coInitMap(_UAE_CENTER[0], _UAE_CENTER[1], false); _coRequestGPS(); return; }
+      _coInitMap(loc.lat, loc.lng, true);
+      _coSetLocStatus('success', '<i class="fas fa-check-circle"></i>&nbsp;الموقع المحفوظ — اسحب الدبوس لو عايز تعدله');
+    }, 60));
+  }
+
+  function coBackToMenu() { showPage('menuPage'); }
+
   function _coShowFields(show) {
     document.getElementById('coFields').style.display = show ? 'flex' : 'none';
     document.getElementById('coBtns').style.display   = show ? '' : 'none';
@@ -3647,7 +3676,7 @@
 
   // Fill the form from stored details (or blank for a new number) and show
   // it with the map: saved pin if there is one, otherwise ask for GPS.
-  function _coFill(c, phone) {
+  function _coFill(c, phone, quiet) {
     document.getElementById('coName').value = c.name || '';
     const wa   = String(c.whatsapp || '');
     const same = !wa || wa === phone;
@@ -3662,6 +3691,12 @@
 
     const lat = parseFloat(c.latitude), lng = parseFloat(c.longitude);
     const hasLoc = !isNaN(lat) && !isNaN(lng);
+    if (quiet && hasLoc) {
+      // summary mode: fields stay filled but hidden, the saved pin counts as confirmed
+      window._coLoc = { lat, lng };
+      window._coLocConfirmed = true;
+      return;
+    }
     _coShowFields(true);
     requestAnimationFrame(() => setTimeout(() => {
       if (hasLoc) {
@@ -3735,6 +3770,8 @@
     const sub = document.getElementById('coSubmitBtn');
     sub.style.display = ''; sub.disabled = false;
     clearTimeout(_coLookupTimer); _coLookupSeq++;
+    _coSetMini(false);
+    _coShowFields(false);
     showPage('checkoutPage');
 
     const saved   = _getActiveCustomer();
@@ -3753,7 +3790,15 @@
         area: saved.area || '', address: saved.address || '',
         lat: parseFloat(saved.latitude), lng: parseFloat(saved.longitude),
       };
-      _coFill(saved, saved.phone);
+      // Complete saved details → short summary; otherwise the full form to finish them
+      const sLat = parseFloat(saved.latitude), sLng = parseFloat(saved.longitude);
+      const complete = !!(saved.name && saved.area && saved.address && !isNaN(sLat) && !isNaN(sLng));
+      if (complete) {
+        _coFill(saved, saved.phone, true);
+        _coSetMini(true, saved, saved.phone);
+      } else {
+        _coFill(saved, saved.phone);
+      }
       document.getElementById('coRemember').checked = true;
       document.getElementById('coForget').style.display = '';
       // Hold the confirm button until we know whether this phone already has
@@ -3839,6 +3884,7 @@
   }
 
   function _coForget() {
+    _coSetMini(false);
     localStorage.removeItem('homiCart_customer');
     sessionStorage.removeItem('homiCart_sessionCustomer');
     ['coPhone', 'coName', 'coWhatsapp', 'coArea', 'coAddress'].forEach(id => { document.getElementById(id).value = ''; });
@@ -4902,11 +4948,6 @@
               <i class="fas fa-times"></i>
             </button>
           </div>
-          ${window._guestFlow && !window._editingOrderId ? `
-          <div class="op-who">
-            <span>${_getActiveCustomer().phone ? '👤 ' + _escHtml(_getActiveCustomer().name || _getActiveCustomer().phone) : 'عندك طلب سابق؟'}</span>
-            <a href="javascript:void(0)" onclick="_goIdentifyForCheckout()">${_getActiveCustomer().phone ? 'طلباتي وبياناتي' : 'ادخل رقمك'}</a>
-          </div>` : ''}
           <div id="menuItemsBox"></div>
           <!-- Kept as a hidden field (not shown to the customer anymore) so
                editing an older order that has leftover free-typed text
