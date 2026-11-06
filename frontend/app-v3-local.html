@@ -1105,6 +1105,15 @@
       position: sticky;
       top: 80px;
     }
+    /* Nothing to show beside the form (no offer photos, no notes) → drop the
+       empty side card and let the form take the row on its own. */
+    .ordering-layout:not(:has(.order-thumb)):not(:has(.how-to-order.visible)):not(:has(.admin-note.visible)) {
+      grid-template-columns: minmax(0, 760px);
+      justify-content: center;
+    }
+    .ordering-layout:not(:has(.order-thumb)):not(:has(.how-to-order.visible)):not(:has(.admin-note.visible)) .ordering-images {
+      display: none;
+    }
     .ordering-images-label {
       font-family: 'Cairo', sans-serif;
       font-size: .78rem; font-weight: 700;
@@ -2283,10 +2292,6 @@
       <p>ادخل بياناتك عشان نقدر نوصلك طلبك</p>
     </div>
 
-    <button type="button" class="cust-menu-preview-btn" onclick="openMenuPreview()">
-      <i class="fas fa-book-open"></i> شاهد المنيو والأسعار
-    </button>
-
     <!-- Shown above the phone form whenever the order batch is closed or
          hasn't opened yet. The form underneath stays usable — customers can
          still look up their profile and past/current orders, they just
@@ -2614,7 +2619,6 @@
       <span class="eyebrow" id="storeEyebrow"></span>
       <h2 id="menuTitle"></h2>
       <div class="teal-rule"></div>
-      <p>اضغط على أي صورة لتكبيرها</p>
     </div>
     <div id="menuContainer"></div>
   </div>
@@ -3116,45 +3120,23 @@
 
     // Fetch menu + discount images automatically from GitHub repo
     const config = MENU_CONFIG[folder];
-    const menuSource     = config?.githubFolder    || '';
     const discountSource = config?.githubDiscounts || '';
-    const [menuImages, discountImages] = await Promise.all([
-      fetchImages(menuSource),
-      fetchImages(discountSource),
-    ]);
+    // Menu photos are no longer shown — the order form lists the items itself.
+    const menuImages     = [];
+    const discountImages = await fetchImages(discountSource);
 
-    // ── Build menu card ────────────────────────────────────────
-    let menuCard = '';
-    if (menuImages.length) {
-      const firstImg = _imgUrl(menuImages[0].url);
-      const count    = menuImages.length;
-      menuCard = `
-        <div class="menu-preview-card" onclick="openSlideshow(window._menuImages, 0)">
-          <div class="menu-preview-bg" style="background-image:url('${firstImg}')"></div>
-          <div class="menu-preview-overlay"></div>
-          <div class="menu-preview-content">
-            <div class="menu-preview-badge">
-              <i class="fas fa-images"></i>
-              ${count} ${count === 1 ? 'صورة' : 'صور'}
-            </div>
-            <div class="menu-preview-title">منيو ${name}</div>
-            <div class="card-btns">
-              <button class="btn-view-menu" onclick="event.stopPropagation(); openSlideshow(window._menuImages, 0)">
-                <i class="fas fa-eye"></i> عرض المنيو
-              </button>
-              <a class="btn-order-now" href="javascript:void(0)" onclick="event.stopPropagation(); orderNow('${folder}')">
-                <i class="fas fa-shopping-cart"></i> اطلب الآن
-              </a>
-            </div>
-          </div>
-        </div>`;
-    } else {
-      menuCard = `
-        <div class="no-discount-card">
-          <div class="no-discount-icon"><i class="fas fa-images"></i></div>
-          <div class="no-discount-title">لا توجد صور للمنيو حالياً</div>
-        </div>`;
-    }
+    // ── Build order card (replaces the old menu-photo card) ─────
+    const menuCard = `
+      <div class="no-discount-card">
+        <div class="no-discount-icon"><i class="fas fa-shopping-cart"></i></div>
+        <div class="no-discount-title">اطلب من ${name}</div>
+        <div class="no-discount-msg">
+          اختار الأصناف والكميات من القائمة وسجّل طلبك.
+        </div>
+        <a class="btn-order-now" href="javascript:void(0)" onclick="orderNow('${folder}')">
+          <i class="fas fa-shopping-cart"></i> اطلب الآن
+        </a>
+      </div>`;
 
     // ── Build discounts card ───────────────────────────────────
     let discountCard = '';
@@ -3474,34 +3456,6 @@
       setTimeout(() => document.getElementById('custPhone').focus(), 100);
     }
 
-    // Pre-fetch the same menu photos shown inside the order page (same
-    // GitHub folder / fetchImages path) so customers can browse them here
-    // too, without needing to submit their phone number first.
-    window._custPreviewImages = null;
-    const config = MENU_CONFIG[folder];
-    fetchImages(config?.githubFolder || '').then(images => {
-      window._custPreviewImages = images;
-    }).catch(() => { window._custPreviewImages = []; });
-  }
-
-  /* ── Public read-only menu preview (no phone/batch required) ───── */
-  function openMenuPreview() {
-    const images = window._custPreviewImages;
-    if (images === null) {
-      // Not loaded yet — wait briefly then open the slideshow once ready
-      const check = setInterval(() => {
-        if (window._custPreviewImages !== null) {
-          clearInterval(check);
-          openMenuPreview();
-        }
-      }, 250);
-      return;
-    }
-    if (!images.length) {
-      showOrderAlert('لا توجد صور للمنيو حالياً لهذا المتجر');
-      return;
-    }
-    openSlideshow(images, 0);
   }
 
   // ── "طلباتي وتعديلها" from customer info page ─────────
@@ -4893,7 +4847,6 @@
     _resetSubOrders();
 
     // Build thumbnail HTML from already-loaded images
-    const menuImgs     = window._menuImages     || [];
     const discountImgs = window._discountImages || [];
 
     function thumbsHTML(images, setKey) {
@@ -4905,30 +4858,23 @@
         </div>`).join('');
     }
 
-    const menuSection = menuImgs.length ? `
-      <div class="order-thumb-section"><i class="fas fa-images"></i> المنيو</div>
-      ${thumbsHTML(menuImgs, 'menu')}` : '';
-
     const discSection = discountImgs.length ? `
       <div class="order-thumb-section"><i class="fas fa-tag"></i> العروض</div>
       ${thumbsHTML(discountImgs, 'discount')}` : '';
-
-    const noImgs = !menuImgs.length && !discountImgs.length
-      ? `<p style="color:rgba(255,255,255,.28);font-family:'Cairo',sans-serif;font-size:.85rem;text-align:center;padding:2rem 0">لا توجد صور</p>`
-      : '';
 
     document.getElementById('menuContainer').innerHTML = `
       <div class="ordering-layout">
 
         <!-- LEFT: all menu/discount images as thumbnails -->
         <div class="ordering-images">
+          ${discountImgs.length ? `
           <div class="ordering-images-label">
             <i class="fas fa-images"></i>
             اضغط على أي صورة لتكبيرها
           </div>
           <div class="ordering-thumbs">
-            ${menuSection}${discSection}${noImgs}
-          </div>
+            ${discSection}
+          </div>` : ''}
           <!-- How to order note -->
           <div class="how-to-order" id="howToOrder" style="margin-top:1rem;border-radius:12px;padding:1rem 1.1rem">
             <div class="how-to-order-title" style="font-size:.85rem">
