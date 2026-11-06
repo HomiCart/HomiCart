@@ -2990,6 +2990,27 @@ function _invParse(text) {
     pending = line;
   }
   flush();
+
+  // Several people ordering together (الطلب الأول / الثاني / ...): each one
+  // gets their own subtotal (items + their share of the delivery) so they
+  // know what THEY pay; the grand total below is what the rider collects.
+  const heads = info.rows.filter(r => r.kind === 'head').length;
+  if (heads >= 2) {
+    const out = [];
+    let label = '', sum = 0, items = 0;
+    const closeSection = () => {
+      if (items) out.push({ kind: 'sub', name: label ? 'إجمالي ' + label : 'إجمالي', price: String(+sum.toFixed(2)) });
+      sum = 0; items = 0;
+    };
+    info.rows.forEach(r => {
+      if (r.kind === 'head') { closeSection(); label = r.name; out.push(r); return; }
+      if (r.kind === 'item') { sum += parseFloat(String(r.price).replace(/,/g, '')) || 0; items++; }
+      out.push(r);
+    });
+    closeSection();
+    info.rows = out;
+    info.sections = heads;
+  }
   return info;
 }
 
@@ -3021,9 +3042,11 @@ function _invDraw(inv) {
   const rows = info.rows.map(r => {
     if (r.kind === 'item') { const ls = _invWrap(meas, r.name, itemMaxW); return Object.assign({}, r, { lines: ls, h: 20 + ls.length * 36 }); }
     if (r.kind === 'head') return Object.assign({}, r, { lines: [r.name], h: 56 });
+    if (r.kind === 'sub')  return Object.assign({}, r, { lines: [r.name], h: 68 });
     return Object.assign({}, r, { lines: _invWrap(meas, r.name, W - PAD * 2), h: 20 + 34 });
   });
-  const HEAD_H = 170, INFO_H = 96, TOTAL_H = 120, FOOT_H = 70;
+  const multi = !!info.sections;
+  const HEAD_H = 170, INFO_H = 96, TOTAL_H = multi ? 160 : 120, FOOT_H = 70;
   const bodyH = rows.reduce((s, r) => s + r.h, 0) || 60;
   const H = HEAD_H + INFO_H + bodyH + TOTAL_H + FOOT_H;
 
@@ -3061,6 +3084,13 @@ function _invDraw(inv) {
       x.fillStyle = '#e6f6fc'; x.fillRect(PAD, y + 8, W - PAD * 2, 40);
       x.fillStyle = '#0d9bcb'; x.textAlign = 'center'; x.font = '700 22px ' + FONT;
       x.fillText(r.name, W / 2, y + 29);
+    } else if (r.kind === 'sub') {
+      x.fillStyle = '#eef6fa'; x.fillRect(PAD, y + 8, W - PAD * 2, 52);
+      x.fillStyle = '#16232d'; x.textAlign = 'right'; x.font = '800 25px ' + FONT;
+      x.fillText(r.name, W - PAD - 14, y + 35);
+      x.fillStyle = '#0d9bcb'; x.textAlign = 'left'; x.direction = 'ltr'; x.font = '800 28px ' + FONT;
+      x.fillText(r.price + ' درهم', PAD + 14, y + 35);
+      x.direction = 'rtl';
     } else if (r.kind === 'item') {
       x.fillStyle = '#16232d'; x.textAlign = 'right'; x.font = itemFont;
       r.lines.forEach((ln, i) => x.fillText(ln, W - PAD, y + 28 + i * 36));
@@ -3078,12 +3108,18 @@ function _invDraw(inv) {
   if (!rows.length) y += 60;
 
   // total
-  x.fillStyle = '#16232d'; x.fillRect(PAD, y + 20, W - PAD * 2, 80);
+  const boxH = multi ? 120 : 80;
+  x.fillStyle = '#16232d'; x.fillRect(PAD, y + 20, W - PAD * 2, boxH);
   x.fillStyle = '#ffffff'; x.textAlign = 'right'; x.font = '700 28px ' + FONT;
-  x.fillText('الإجمالي', W - PAD - 24, y + 60);
+  x.fillText(multi ? 'الإجمالي الكلي' : 'الإجمالي', W - PAD - 24, y + 60);
   x.fillStyle = '#18bfef'; x.textAlign = 'left'; x.direction = 'ltr'; x.font = '800 38px ' + FONT;
   x.fillText((info.total || '—') + ' درهم', PAD + 24, y + 60);
   x.direction = 'rtl';
+  if (multi) {
+    const names = { 2: 'الطلبين', 3: 'الطلبات الثلاثة', 4: 'الطلبات الأربعة' };
+    x.fillStyle = '#9fb3bf'; x.textAlign = 'right'; x.font = '500 21px ' + FONT;
+    x.fillText('إجمالي ' + (names[info.sections] || 'الطلبات') + ' — المبلغ اللي يستلمه المندوب', W - PAD - 24, y + 104);
+  }
   y += TOTAL_H;
 
   x.fillStyle = '#8fa0ab'; x.textAlign = 'center'; x.font = '500 21px ' + FONT;
