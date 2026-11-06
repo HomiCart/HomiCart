@@ -4639,6 +4639,8 @@
           if (phone) lookupCustomer(phone);
           return;
         }
+        // The whole order is gone — its "add another order" button must go too
+        document.getElementById('add-round-' + orderId)?.remove();
         // Remove this card with animation
         const card = document.getElementById(cardId);
         if (card) {
@@ -6538,13 +6540,25 @@
           showMyOrders();
           return;
         }
+        // The whole order is gone — its "add another order" button must go too
+        document.getElementById('add-round-' + orderId)?.remove();
         // Remove the order card from the UI
         const card = btn.closest('.order-card');
         if (card) {
           card.style.transition = 'opacity .4s, transform .4s';
           card.style.opacity    = '0';
           card.style.transform  = 'translateX(30px)';
-          setTimeout(() => card.remove(), 400);
+          setTimeout(() => {
+            card.remove();
+            // drop a store group left with no orders; say so when nothing is left at all
+            document.querySelectorAll('#myOrdersList .my-orders-vendor-group').forEach(g => {
+              if (!g.querySelector('.order-card')) g.remove();
+            });
+            const list = document.getElementById('myOrdersList');
+            if (list && !list.querySelector('.my-orders-vendor-group')) {
+              list.innerHTML = '<div class="no-orders-msg">لا توجد طلبات سابقة</div>';
+            }
+          }, 400);
         }
       } else {
         btn.disabled = false;
