@@ -2536,6 +2536,10 @@
         <i class="fas fa-arrow-right"></i>&nbsp;إلغاء والرجوع للمنيو
       </button>
 
+      <div id="coNotYet" style="margin:0 0 1rem;padding:.7rem .9rem;border-radius:12px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.45);color:#fbbf24;font-family:'Cairo',sans-serif;font-size:.88rem;font-weight:700;line-height:1.7">
+        ⚠️ طلبك لسه <u>ما اتسجلش</u> — لازم تدوسي «تسجيل الطلب» تحت وتشوفي شاشة «تم تسجيل طلبك بنجاح» قبل ما تقفلي الصفحة.
+      </div>
+
       <div id="coSummary" class="menu-order-preview" style="display:block"></div>
 
       <!-- Shown when this phone already has an order in the current batch -->
@@ -3043,6 +3047,13 @@
   let currentStore = null;
 
   /* ── Show / hide page ── */
+  // Closing the tab on the checkout page = the order is NOT placed. Desktop
+  // browsers ask first (mobile browsers ignore this, hence the notice on the page).
+  window.addEventListener('beforeunload', (e) => {
+    const co = document.getElementById('checkoutPage');
+    if (co && co.classList.contains('active') && !_opSaved) { e.preventDefault(); e.returnValue = ''; return ''; }
+  });
+
   function showPage(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
@@ -3740,7 +3751,9 @@
     window._coOrders = orders;
     const box = document.getElementById('coOrders');
     const sub = document.getElementById('coSubmitBtn');
-    if (!orders.length) { box.innerHTML = ''; sub.style.display = ''; return; }
+    const notYet = document.getElementById('coNotYet');
+    if (!orders.length) { box.innerHTML = ''; sub.style.display = ''; if (notYet) notYet.style.display = ''; return; }
+    if (notYet) notYet.style.display = 'none';
     const editable  = orders.map((o, i) => ({ o, i })).filter(x => _orderActivity(x.o) === 'new');
     const preparing = orders.filter(o => _orderActivity(o) === 'preparing');
     box.innerHTML = `
@@ -3783,6 +3796,7 @@
     window._coOrders = [];
     const sub = document.getElementById('coSubmitBtn');
     sub.style.display = ''; sub.disabled = false;
+    document.getElementById('coNotYet').style.display = '';
     clearTimeout(_coLookupTimer); _coLookupSeq++;
     _coSetMini(false);
     _coShowFields(false);
@@ -3815,12 +3829,13 @@
       }
       document.getElementById('coRemember').checked = true;
       document.getElementById('coForget').style.display = '';
-      // Hold the confirm button until we know whether this phone already has
-      // an order — otherwise a quick tap placed a second one before the
-      // check came back.
-      sub.style.display = 'none';
-      document.getElementById('coOrders').innerHTML = '<div class="co-existing-msg" style="opacity:.7">⏳ بنتأكد من طلباتك الحالية...</div>';
-      _coFetchOrders(saved.phone).then(orders => {
+      // The confirm button stays visible at all times (hiding it for the
+      // 10+ seconds this check can take made customers think they were done
+      // and leave). A quick tap is still safe: submitCheckout waits for this
+      // very same check before placing anything.
+      const chk = _coFetchOrders(saved.phone);
+      window._coCheck = { phone: saved.phone, promise: chk, at: Date.now() };
+      chk.then(orders => {
         if (phoneEl.value === saved.phone) _coRenderOrders(orders);
       });
     } else {
@@ -3960,7 +3975,10 @@
       const prevTxt = btn.innerHTML;
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>&nbsp;بنتأكد من طلباتك...';
-      const current = await _coFetchOrders(phone);
+      const cc = window._coCheck;
+      const current = (cc && cc.phone === phone && Date.now() - cc.at < 45000)
+        ? await cc.promise            // the check started when this page opened — usually done already
+        : await _coFetchOrders(phone);
       btn.disabled = false;
       btn.innerHTML = prevTxt;
       if (current.length) {
