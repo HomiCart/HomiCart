@@ -4869,7 +4869,7 @@
   // the sheet and finds the one carrying exactly this item text.
   //   → { checked: true, order }  looked it up fine (order is null if missing)
   //   → { checked: false }        couldn't reach the server to look
-  async function _findSavedOrder(phone, sheetName, itemsText, maxAgeMs) {
+  async function _findSavedOrder(phone, sheetName, itemsText, maxAgeMs, orderId) {
     const want = String(itemsText || '').trim();
     for (let attempt = 0; attempt < 3; attempt++) {
       if (attempt) await new Promise(r => setTimeout(r, 2500));
@@ -4877,6 +4877,9 @@
         const res = await _callScript('getOrdersByPhone', { phone, sheet: sheetName }, 15000);
         if (!res || res.success === false) continue;
         const now = Date.now();
+        // the exact order id the server handed back (an edit gets a new one)
+        const byId = orderId ? (res.orders || []).find(o => String(o.id) === String(orderId)) : null;
+        if (byId) return { checked: true, order: byId };
         const hit = (res.orders || []).find(o => {
           if (String(o.items || '').trim() !== want || o.status !== 'New') return false;
           const ts = parseInt(String(o.id || '').replace(/^O/, ''), 10);
@@ -6225,6 +6228,7 @@
     let serverOrderId = null;
     let sendFailed = null;   // exception from the write call
     let retryPayload = null; // the submitOrder parameters, kept for one automatic retry
+    let serverVerified = false; // true once the row was read back from the sheet (by the server, or by a lookup)
     const failBack = (text) => {
       clearInterval(countdownTimer);
       btn.disabled = false;
@@ -6274,7 +6278,7 @@
           userTimezone: 'Asia/Dubai',
         };
         result = await _postScript('submitOrder', retryPayload, 30000);
-        if (result.success && result.orderId) serverOrderId = result.orderId;
+        if (result.success && result.orderId) { serverOrderId = result.orderId; serverVerified = result.verified === true; }
         else {
           // Window closed server-side, validation, or a server error
           failBack('⚠ ' + (result.message || 'تعذر تسجيل الطلب — حاولي مرة تانية'));
@@ -6299,17 +6303,51 @@
         document.getElementById('opSaveTxt').textContent = 'بنعيد المحاولة...';
         try {
           const retry = await _postScript('submitOrder', retryPayload, 30000);
-          if (retry.success && retry.orderId) serverOrderId = retry.orderId;
+          if (retry.success && retry.orderId) { serverOrderId = retry.orderId; serverVerified = retry.verified === true; }
         } catch (_) {
           found = await _findSavedOrder(lookupPhone, store.sheetName, items, 10 * 60 * 1000);
         }
       }
-      if (!serverOrderId && found.order) serverOrderId = found.order.id;
+      if (!serverOrderId && found.order) { serverOrderId = found.order.id; serverVerified = true; }
       if (!serverOrderId) {
         failBack(found.checked
           ? (isEditing
               ? '⚠ التعديل ما اتسجلش (مشكلة في الاتصال). اختياراتك لسه موجودة — دوسي "حفظ التعديلات" تاني.'
               : '⚠ الطلب ما اتسجلش (مشكلة في الاتصال). اختياراتك لسه موجودة — دوسي "تسجيل الطلب" تاني.')
+          : (isEditing
+              ? '⚠ مقدرناش نتأكد إن التعديل اتسجل (النت ضعيف). شوفي "طلباتي" الأول قبل ما تعيدي.'
+              : '⚠ مقدرناش نتأكد إن الطلب اتسجل (النت ضعيف). شوفي "طلباتي" الأول — لو مش موجود دوسي "تسجيل الطلب" تاني.'));
+        return;
+      }
+    }
+
+    // ── Final proof: the success screen needs the order to REALLY be in the sheet ──
+    // A server "success" alone is not enough (a write can be lost). The new
+    // backend reads the row back before answering (verified:true). Against an
+    // older backend — or when the reply was repaired by a lookup — we look the
+    // order up ourselves. Not there → error, and everything she picked stays.
+    if (serverOrderId && !serverVerified) {
+      document.getElementById('opSaveTxt').textContent = 'بنتأكد إن الطلب اتسجل...';
+      const proofPhone = (_getActiveCustomer().phone || '').trim();
+      let proof = await _findSavedOrder(proofPhone, store.sheetName, items, 10 * 60 * 1000, serverOrderId);
+      if (proof.checked && !proof.order && !isEditing && retryPayload) {
+        // The server said OK but the row isn't there → one more attempt
+        document.getElementById('opSaveTxt').textContent = 'بنعيد المحاولة...';
+        serverOrderId = null;
+        try {
+          const retry2 = await _postScript('submitOrder', retryPayload, 30000);
+          if (retry2.success && retry2.orderId) { serverOrderId = retry2.orderId; serverVerified = retry2.verified === true; }
+        } catch (_) { /* proven (or not) by the lookup below */ }
+        proof = serverVerified
+          ? { checked: true, order: { id: serverOrderId } }
+          : await _findSavedOrder(proofPhone, store.sheetName, items, 10 * 60 * 1000, serverOrderId || undefined);
+      }
+      if (proof.order) { serverOrderId = proof.order.id; serverVerified = true; }
+      else {
+        failBack(proof.checked
+          ? (isEditing
+              ? '⚠ التعديل ما ظهرش في الشيت. اختياراتك لسه موجودة — دوسي "حفظ التعديلات" تاني.'
+              : '⚠ الطلب ما ظهرش في الشيت ومتسجلش. اختياراتك لسه موجودة — دوسي "تسجيل الطلب" تاني.')
           : (isEditing
               ? '⚠ مقدرناش نتأكد إن التعديل اتسجل (النت ضعيف). شوفي "طلباتي" الأول قبل ما تعيدي.'
               : '⚠ مقدرناش نتأكد إن الطلب اتسجل (النت ضعيف). شوفي "طلباتي" الأول — لو مش موجود دوسي "تسجيل الطلب" تاني.'));
