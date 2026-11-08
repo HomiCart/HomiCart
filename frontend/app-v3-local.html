@@ -2269,8 +2269,23 @@
     .phone-chip:hover { background: rgba(24,191,239,.12); }
     @media (max-width: 480px) {
       header { padding: 10px 14px; }
-      .phone-chip { padding: .36rem .7rem; font-size: .76rem; }
     }
+    .welcome-bar {
+      position: relative; z-index: 2; /* above the fixed page background */
+      width: min(92%, 520px); margin: 16px auto 0; padding: .9rem 1rem; border-radius: 16px; text-align: center;
+      background: rgba(24,191,239,.09); border: 1px solid rgba(24,191,239,.32); font-family: 'Cairo', sans-serif;
+    }
+    .wb-hello { font-size: 1.35rem; font-weight: 800; color: #fff; line-height: 1.5; }
+    .wb-name { color: #18bfef; }
+    .wb-phone { font-size: 1.05rem; font-weight: 700; color: rgba(255,255,255,.9); direction: ltr; unicode-bidi: isolate; letter-spacing: .04em; margin-top: .1rem; }
+    .wb-phone i { color: #18bfef; font-size: .85rem; margin-inline-end: .45rem; }
+    .wb-change { display: inline-block; margin-top: .35rem; font-size: .8rem; color: rgba(255,255,255,.6); text-decoration: underline; cursor: pointer; }
+    .wb-change:hover { color: #18bfef; }
+    /* inside the order pages: same card, slimmer */
+    .welcome-bar.compact { margin-top: 10px; padding: .5rem .8rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .15rem .9rem; }
+    .welcome-bar.compact .wb-hello { font-size: 1rem; }
+    .welcome-bar.compact .wb-phone { font-size: .9rem; margin: 0; }
+    .welcome-bar.compact .wb-change { margin: 0; font-size: .74rem; }
     .pg-overlay {
       position: fixed; inset: 0; z-index: 1000; display: none; align-items: center; justify-content: center;
       background: rgba(2,6,12,.78); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 16px;
@@ -2310,11 +2325,15 @@
     <a href="homepage.html" class="home-btn">
       <i class="fas fa-house"></i> الرئيسية
     </a>
-    <button type="button" class="phone-chip" id="phoneChip" onclick="changePhone()" style="display:none" title="الرقم اللي هتطلب بيه">
-      <i class="fas fa-phone"></i><span class="phone-chip-num" id="phoneChipNum"></span><span class="phone-chip-change">تغيير</span>
-    </button>
   </div>
 </header>
+
+<!-- Who is ordering: welcome + the number the order will be registered on -->
+<div class="welcome-bar" id="welcomeBar" style="display:none">
+  <div class="wb-hello">أهلاً بك <span class="wb-name" id="wbName"></span> 👋</div>
+  <div class="wb-phone"><i class="fas fa-phone"></i><span id="wbPhone"></span></div>
+  <a href="javascript:void(0)" class="wb-change" onclick="changePhone()">لست أنا؟ (تغيير الرقم)</a>
+</div>
 
 <!-- Ask for the phone number once, right after choosing a store -->
 <div class="pg-overlay" id="phoneGate" role="dialog" aria-modal="true">
@@ -3125,7 +3144,7 @@
   });
 
   function showPage(pageId) {
-    if (typeof _refreshPhoneChip === 'function') _refreshPhoneChip();
+    if (typeof _refreshPhoneChip === 'function') _refreshPhoneChip(pageId);
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
     // The order panel's fixed total bar only exists on the menu page
@@ -3457,12 +3476,18 @@
 
   // ── The phone number: asked ONCE (right after picking a store), shown in
   // the header from then on, never asked again in another store. ──────────
-  function _refreshPhoneChip() {
-    const chip = document.getElementById('phoneChip');
-    if (!chip) return;
+  function _refreshPhoneChip(pageId) {
+    const bar = document.getElementById('welcomeBar');
+    if (!bar) return;
     const p = _getSavedPhone();
-    chip.style.display = p ? '' : 'none';
-    document.getElementById('phoneChipNum').textContent = p;
+    bar.style.display = p ? '' : 'none';
+    if (!p) return;
+    const name = (_getActiveCustomer().name || '').toString().trim();
+    document.getElementById('wbName').textContent = name;
+    document.getElementById('wbPhone').textContent = p;
+    // full card on the stores page, a slimmer one while ordering
+    const page = pageId || document.querySelector('.page.active')?.id;
+    bar.classList.toggle('compact', page !== 'storePage');
   }
 
   let _pgResolve = null, _pgPhone = '';
