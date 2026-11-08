@@ -290,9 +290,14 @@ select option { background:#0d1a28; color:#fff; }
   padding:.4rem .95rem; font-family:'Cairo',sans-serif; font-size:.82rem; font-weight:600; cursor:pointer; }
 .fb-chip.on { background:#18bfef; border-color:#18bfef; color:#04202b; }
 .fb-item { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:1rem 1.1rem; margin-bottom:.9rem; }
-.fb-item.is-unsolved { border-right:4px solid #ef4444; }
-.fb-item.is-solved   { border-right:4px solid #f5a623; }
-.fb-item.is-none     { border-right:4px solid #28c864; }
+.fb-item.is-low  { border-right:4px solid #ef4444; }
+.fb-item.is-mid  { border-right:4px solid #f5a623; }
+.fb-item.is-good { border-right:4px solid #28c864; }
+.fb-pill.low  { background:rgba(239,68,68,.25); color:#ff9a9a; }
+.fb-pill.mid  { background:rgba(245,166,35,.25); color:#ffc766; }
+.fb-pill.good { background:rgba(40,200,100,.22); color:#6fe3a0; }
+.fb-extra { background:rgba(24,191,239,.07); border:1px solid rgba(24,191,239,.22); border-radius:10px; padding:.55rem .8rem; margin:.4rem 0; font-size:.88rem; line-height:1.9; white-space:pre-wrap; color:rgba(255,255,255,.9); }
+.fb-extra b { color:#7fdcf7; display:block; font-size:.78rem; }
 .fb-head { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; justify-content:space-between; margin-bottom:.7rem; }
 .fb-meta { font-size:.8rem; color:rgba(255,255,255,.5); display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; }
 .fb-pill { font-size:.72rem; font-weight:700; border-radius:999px; padding:.15rem .65rem; background:rgba(255,255,255,.1); color:#fff; }
@@ -2511,12 +2516,19 @@ async function masterBatch(kind) {
 //  Rows come from the "Feedback" sheet (see submitFeedback / getFeedback in the backend).
 // ════════════════════════════════════════════════════════
 let FB_ITEMS = [], FB_FILTER = 'all';
-const FB_PROBLEM = { none: 'مفيش مشاكل', solved: 'مشكلة واتحلت', unsolved: 'مشكلة ولسه ماتحلتش' };
-const FB_FILTERS = [['all', 'الكل'], ['unsolved', '🔴 مشاكل لسه ماتحلتش'], ['solved', '🟡 مشاكل واتحلت'], ['none', '🟢 مفيش مشاكل'], ['fresh', '🆕 لسه ماتراجعتش']];
+const FB_PROBLEM = { none: 'مفيش مشاكل', solved: 'مشكلة واتحلت', unsolved: 'مشكلة ولسه ماتحلتش' }; // answers from the first version of the page
+const FB_FILTERS = [['all', 'الكل'], ['low', '🔴 تقييم منخفض (١–٢ نجمة)'], ['mid', '🟡 متوسط (٣)'], ['good', '🟢 كويس (٤–٥)'], ['wish', '💡 طلبات واقتراحات'], ['fresh', '🆕 لسه ماتراجعتش']];
+const FB_SHOP_CLASS = n => (n <= 2 ? 'low' : n === 3 ? 'mid' : 'good');
 
 function _fbStars(n) { n = +n || 0; return n ? '★'.repeat(n) + '☆'.repeat(5 - n) + ' ' + n + '/5' : '—'; }
 function _fbAvg(key) {
   const v = FB_ITEMS.map(i => +i[key]).filter(x => x > 0);
+  return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : '—';
+}
+// average of every shop star rating across all answers
+function _fbShopAvg() {
+  const v = [];
+  FB_ITEMS.forEach(i => (i.stores || []).forEach(s => { if (+s.stars > 0) v.push(+s.stars); }));
   return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : '—';
 }
 
@@ -2541,20 +2553,22 @@ function renderFeedback() {
   const badge  = document.getElementById('fbBadge');
   badge.textContent = fresh; badge.style.display = fresh ? '' : 'none';
 
-  const open = FB_ITEMS.filter(i => i.worst === 'unsolved' && i.status !== 'تم الحل').length;
+  const open = FB_ITEMS.filter(i => i.worst === 'low' && i.status !== 'تم الحل').length;
   document.getElementById('fbStats').innerHTML =
     '<div class="fb-stat"><b>' + FB_ITEMS.length + '</b><span>كل الردود</span></div>' +
     '<div class="fb-stat"><b>' + fresh + '</b><span>لسه ماتراجعتش</span></div>' +
-    '<div class="fb-stat red"><b>' + open + '</b><span>مشاكل لسه ماتحلتش</span></div>' +
+    '<div class="fb-stat red"><b>' + open + '</b><span>تقييمات منخفضة لسه ماتحلتش</span></div>' +
+    '<div class="fb-stat"><b>' + _fbShopAvg() + '</b><span>متوسط تقييم المتاجر</span></div>' +
     '<div class="fb-stat"><b>' + _fbAvg('rOrg') + '</b><span>تقييم التنظيم والجروب</span></div>' +
-    '<div class="fb-stat"><b>' + _fbAvg('rPeople') + '</b><span>تقييم التعامل</span></div>' +
+    '<div class="fb-stat"><b>' + _fbAvg('rPeople') + '</b><span>التعامل مع مسئولة التجميع</span></div>' +
     '<div class="fb-stat"><b>' + _fbAvg('rDesign') + '</b><span>تقييم تصميم الموقع</span></div>';
 
   document.getElementById('fbFilters').innerHTML = FB_FILTERS.map(f =>
     '<button class="fb-chip' + (FB_FILTER === f[0] ? ' on' : '') + '" onclick="setFbFilter(\'' + f[0] + '\')">' + f[1] + '</button>').join('');
 
   const shown = FB_ITEMS.filter(i =>
-    FB_FILTER === 'all' ? true : FB_FILTER === 'fresh' ? i.status === 'جديد' : i.worst === FB_FILTER);
+    FB_FILTER === 'all' ? true : FB_FILTER === 'fresh' ? i.status === 'جديد'
+      : FB_FILTER === 'wish' ? !!(i.wishes || i.updatesText) : i.worst === FB_FILTER);
   const box = document.getElementById('fbList');
   if (!shown.length) {
     box.innerHTML = '<div class="empty-state">' + (FB_ITEMS.length ? 'مفيش ردود في الفلتر ده' : 'لسه مفيش ردود') + '</div>';
@@ -2565,7 +2579,9 @@ function renderFeedback() {
     const wa = i.phone ? 'https://wa.me/971' + String(i.phone).replace(/\D/g, '').replace(/^0/, '') : '';
     const stores = (i.stores || []).map(s =>
       '<div class="fb-store"><span class="fb-store-name">' + _mvEsc(s.name || s.key) + '</span>' +
-      '<span class="fb-pill ' + _mvEsc(s.status) + '">' + _mvEsc(FB_PROBLEM[s.status] || s.status) + '</span>' +
+      (+s.stars > 0
+        ? '<span class="fb-pill ' + FB_SHOP_CLASS(+s.stars) + '">' + _fbStars(s.stars) + '</span>'
+        : '<span class="fb-pill ' + _mvEsc(s.status) + '">' + _mvEsc(FB_PROBLEM[s.status] || s.status) + '</span>') +
       (s.text ? '<div>' + _mvEsc(s.text) + '</div>' : '') + '</div>').join('');
     const rated = i.rOrg || i.rPeople || i.rDesign;
     return '<div class="fb-item ' + (i.worst ? 'is-' + _mvEsc(i.worst) : '') + '">' +
@@ -2576,9 +2592,11 @@ function renderFeedback() {
           : '<span style="color:rgba(255,255,255,.4);font-size:.82rem">بدون رقم</span>') + '</div></div>' +
       stores +
       (rated ? '<div class="fb-rates"><span>التنظيم والجروب: <span class="star">' + _fbStars(i.rOrg) + '</span></span>' +
-        '<span>التعامل: <span class="star">' + _fbStars(i.rPeople) + '</span></span>' +
+        '<span>التعامل مع مسئولة التجميع: <span class="star">' + _fbStars(i.rPeople) + '</span></span>' +
         '<span>التصميم: <span class="star">' + _fbStars(i.rDesign) + '</span></span></div>' : '') +
       (i.updates ? '<div style="font-size:.82rem;color:rgba(255,255,255,.65)">تحديث الموقع: <b>' + _mvEsc(i.updates) + '</b></div>' : '') +
+      (i.updatesText ? '<div class="fb-extra"><b>🛠 التحديثات اللي نفسه يشوفها</b>' + _mvEsc(i.updatesText) + '</div>' : '') +
+      (i.wishes ? '<div class="fb-extra"><b>💡 متاجر / سلع نفسه يلاقيها</b>' + _mvEsc(i.wishes) + '</div>' : '') +
       (i.notes ? '<div class="fb-notes">' + _mvEsc(i.notes) + '</div>' : '') +
       '<div class="fb-actions"><input id="fbNote-' + _mvEsc(i.id) + '" placeholder="ملاحظة خاصة بيكي (مش بتظهر للعميلة)" value="' + _mvEsc(i.adminNote) + '">' +
         '<button class="fb-btn" onclick="setFbStatus(\'' + _mvEsc(i.id) + '\',\'contacted\')">تم التواصل</button>' +

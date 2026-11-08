@@ -69,6 +69,9 @@
     .star.on { color: var(--star); }
     .rate-word { min-width: 74px; text-align: center; font-size: .8rem; color: var(--muted); direction: rtl; }
 
+    .store.never .store-body { display: none; }
+    .store .store-body { margin-bottom: 10px; }
+    .chip.on.never { background: rgba(255,255,255,.2); border-color: rgba(255,255,255,.3); color: #fff; }
     .phone-hint { color: var(--muted); font-size: .8rem; margin-top: 7px; line-height: 1.7; }
     /* honeypot for bots — hidden without a far-off position (that made the RTL page scroll sideways) */
     .hp { position: absolute; top: 0; right: 0; width: 0; height: 0; opacity: 0; overflow: hidden; pointer-events: none; }
@@ -99,38 +102,42 @@
   <div id="formView">
     <header class="hero">
       <h1>رأيك يهمنا 💬</h1>
-      <p>دقيقة واحدة بس. قولنا إيه اللي حصل معاك بصراحة — حتى لو الشكوى على المتجر أو علينا إحنا أو على التنسيق، مفيش مشكلة خالص.</p>
+      <p>دقيقة واحدة بس. قولنا رأيك بصراحة — اللي عجبك واللي مش عاجبك، وكل رد بنقرأه بنفسنا.</p>
     </header>
 
-    <!-- 1: shops -->
+    <!-- 1: shops — stars + optional comment -->
     <section class="card">
-      <h2><span class="num">1</span> المشاكل اللي واجهتك مع المتاجر</h2>
-      <p class="sub">اختار لكل متجر: حصلت مشكلة ولا لأ؟ ولو حصلت، اتحلت ولا لسه؟</p>
+      <h2><span class="num">1</span> اكتب لنا تقييم تجربتك من متاجرنا</h2>
+      <p class="sub">قيّم كل متجر طلبت منه بالنجوم (٥ نجوم هي الأحسن)، ولو حابب قولنا ليه اخترت التقييم ده.</p>
       <div id="stores"><div class="loading">جاري التحميل...</div></div>
     </section>
 
-    <!-- 2: ratings of the organiser / site -->
+    <!-- 2: the organiser / the site -->
     <section class="card">
-      <h2><span class="num">2</span> تقييمك للتنظيم والموقع</h2>
+      <h2><span class="num">2</span> تقييم الموقع والخدمة</h2>
       <p class="sub">اضغط على النجوم (٥ نجوم هي الأحسن).</p>
       <div class="rate"><div class="rate-label">تنظيم الطلبات والجروب</div><div class="stars" data-rate="r_org"></div></div>
-      <div class="rate"><div class="rate-label">التعامل مع الناس (الرد والمساعدة)</div><div class="stars" data-rate="r_people"></div></div>
+      <div class="rate"><div class="rate-label">التعامل مع مسئولة التجميع (الرد والمساعدة)</div><div class="stars" data-rate="r_people"></div></div>
       <div class="rate"><div class="rate-label">تصميم الموقع وسهولة استخدامه</div><div class="stars" data-rate="r_design"></div></div>
       <div class="rate">
-        <div class="rate-label">الموقع بيتحدّث بشكل كافي ومرضي؟ <span style="color:var(--muted);font-weight:500;font-size:.8rem">(متاجر، عروض، معلومات الطلب)</span></div>
+        <div class="rate-label">الموقع بيتحدّث بشكل مرضي؟ <span style="color:var(--muted);font-weight:500;font-size:.8rem">(متاجر، عروض، معلومات الطلب)</span></div>
         <div class="chips" id="updates">
           <button type="button" class="chip" data-v="enough">آه، كافي ومرضي</button>
           <button type="button" class="chip" data-v="more">محتاج تحديثات أكتر</button>
           <button type="button" class="chip" data-v="unaware">مش متابع</button>
         </div>
+        <div class="detail" id="updatesMore">
+          <label>إيه التحديثات اللي نفسك تشوفها في الموقع؟</label>
+          <textarea id="updatesText" maxlength="1500" placeholder="مثلاً: عروض أكتر / خانة بحث / مواعيد التجميع أوضح..."></textarea>
+        </div>
       </div>
     </section>
 
-    <!-- 3: free text -->
+    <!-- 3: wishes -->
     <section class="card">
-      <h2><span class="num">3</span> حاجة تانية؟</h2>
-      <p class="sub">أي شكوى أو اقتراح، أو لو مبسوط قولنا إيه اللي عجبك.</p>
-      <textarea id="notes" maxlength="2000" placeholder="اكتب هنا بحرية..."></textarea>
+      <h2><span class="num">3</span> نفسك نشوف إيه على الموقع؟</h2>
+      <p class="sub">اكتب المتاجر اللي نفسك تلاقيها على الموقع، أو السلع اللي نفسك تطلبها ومش متوفرة حاليًا.</p>
+      <textarea id="wishes" maxlength="2000" placeholder="مثلاً: متجر خضار وفاكهة / سمك طازج / منتجات ألبان..."></textarea>
     </section>
 
     <!-- 4: optional phone -->
@@ -161,12 +168,6 @@ const FALLBACK_STORES = [
   { key: 'AlRoknAlMasry', name: 'الركن المصري',    icon: '🥩', tag: 'لحوم طازجة' },
   { key: 'AlFalaki',      name: 'الفلكى للدواجن',  icon: '🐓', tag: 'طيور طازجة' },
 ];
-const STATUS = [
-  ['na',       'ماطلبتش منهم'],
-  ['none',     'مفيش مشاكل'],
-  ['solved',   'فيه مشكلة واتحلت'],
-  ['unsolved', 'فيه مشكلة ولسه ماتحلتش'],
-];
 const RATE_WORDS = ['', 'ضعيف', 'مقبول', 'كويس', 'ممتاز', 'رائع'];
 
 const qs    = new URLSearchParams(location.search);
@@ -179,7 +180,21 @@ let STORES = [];
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = id => document.getElementById(id);
 
-/* ── shops ── */
+/* ── star helpers ── */
+function buildStars(box, onPick) {
+  box.innerHTML = '<span class="rate-word"></span>' +
+    [5, 4, 3, 2, 1].map(n => `<button type="button" class="star" data-n="${n}" aria-label="${n} من 5">★</button>`).join('');
+  box.addEventListener('click', e => {
+    const b = e.target.closest('.star'); if (!b) return;
+    onPick(+b.dataset.n);
+  });
+}
+function paintStars(box, n) {
+  box.querySelectorAll('.star').forEach(s => s.classList.toggle('on', +s.dataset.n <= n));
+  box.querySelector('.rate-word').textContent = RATE_WORDS[n] || '';
+}
+
+/* ── shops: stars + optional comment, or "never ordered from them" ── */
 function renderStores() {
   const list = STORES.slice();
   const i = list.findIndex(s => s.key === FIRST);
@@ -187,47 +202,51 @@ function renderStores() {
   $('stores').innerHTML = list.map(s => `
     <div class="store" data-key="${esc(s.key)}">
       <div class="store-name"><span>${esc(s.icon || '🛒')}</span> ${esc(s.name)} ${s.tag ? `<span class="store-tag">· ${esc(s.tag)}</span>` : ''}</div>
-      <div class="chips">${STATUS.map(([v, t]) => `<button type="button" class="chip ${v}" data-v="${v}">${t}</button>`).join('')}</div>
-      <div class="detail"><label>احكيلنا إيه اللي حصل (المشكلة كانت إيه؟ حصلت إمتى؟)</label>
-        <textarea maxlength="1500" placeholder="مثلاً: اللحمة وصلت متأخرة / الوزن مش مظبوط / حاجة ناقصة..."></textarea></div>
+      <div class="store-body">
+        <div class="stars store-stars"></div>
+        <div class="detail"><label>ليه اخترت النجوم دي؟ <span style="opacity:.7">(لو حابب)</span></label>
+          <textarea maxlength="1500" placeholder="مثلاً: الجودة ممتازة / الوزن مش مظبوط / التوصيل اتأخر..."></textarea></div>
+      </div>
+      <div class="chips"><button type="button" class="chip never" data-v="never">ماطلبتش منهم قبل كده</button></div>
     </div>`).join('');
-  list.forEach(s => { state.stores[s.key] = { name: s.name, status: '', text: '' }; });
+  list.forEach(s => { state.stores[s.key] = { name: s.name, stars: 0, text: '', never: false }; });
+
+  document.querySelectorAll('#stores .store').forEach(box => {
+    const key = box.dataset.key, st = state.stores[key], sbox = box.querySelector('.store-stars');
+    buildStars(sbox, n => {
+      st.stars = st.stars === n ? 0 : n;                    // tap the same star again to clear
+      paintStars(sbox, st.stars);
+      box.querySelector('.detail').classList.toggle('show', st.stars > 0);
+    });
+  });
 }
 
 $('stores').addEventListener('click', e => {
-  const chip = e.target.closest('.chip'); if (!chip) return;
-  const box = chip.closest('.store'), key = box.dataset.key, v = chip.dataset.v;
-  const on = state.stores[key].status !== v;                 // tapping the same answer again clears it
-  state.stores[key].status = on ? v : '';
-  box.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', on && c === chip));
-  box.querySelector('.detail').classList.toggle('show', on && (v === 'solved' || v === 'unsolved'));
+  const chip = e.target.closest('.chip.never'); if (!chip) return;
+  const box = chip.closest('.store'), st = state.stores[box.dataset.key];
+  st.never = !st.never;
+  chip.classList.toggle('on', st.never);
+  box.classList.toggle('never', st.never);
 });
 $('stores').addEventListener('input', e => {
   const ta = e.target.closest('textarea'); if (!ta) return;
   state.stores[ta.closest('.store').dataset.key].text = ta.value;
 });
 
-/* ── star ratings ── */
-document.querySelectorAll('.stars').forEach(box => {
+/* ── site / organiser star ratings ── */
+document.querySelectorAll('.stars[data-rate]').forEach(box => {
   const key = box.dataset.rate;
-  box.innerHTML = '<span class="rate-word"></span>' +
-    [5, 4, 3, 2, 1].map(n => `<button type="button" class="star" data-n="${n}" aria-label="${n} من 5">★</button>`).join('');
-  box.addEventListener('click', e => {
-    const b = e.target.closest('.star'); if (!b) return;
-    const n = +b.dataset.n;
-    state.rates[key] = state.rates[key] === n ? 0 : n;       // tap the same star again to clear
+  buildStars(box, n => {
+    state.rates[key] = state.rates[key] === n ? 0 : n;      // tap the same star again to clear
     paintStars(box, state.rates[key]);
   });
 });
-function paintStars(box, n) {
-  box.querySelectorAll('.star').forEach(s => s.classList.toggle('on', +s.dataset.n <= n));
-  box.querySelector('.rate-word').textContent = RATE_WORDS[n] || '';
-}
 
 $('updates').addEventListener('click', e => {
   const chip = e.target.closest('.chip'); if (!chip) return;
   state.updates = state.updates === chip.dataset.v ? '' : chip.dataset.v;
   $('updates').querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.v === state.updates));
+  $('updatesMore').classList.toggle('show', state.updates === 'more');
 });
 
 /* ── submit ── */
@@ -257,15 +276,27 @@ $('send').addEventListener('click', async () => {
   const ph = normalizePhone($('phone').value);
   if (!ph.ok) { err.textContent = 'رقم الهاتف مش مظبوط (05XXXXXXXX) — سيبه فاضي لو مش عايز تسيبه.'; $('phone').focus(); return; }
 
-  const stores = STORES.map(s => ({ key: s.key, name: s.name, status: state.stores[s.key].status, text: state.stores[s.key].text.trim() }));
-  const notes = $('notes').value.trim();
-  const answered = stores.some(s => s.status && s.status !== 'na') || Object.values(state.rates).some(Boolean) || state.updates || notes;
-  if (!answered) { err.textContent = 'اختار أي إجابة أو اكتب ملاحظة قبل ما تبعت.'; return; }
+  const stores = STORES.map(s => {
+    const st = state.stores[s.key];
+    return { key: s.key, name: s.name, never: st.never, stars: st.never ? 0 : st.stars, text: st.never ? '' : st.text.trim() };
+  });
+  const updatesText = state.updates === 'more' ? $('updatesText').value.trim() : '';
+  const wishes = $('wishes').value.trim();
+  const answered = stores.some(s => s.stars) || Object.values(state.rates).some(Boolean) || state.updates || updatesText || wishes;
+  if (!answered) { err.textContent = 'قيّم أي حاجة بالنجوم أو اكتب رأيك قبل ما تبعت.'; return; }
+
+  // "notes" repeats everything as plain text: a server that does not know the new fields yet
+  // (backend not updated) still keeps the customer's words. The new backend ignores it (v=2).
+  const plain = [
+    ...stores.filter(s => s.stars || s.text).map(s => s.name + ': ' + (s.stars ? s.stars + '/5' : '') + (s.text ? ' — ' + s.text : '')),
+    updatesText && 'التحديثات المطلوبة: ' + updatesText,
+    wishes && 'نفسه يشوف: ' + wishes,
+  ].filter(Boolean).join('\n');
 
   const payload = {
-    action: 'submitFeedback', src: SRC, phone: ph.value, stores: JSON.stringify(stores),
+    action: 'submitFeedback', v: '2', src: SRC, phone: ph.value, stores: JSON.stringify(stores),
     r_org: state.rates.r_org || '', r_people: state.rates.r_people || '', r_design: state.rates.r_design || '',
-    updates: state.updates, notes, website: $('website').value,
+    updates: state.updates, updates_text: updatesText, wishes, notes: plain, website: $('website').value,
   };
   const btn = $('send'); btn.disabled = true; btn.textContent = 'جاري الإرسال...';
   let res = null, lastErr = '';
@@ -274,8 +305,8 @@ $('send').addEventListener('click', async () => {
     catch (e) { lastErr = e.message; }
   }
   if (res && res.success) {
-    const hadUnsolved = stores.some(s => s.status === 'unsolved');
-    $('thanksMsg').textContent = hadUnsolved
+    const hadLow = stores.some(s => s.stars && s.stars <= 2);
+    $('thanksMsg').textContent = hadLow
       ? (ph.value ? 'هنتواصل معاك على رقمك علشان نحاول نحل المشكلة.' : 'لو عايزنا نتواصل معاك ونحل المشكلة، ابعت رأي تاني ومعاه رقمك.')
       : 'بنقرأ كل رد بنفسنا، وبنستفيد منه علشان التجميع الجاي يبقى أحسن.';
     $('formView').style.display = 'none'; $('thanksView').classList.add('show');
