@@ -251,8 +251,11 @@ $('updates').addEventListener('click', e => {
 
 /* ── submit ── */
 function normalizePhone(raw) {
-  let d = String(raw || '').replace(/[٠-٩]/g, x => '٠١٢٣٤٥٦٧٨٩'.indexOf(x)).replace(/\D/g, '');
-  if (!d) return { ok: true, value: '' };
+  const txt = String(raw || '').replace(/[٠-٩]/g, x => '٠١٢٣٤٥٦٧٨٩'.indexOf(x)).trim();
+  if (!txt) return { ok: true, value: '' };                          // left empty on purpose → fine
+  if (/[^\d\s+\-().]/.test(txt)) return { ok: false, value: '' };    // letters / other symbols are not a phone number
+  let d = txt.replace(/\D/g, '');
+  if (!d) return { ok: false, value: '' };
   if (d.startsWith('00971')) d = d.slice(5);
   else if (d.startsWith('971')) d = d.slice(3);
   if (/^5\d{8}$/.test(d)) d = '0' + d;
@@ -260,9 +263,12 @@ function normalizePhone(raw) {
 }
 
 $('phone').addEventListener('input', () => {
+  // letters are dropped as they are typed — only digits and the usual separators stay
+  const clean = $('phone').value.replace(/[^\d\s+\-().٠-٩]/g, '');
+  if ($('phone').value !== clean) $('phone').value = clean;
   const v = $('phone').value.trim(), h = $('phoneHint'), r = normalizePhone(v);
   if (!v) { h.style.color = ''; h.textContent = 'اكتب رقم موبايل إماراتي صحيح (05XXXXXXXX) لو عايزنا نتواصل معاك، أو سيب الخانة فاضية — رأيك بيوصلنا من غير اسم.'; }
-  else if (r.ok) { h.style.color = 'var(--green)'; h.textContent = '✅ رقم صحيح'; }
+  else if (r.ok && r.value) { h.style.color = 'var(--green)'; h.textContent = '✅ رقم صحيح'; }
   else { h.style.color = '#ff8a8a'; h.textContent = 'الرقم ده مش رقم موبايل إماراتي صحيح — لازم يبدأ بـ 050 أو 052 أو 054 أو 055 أو 056 أو 058 (١٠ أرقام).'; }
 });
 
