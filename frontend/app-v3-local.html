@@ -2255,6 +2255,45 @@
       .menu-gallery { grid-template-columns: 1fr; }
       .store-card-name { font-size: 1rem; }
     }
+
+    /* ── Phone chip (header) + "enter your number" box ── */
+    .phone-chip {
+      display: inline-flex; align-items: center; gap: .45rem; margin-inline-start: auto;
+      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.2); color: #fff;
+      border-radius: 50px; padding: .42rem .95rem; cursor: pointer;
+      font-family: 'Cairo', sans-serif; font-size: .82rem; font-weight: 700;
+    }
+    .phone-chip i { color: #18bfef; font-size: .8rem; }
+    .phone-chip-num { direction: ltr; unicode-bidi: isolate; letter-spacing: .02em; }
+    .phone-chip-change { color: #18bfef; font-weight: 600; border-inline-start: 1px solid rgba(255,255,255,.2); padding-inline-start: .5rem; }
+    .phone-chip:hover { background: rgba(24,191,239,.12); }
+    @media (max-width: 480px) {
+      header { padding: 10px 14px; }
+      .phone-chip { padding: .36rem .7rem; font-size: .76rem; }
+    }
+    .pg-overlay {
+      position: fixed; inset: 0; z-index: 1000; display: none; align-items: center; justify-content: center;
+      background: rgba(2,6,12,.78); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 16px;
+    }
+    .pg-card {
+      position: relative; width: min(100%, 400px); background: #0d1826; border: 1px solid rgba(24,191,239,.3);
+      border-radius: 18px; padding: 1.6rem 1.3rem 1.3rem; box-shadow: 0 20px 60px rgba(0,0,0,.6);
+      font-family: 'Cairo', sans-serif; text-align: center;
+    }
+    .pg-close { position: absolute; top: .55rem; inset-inline-start: .7rem; background: none; border: 0; color: rgba(255,255,255,.5); font-size: 1.2rem; cursor: pointer; padding: .3rem .5rem; }
+    .pg-title { font-size: 1.15rem; font-weight: 800; color: #fff; margin-bottom: .35rem; }
+    .pg-sub { font-size: .84rem; color: rgba(255,255,255,.6); line-height: 1.7; margin-bottom: 1rem; }
+    .pg-input { text-align: center; font-size: 1.25rem; letter-spacing: .08em; direction: ltr; }
+    .pg-hint { min-height: 1.3rem; font-size: .8rem; margin: .35rem 0 .8rem; color: rgba(255,255,255,.4); }
+    .pg-big { font-size: 2rem; font-weight: 800; color: #18bfef; direction: ltr; letter-spacing: .06em; margin: .4rem 0 .8rem; }
+    .pg-btns { display: flex; gap: .7rem; flex-wrap: wrap; }
+    .pg-btns button { flex: 1; min-width: 120px; justify-content: center; }
+    .phone-keep {
+      margin: 1rem 0 0; padding: .8rem 1rem; border-radius: 12px; background: rgba(24,191,239,.08);
+      border: 1px solid rgba(24,191,239,.35); color: rgba(255,255,255,.9); font-family: 'Cairo', sans-serif;
+      font-size: .9rem; line-height: 1.8; text-align: center;
+    }
+    .phone-keep b { color: #18bfef; font-size: 1.05rem; direction: ltr; unicode-bidi: isolate; letter-spacing: .04em; }
   </style>
 </head>
 <body>
@@ -2264,15 +2303,46 @@
 
 <!-- Header -->
 <header>
-  <div style="display:flex; align-items:center; gap:.7rem;">
+  <div style="display:flex; align-items:center; gap:.7rem; flex-wrap:wrap; width:100%">
     <button class="back-btn" id="backBtn" onclick="goBack()">
       <i class="fas fa-arrow-right"></i> رجوع
     </button>
     <a href="homepage.html" class="home-btn">
       <i class="fas fa-house"></i> الرئيسية
     </a>
+    <button type="button" class="phone-chip" id="phoneChip" onclick="changePhone()" style="display:none" title="الرقم اللي هتطلب بيه">
+      <i class="fas fa-phone"></i><span class="phone-chip-num" id="phoneChipNum"></span><span class="phone-chip-change">تغيير</span>
+    </button>
   </div>
 </header>
+
+<!-- Ask for the phone number once, right after choosing a store -->
+<div class="pg-overlay" id="phoneGate" role="dialog" aria-modal="true">
+  <div class="pg-card">
+    <button type="button" class="pg-close" onclick="_pgCancel()" aria-label="إغلاق">✕</button>
+    <div id="pgStep1">
+      <div class="pg-title" id="pgTitle">اكتب رقم موبايلك</div>
+      <div class="pg-sub" id="pgSub">هنفتكره في كل المتاجر — وبيه بتلاقي طلبك وتعدّله أو تلغيه.</div>
+      <input type="tel" id="pgInput" class="cust-input pg-input" placeholder="05XXXXXXXX"
+        inputmode="numeric" maxlength="10" autocomplete="tel"
+        oninput="_pgInput()" onkeydown="custBlockNonDigits(event)" onpaste="_pgPaste(event)"
+        onkeyup="if(event.key==='Enter')_pgNext()" />
+      <div class="pg-hint" id="pgHint"></div>
+      <button type="button" class="btn-cust-primary" id="pgNext" style="width:100%" onclick="_pgNext()" disabled>
+        كمّل
+      </button>
+    </div>
+    <div id="pgStep2" style="display:none">
+      <div class="pg-title">الرقم ده صح؟</div>
+      <div class="pg-big" id="pgBig"></div>
+      <div class="pg-sub">طلبك هيتسجل على الرقم ده — ولو كان غلط مش هتعرف تلاقيه تاني.</div>
+      <div class="pg-btns">
+        <button type="button" class="btn-cust-primary" onclick="_pgConfirm()">صح، كمّل</button>
+        <button type="button" class="btn-cust-secondary" onclick="_pgBack()">تعديل</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="container">
 
@@ -2550,7 +2620,7 @@
       <div id="coMini" style="display:none">
         <div class="cust-info-card">
           <div class="cust-info-row"><span class="cust-info-label">الاسم</span><span id="coMiniName"></span></div>
-          <div class="cust-info-row"><span class="cust-info-label">الهاتف</span><span id="coMiniPhone"></span></div>
+          <div class="cust-info-row" style="display:none"><span class="cust-info-label">الهاتف</span><span id="coMiniPhone"></span></div>
           <div class="cust-info-row" id="coMiniWaRow" style="display:none"><span class="cust-info-label">واتساب</span><span id="coMiniWa"></span></div>
           <div class="cust-info-row"><span class="cust-info-label">المنطقة</span><span id="coMiniArea"></span></div>
           <div class="cust-info-row"><span class="cust-info-label">العنوان</span><span id="coMiniAddress"></span></div>
@@ -2559,14 +2629,14 @@
           <button type="button" class="btn-cust-secondary" onclick="coEditMini()">
             <i class="fas fa-pen"></i>&nbsp;تعديل بياناتي
           </button>
-          <a href="javascript:void(0)" onclick="_coForget()"
+          <a href="javascript:void(0)" onclick="changePhone()"
             style="font-size:.78rem;color:rgba(255,255,255,.4);text-decoration:underline">
-            مش أنا؟ امسح البيانات المحفوظة
+            مش أنا؟ غيّر الرقم
           </a>
         </div>
       </div>
 
-      <div class="cust-field" id="coPhoneField">
+      <div class="cust-field" id="coPhoneField" style="display:none">
         <label class="cust-label">رقم الهاتف <span class="req">*</span></label>
         <input type="tel" id="coPhone" class="cust-input" placeholder="05XXXXXXXX"
           inputmode="numeric" maxlength="10"
@@ -3055,6 +3125,7 @@
   });
 
   function showPage(pageId) {
+    if (typeof _refreshPhoneChip === 'function') _refreshPhoneChip();
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
     // The order panel's fixed total bar only exists on the menu page
@@ -3328,6 +3399,7 @@
   //    Survives closing the tab, so returning days later still auto-fills.
   function _saveSessionCustomer(data) {
     try { sessionStorage.setItem('homiCart_sessionCustomer', JSON.stringify(data)); } catch(e) {}
+    if (typeof _refreshPhoneChip === 'function') _refreshPhoneChip();
   }
 
   // The single source of truth for "who is ordering right now" — every
@@ -3383,6 +3455,126 @@
     return _isCustPhoneValid(phone) ? phone : '';
   }
 
+  // ── The phone number: asked ONCE (right after picking a store), shown in
+  // the header from then on, never asked again in another store. ──────────
+  function _refreshPhoneChip() {
+    const chip = document.getElementById('phoneChip');
+    if (!chip) return;
+    const p = _getSavedPhone();
+    chip.style.display = p ? '' : 'none';
+    document.getElementById('phoneChipNum').textContent = p;
+  }
+
+  let _pgResolve = null, _pgPhone = '';
+  // Opens the "write your number" box → resolves with the confirmed number, or null if closed.
+  function askPhone(opts) {
+    opts = opts || {};
+    if (_pgResolve) return Promise.resolve(null); // already open
+    document.getElementById('pgTitle').textContent = opts.change ? 'اكتب الرقم اللي عايز تطلب بيه' : 'اكتب رقم موبايلك';
+    document.getElementById('pgSub').textContent = opts.change
+      ? 'هنستخدمه في الطلب ده بدل الرقم الحالي (' + (opts.current || '') + ').'
+      : 'هنفتكره في كل المتاجر — وبيه بتلاقي طلبك وتعدّله أو تلغيه.';
+    const inp = document.getElementById('pgInput');
+    inp.value = '';
+    document.getElementById('pgStep1').style.display = '';
+    document.getElementById('pgStep2').style.display = 'none';
+    _pgInput();
+    document.getElementById('phoneGate').style.display = 'flex';
+    setTimeout(() => inp.focus(), 80);
+    return new Promise(r => { _pgResolve = r; });
+  }
+  function _pgClose(val) {
+    document.getElementById('phoneGate').style.display = 'none';
+    const r = _pgResolve; _pgResolve = null;
+    if (r) r(val);
+  }
+  function _pgCancel() { _pgClose(null); }
+  function _pgInput() {
+    const el = document.getElementById('pgInput');
+    const clean = (el.value || '').replace(/\D/g, '').substring(0, 10);
+    if (el.value !== clean) el.value = clean;
+    const hint = document.getElementById('pgHint');
+    const ok = _isCustPhoneValid(clean);
+    document.getElementById('pgNext').disabled = !ok;
+    if (ok) { hint.textContent = '✅ رقم صحيح'; hint.style.color = '#28a745'; }
+    else if (!clean) { hint.textContent = ''; }
+    else if (!clean.startsWith('05') && clean.length >= 2) { hint.textContent = '⚠️ لازم يبدأ بـ 05'; hint.style.color = '#f59e0b'; }
+    else if (clean.length === 10) { hint.textContent = '❌ رقم غير صحيح — لازم يبدأ بـ 05'; hint.style.color = '#ff6b6b'; }
+    else { hint.textContent = clean.length + ' / 10 رقم'; hint.style.color = 'rgba(255,255,255,.4)'; }
+  }
+  function _pgPaste(e) {
+    e.preventDefault();
+    document.getElementById('pgInput').value = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').substring(0, 10);
+    _pgInput();
+  }
+  function _pgNext() {
+    const v = document.getElementById('pgInput').value;
+    if (!_isCustPhoneValid(v)) return;
+    _pgPhone = v;
+    document.getElementById('pgBig').textContent = v;
+    document.getElementById('pgStep1').style.display = 'none';
+    document.getElementById('pgStep2').style.display = '';
+  }
+  function _pgBack() {
+    document.getElementById('pgStep2').style.display = 'none';
+    document.getElementById('pgStep1').style.display = '';
+    setTimeout(() => document.getElementById('pgInput').focus(), 60);
+  }
+  function _pgConfirm() { _pgClose(_pgPhone); }
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && _pgResolve) _pgCancel(); });
+
+  // Make this number "who is ordering" for the whole visit and start fetching
+  // its saved details (name/address/pin) in the background.
+  function _applyPhone(phone) {
+    if (_getActiveCustomer().phone === phone) { _refreshPhoneChip(); return; }
+    window._existingCustomer = null; window._existingCustomerId = null;
+    _saveSessionCustomer({ phone }); // session only — never touches the device owner's long-term identity
+    _primeCustomer(phone);
+  }
+  function _primeCustomer(phone) {
+    const p = (async () => {
+      try {
+        const res = await _callScript('getCustomer', { phone }, 15000);
+        if (!res || !res.success || !res.customer) return null;
+        const c = res.customer;
+        const full = {
+          phone, name: c.name || '', area: c.area || '', address: c.address || '',
+          whatsapp: c.whatsapp || phone, customerId: c.id || '',
+          latitude : !isNaN(parseFloat(c.latitude))  ? String(parseFloat(c.latitude))  : '',
+          longitude: !isNaN(parseFloat(c.longitude)) ? String(parseFloat(c.longitude)) : '',
+        };
+        if (_getActiveCustomer().phone !== phone) return null; // number was changed meanwhile
+        _saveSessionCustomer(full);
+        try { // remember on this device only when it is not someone else's number on the owner's device
+          const l = JSON.parse(localStorage.getItem('homiCart_customer') || 'null');
+          if (!l || !l.phone || l.phone === phone) localStorage.setItem('homiCart_customer', JSON.stringify(full));
+        } catch (_) {}
+        return full;
+      } catch (e) { return null; }
+    })();
+    const rec = { phone, promise: p, done: false };
+    window._custPrime = rec;
+    p.then(() => { rec.done = true; });
+    return p;
+  }
+
+  // Header chip "تغيير": order with another number (a friend's, a second line…)
+  async function changePhone() {
+    const cur = _getSavedPhone();
+    const ph = await askPhone({ change: true, current: cur });
+    if (!ph || ph === cur) return;
+    _applyPhone(ph);
+    const active = document.querySelector('.page.active')?.id;
+    const st = window._pendingStore;
+    if (active === 'checkoutPage') { _openCheckout(); return; }
+    if (active === 'customerPage' && st) { showCustomerPage(st.folder, st.name, st.tag); return; }
+    if (active === 'menuPage' && window._guestFlow && !_opSaved && st) {
+      const act = await _fetchActiveOrdersFor(st.folder);
+      if (act && act.length) { window._guestFlow = false; showCustomerPage(st.folder, st.name, st.tag); }
+    }
+  }
+  setTimeout(_refreshPhoneChip, 0);
+
   function _isRememberMeChecked() {
     const el = document.getElementById('rememberMeCheck');
     return !el || el.checked;
@@ -3409,6 +3601,7 @@
   function forgetSavedCustomer() {
     localStorage.removeItem('homiCart_customer');
     sessionStorage.removeItem('homiCart_sessionCustomer');
+    _refreshPhoneChip();
     document.getElementById('custPhone').value = '';
     document.getElementById('rememberMeCheck').checked = true;
     _resetForm();
@@ -3476,6 +3669,12 @@
   // open or closed; when closed, the first attempt to add something
   // explains that (see _blockIfClosed).
   async function openStore(folder, name, tag) {
+    // First store of the visit: ask for the number (once). Later stores skip this.
+    if (!_getSavedPhone()) {
+      const ph = await askPhone();
+      if (!ph) return; // closed the box → stay on the stores list
+      _applyPhone(ph);
+    }
     window._pendingStore = { folder, name, tag };
     window._returnToCart = false;
     window._guestFlow    = false;
@@ -3652,7 +3851,7 @@
   // Returning customer: short read-only summary instead of the form.
   function _coSetMini(on, c, phone) {
     document.getElementById('coMini').style.display       = on ? '' : 'none';
-    document.getElementById('coPhoneField').style.display = on ? 'none' : '';
+    document.getElementById('coPhoneField').style.display = 'none'; // the number lives in the header chip
     if (!on) return;
     const wa = String((c && c.whatsapp) || '');
     document.getElementById('coMiniName').textContent    = c.name || '';
@@ -3784,10 +3983,16 @@
     if (o) _attachCartToOrder(o.id, o);
   }
 
-  function _openCheckout() {
+  async function _openCheckout() {
     if (!isOrderWindowOpen()) {
       alert(getWindowClosedMsg() + '\n\nلا يمكن تقديم طلبات في الوقت الحالي.');
       return;
+    }
+    // No number yet (the store step normally asked) → ask now, then carry on
+    if (!_getSavedPhone()) {
+      const ph = await askPhone();
+      if (!ph) return;
+      _applyPhone(ph);
     }
     const prev = document.getElementById('menuOrderPreview');
     document.getElementById('coSummary').innerHTML = prev ? prev.innerHTML : '';
@@ -3802,7 +4007,22 @@
     _coShowFields(false);
     showPage('checkoutPage');
 
-    const saved   = _getActiveCustomer();
+    // Start the "does this number already have an order?" check right away,
+    // and — if the saved details of this number are still on their way
+    // (fetched when the number was entered) — give them a moment.
+    const phone0 = _getSavedPhone();
+    const early  = phone0 ? { phone: phone0, p: _coFetchOrders(phone0) } : null;
+    let saved = _getActiveCustomer();
+    {
+      const hasAll = x => !!(x.name && x.area && x.address && !isNaN(parseFloat(x.latitude)) && !isNaN(parseFloat(x.longitude)));
+      const pr = window._custPrime;
+      if (!hasAll(saved) && pr && pr.phone === saved.phone && !pr.done) {
+        document.getElementById('coOrders').innerHTML = '<div class="co-existing-msg" style="opacity:.7">⏳ بنجيب بياناتك...</div>';
+        await Promise.race([pr.promise, new Promise(r => setTimeout(r, 5000))]);
+        document.getElementById('coOrders').innerHTML = '';
+        saved = _getActiveCustomer();
+      }
+    }
     const phoneEl = document.getElementById('coPhone');
     const hintEl  = document.getElementById('coPhoneHint');
     const statEl  = document.getElementById('coLookupStatus');
@@ -3833,7 +4053,7 @@
       // 10+ seconds this check can take made customers think they were done
       // and leave). A quick tap is still safe: submitCheckout waits for this
       // very same check before placing anything.
-      const chk = _coFetchOrders(saved.phone);
+      const chk = (early && early.phone === saved.phone) ? early.p : _coFetchOrders(saved.phone);
       window._coCheck = { phone: saved.phone, promise: chk, at: Date.now() };
       chk.then(orders => {
         if (phoneEl.value === saved.phone) _coRenderOrders(orders);
@@ -3916,6 +4136,7 @@
     _coSetMini(false);
     localStorage.removeItem('homiCart_customer');
     sessionStorage.removeItem('homiCart_sessionCustomer');
+    _refreshPhoneChip();
     ['coPhone', 'coName', 'coWhatsapp', 'coArea', 'coAddress'].forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('coEmirate').value = '';
     document.getElementById('coWaSame').checked = true;
@@ -6412,6 +6633,7 @@
             <span class="op-preview-value op-preview-items">${items}</span>
           </div>
         </div>
+        <div class="phone-keep">📱 طلبك مسجّل على الرقم <b>${customer.phone || ''}</b><br>احتفظ بيه — هو اللي بتدخل بيه لتعديل الطلب أو إلغائه.</div>
         <div class="order-success-btns">
           <button class="btn-op-save" onclick="showMyOrders()">
             <i class="fas fa-list-alt"></i>&nbsp;طلباتي وتعديلها
