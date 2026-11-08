@@ -2303,6 +2303,8 @@
     .pg-big { font-size: 2rem; font-weight: 800; color: #18bfef; direction: ltr; letter-spacing: .06em; margin: .4rem 0 .8rem; }
     .pg-btns { display: flex; gap: .7rem; flex-wrap: wrap; }
     .pg-btns button { flex: 1; min-width: 120px; justify-content: center; }
+    .add-sub-order-hint { display: none; margin: 0 0 .5rem; font-family: 'Cairo', sans-serif; font-size: .86rem; font-weight: 700; color: #fbbf24; text-align: center; line-height: 1.7; }
+    .add-sub-order-btn.is-idle { opacity: .6; }
     .phone-keep {
       margin: 1rem 0 0; padding: .8rem 1rem; border-radius: 12px; background: rgba(24,191,239,.08);
       border: 1px solid rgba(24,191,239,.35); color: rgba(255,255,255,.9); font-family: 'Cairo', sans-serif;
@@ -5467,6 +5469,7 @@
         <div class="menu-order-preview" id="menuOrderPreview"></div>
         <div class="sub-orders-summary" id="subOrdersSummary"></div>
         <div class="add-sub-order-wrap" id="addSubOrderWrap">
+          <div class="add-sub-order-hint" id="addSubOrderHint">👆 اختار أصناف الطلب الجديد من القائمة اللي فوق (صنف واحد يكفي)، وبعدين دوس الزرار ده</div>
           <button type="button" class="add-sub-order-btn" onclick="addAnotherSubOrder()">
             <i class="fas fa-plus"></i> إضافة أوردر تاني بفاتورة منفصلة
           </button>
@@ -5581,7 +5584,14 @@
     const editing = !!window._editingOrderId;
     const lines = buildMenuOrderLines();
     if (!lines.length) {
-      showOrderAlert('اختار صنف واحد على الأقل قبل ما تضيف طلب جديد');
+      // The 3 items she already ordered live in the saved order (🔒 chip); this
+      // button turns the CURRENT basket into one more invoice — and that basket is
+      // still empty. Say so, and take her to the menu.
+      const hasRounds = (window._opSubOrders || []).length > 0 || editing;
+      showOrderAlert(hasRounds
+        ? 'الطلب الجديد لسه فاضي. اختار أصنافه من القائمة اللي فوق (صنف واحد يكفي)، وبعدين دوس «إضافة أوردر جديد». أصناف طلبك اللي اتسجل قبل كده محفوظة ومش هتتمسح.'
+        : 'اختار صنف واحد على الأقل من القائمة الأول، وبعدين دوس «إضافة أوردر تاني».');
+      document.querySelector('#menuItemsBox .menu-items-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
     window._opSubOrders = window._opSubOrders || [];
@@ -5625,6 +5635,17 @@
     _refreshDeliveryFeeDisplay();
   }
 
+  // While the basket is empty and an order already exists, tell the customer
+  // what the "add another order" button is waiting for.
+  function _refreshAddSubHint() {
+    const hint = document.getElementById('addSubOrderHint');
+    const btn  = document.querySelector('#addSubOrderWrap .add-sub-order-btn');
+    if (!hint || !btn) return;
+    const idle = !buildMenuOrderLines().length && ((window._opSubOrders || []).length > 0 || !!window._editingOrderId);
+    hint.style.display = idle ? 'block' : 'none';
+    btn.classList.toggle('is-idle', idle);
+  }
+
   function _renderSubOrdersSummary() {
     const box = document.getElementById('subOrdersSummary');
     const addBtnWrap = document.getElementById('addSubOrderWrap');
@@ -5650,6 +5671,7 @@
         if (btn) btn.innerHTML = `<i class="fas fa-plus"></i> إضافة ${editing ? 'أوردر جديد' : (SUBORDER_LABELS[nextIdx + 1] ? 'أوردر ' + ['تاني','تالت','رابع'][nextIdx] : 'أوردر')} بفاتورة منفصلة`;
       }
     }
+    _refreshAddSubHint();
   }
 
   // Sum of quantities for كيلو-priced items currently selected — used for
@@ -6039,6 +6061,7 @@
   function updateMenuOrderPreview() {
     const preview = document.getElementById('menuOrderPreview');
     if (!preview) return;
+    _refreshAddSubHint();
     const current    = buildMenuOrderInvoice();
     const subOrders  = window._opSubOrders || [];
     if (!current.rows.length && !subOrders.length) {
