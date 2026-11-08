@@ -135,16 +135,16 @@
 
     <!-- 3: wishes -->
     <section class="card">
-      <h2><span class="num">3</span> نفسك نشوف إيه على الموقع؟</h2>
-      <p class="sub">اكتب المتاجر اللي نفسك تلاقيها على الموقع، أو السلع اللي نفسك تطلبها ومش متوفرة حاليًا.</p>
-      <textarea id="wishes" maxlength="2000" placeholder="مثلاً: متجر خضار وفاكهة / سمك طازج / منتجات ألبان..."></textarea>
+      <h2><span class="num">3</span> نفسك يتوفر على الموقع متاجر بتبيع إيه؟</h2>
+      <p class="sub">اكتب نوع المتاجر أو السلع اللي نفسك تلاقيها على الموقع ومش متوفرة حاليًا.</p>
+      <textarea id="wishes" maxlength="2000" placeholder="مثلاً: متجر خضار وفاكهة بيبيع خضار وفاكهة / متجر أسماك / متجر ألبان..."></textarea>
     </section>
 
     <!-- 4: optional phone -->
     <section class="card">
       <h2><span class="num">4</span> رقم هاتفك <span style="color:var(--muted);font-weight:500;font-size:.85rem">(اختياري)</span></h2>
       <input type="tel" id="phone" inputmode="numeric" maxlength="16" placeholder="05XXXXXXXX" autocomplete="tel">
-      <p class="phone-hint">سيب رقمك لو عايزنا نتواصل معاك ونحل المشكلة. ولو مش عايز، رأيك بيوصلنا من غير اسم.</p>
+      <p class="phone-hint" id="phoneHint">اكتب رقم موبايل إماراتي صحيح (05XXXXXXXX) لو عايزنا نتواصل معاك، أو سيب الخانة فاضية — رأيك بيوصلنا من غير اسم.</p>
     </section>
 
     <div class="hp" aria-hidden="true"><input type="text" id="website" name="website" tabindex="-1" autocomplete="off"></div>
@@ -256,8 +256,15 @@ function normalizePhone(raw) {
   if (d.startsWith('00971')) d = d.slice(5);
   else if (d.startsWith('971')) d = d.slice(3);
   if (/^5\d{8}$/.test(d)) d = '0' + d;
-  return /^05\d{8}$/.test(d) ? { ok: true, value: d } : { ok: false, value: '' };
+  return /^05[024568]\d{7}$/.test(d) ? { ok: true, value: d } : { ok: false, value: '' };   // UAE mobile prefixes only
 }
+
+$('phone').addEventListener('input', () => {
+  const v = $('phone').value.trim(), h = $('phoneHint'), r = normalizePhone(v);
+  if (!v) { h.style.color = ''; h.textContent = 'اكتب رقم موبايل إماراتي صحيح (05XXXXXXXX) لو عايزنا نتواصل معاك، أو سيب الخانة فاضية — رأيك بيوصلنا من غير اسم.'; }
+  else if (r.ok) { h.style.color = 'var(--green)'; h.textContent = '✅ رقم صحيح'; }
+  else { h.style.color = '#ff8a8a'; h.textContent = 'الرقم ده مش رقم موبايل إماراتي صحيح — لازم يبدأ بـ 050 أو 052 أو 054 أو 055 أو 056 أو 058 (١٠ أرقام).'; }
+});
 
 async function post(body, timeoutMs) {
   const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -274,7 +281,7 @@ async function post(body, timeoutMs) {
 $('send').addEventListener('click', async () => {
   const err = $('err'); err.textContent = '';
   const ph = normalizePhone($('phone').value);
-  if (!ph.ok) { err.textContent = 'رقم الهاتف مش مظبوط (05XXXXXXXX) — سيبه فاضي لو مش عايز تسيبه.'; $('phone').focus(); return; }
+  if (!ph.ok) { err.textContent = 'اكتب رقم موبايل إماراتي صحيح (زي 0501234567) — أو سيب الخانة فاضية.'; $('phone').focus(); return; }
 
   const stores = STORES.map(s => {
     const st = state.stores[s.key];
