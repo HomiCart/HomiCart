@@ -3444,11 +3444,14 @@
   // prepared but placed in the cycle that is open right now (e.g. collected
   // for tomorrow's delivery while the window stayed open), so it can't be
   // edited and a second order would just mean a second delivery fee.
-  // An older Preparing order from a previous cycle doesn't count.
+  // An older Preparing order from a previous cycle doesn't count. The same
+  // goes after the window has CLOSED (phase 'closed', before the next cycle
+  // starts): the server flips New → Preparing at that moment, and the customer
+  // must still see her order (read-only) when she enters her number.
   function _orderActivity(o) {
     const st = o && o.status;
     if (st === 'New' || st === 'جديد') return 'new';
-    if ((st === 'Preparing' || st === 'جاري التحضير') && window._batchPhase === 'open' && window._batchStart) {
+    if ((st === 'Preparing' || st === 'جاري التحضير') && (window._batchPhase === 'open' || window._batchPhase === 'closed') && window._batchStart) {
       const t = new Date(o.date).getTime(), start = new Date(window._batchStart).getTime();
       if (!isNaN(t) && !isNaN(start) && t >= start) return 'preparing';
     }
@@ -3457,13 +3460,17 @@
 
   // The customer's orders in this store that should block a fresh order.
   // null = couldn't check (no saved phone, or the lookup failed / timed out).
-  async function _fetchActiveOrdersFor(folder) {
+  async function _fetchActiveOrdersFor(folder, windowP) {
     const phone = _getSavedPhone();
     if (!phone) return null;
     try {
       const sheet = SHEET_NAMES[folder] || folder;
       const res = await _callScript('getOrdersByPhone', { phone, sheet }, 10000);
       if (!res || res.success === false) return null;
+      // Whether an order counts depends on the cycle's phase/start — make sure
+      // that answer has arrived before classifying (a slow reply used to make
+      // a Preparing order look "not active").
+      if (windowP) await Promise.race([windowP, new Promise(r => setTimeout(r, 6000))]);
       // lookupCustomer (the customer page we may be about to show) reuses this
       // instead of asking the server for the same thing a second time
       window._ordersPrefetch = { phone, sheet, at: Date.now(), orders: res.orders || [] };
@@ -3711,20 +3718,23 @@
     // assume open; submit re-checks anyway).
     window._batchPhase = null;
     window._batchNextStart = null;
-    await Promise.race([
-      updateCountdownForStore(folder),
-      new Promise(r => setTimeout(r, 2500)),
-    ]);
+    const windowP = updateCountdownForStore(folder);
+    await Promise.race([windowP, new Promise(r => setTimeout(r, 2500))]);
 
     window._guestFlow = true;
     window._editingOrderId = null;
     // A returning customer who already has an order in this cycle must not be
     // offered a blank menu (that is how a second order — and a second
     // delivery fee — got placed): look their orders up while the menu loads.
-    const activeP = _fetchActiveOrdersFor(folder);
+    const activeP = _fetchActiveOrdersFor(folder, windowP);
     await selectStore(folder, name, tag);
     await new Promise(r => setTimeout(r, 150));
-    const active = await Promise.race([activeP, new Promise(r => setTimeout(() => r(null), 4000))]);
+    // While collection is open a slow lookup just lets her carry on (checkout
+    // re-checks). While it is CLOSED the only useful thing here is her order,
+    // so give the lookup all the time it needs.
+    await Promise.race([windowP, new Promise(r => setTimeout(r, 6000))]);
+    const waitMs = isOrderWindowOpen() ? 4000 : 14000;
+    const active = await Promise.race([activeP, new Promise(r => setTimeout(() => r(null), waitMs))]);
     if (active && active.length) {
       window._guestFlow = false;
       showCustomerPage(folder, name, tag); // auto-looks the saved phone up and shows the current order(s)
