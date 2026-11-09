@@ -3455,8 +3455,16 @@
       const t = new Date(o.date).getTime(), start = new Date(window._batchStart).getTime();
       if (!isNaN(t) && !isNaN(start) && t >= start) return 'preparing';
     }
+    // Still "Preparing" (not delivered yet) but from an EARLIER cycle — e.g. an order the
+    // collection missed, or one waiting for delivery while the next cycle already started.
+    // The customer must still SEE it (read-only); it never blocks a new order.
+    if (st === 'Preparing' || st === 'جاري التحضير') {
+      const t = new Date(o.date).getTime();
+      if (!isNaN(t) && Date.now() - t <= PREV_ORDER_DAYS * 86400000) return 'previous';
+    }
     return null;
   }
+  const PREV_ORDER_DAYS = 10;
 
   // The customer's orders in this store that should block a fresh order.
   // null = couldn't check (no saved phone, or the lookup failed / timed out).
@@ -3981,7 +3989,7 @@
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const res = await _callScript('getOrdersByPhone', { phone, sheet }, 15000);
-        if (res && res.success !== false) return (res.orders || []).filter(o => _orderActivity(o));
+        if (res && res.success !== false) return (res.orders || []).filter(o => { const a = _orderActivity(o); return a && a !== 'previous'; });
       } catch(e) { /* retry once */ }
     }
     return []; // can't check — don't block ordering
@@ -4771,8 +4779,11 @@
           // cards, so count actual visible cards, not just order rows.
           const totalCards = newOrders.reduce((s, o) => s + (_parseOrderRounds(o)?.length || 1), 0);
           const onlyPreparing = newOrders.every(o => _orderActivity(o) === 'preparing');
+          const onlyPrevious  = newOrders.every(o => _orderActivity(o) === 'previous');
           document.getElementById('curOrderSubtitle').textContent =
-            onlyPreparing
+            onlyPrevious
+              ? (totalCards === 1 ? 'عندك طلب من الدورة السابقة لسه جاري تحضيره / توصيله' : 'عندك طلبات من الدورة السابقة لسه جاري تحضيرها / توصيلها')
+            : onlyPreparing
               ? (totalCards === 1 ? 'طلبك جاري تحضيره' : 'طلباتك جاري تحضيرها')
               : totalCards === 1
                 ? 'لديك طلب مسجل حالياً'
@@ -4784,7 +4795,7 @@
             <div class="cur-order-card" id="cur-card-${o.id}${r ? '-r' + r.roundIndex : ''}">
               <div class="cur-order-meta">
                 <span class="cur-order-id">${o.id}${r ? ` <span style="opacity:.6;font-weight:600">· ${r.label}</span>` : ''}</span>
-                <span class="cur-order-badge">${_orderActivity(o) === 'preparing' ? 'جاري التحضير' : 'جديد'}</span>
+                <span class="cur-order-badge">${_orderActivity(o) === 'previous' ? 'من الدورة السابقة' : _orderActivity(o) === 'preparing' ? 'جاري التحضير' : 'جديد'}</span>
                 <span class="cur-order-date">${dateStr}</span>
               </div>
               <div class="cur-order-items">${_renderInvoiceLinesHtml(r ? r.breakdownText : (o.invoiceBreakdown || o.items))}</div>
@@ -4797,7 +4808,10 @@
                   ${o.deliveryOption ? `<span>🚚 ${o.deliveryOption}</span>` : ''}
                   ${o.paymentMethod ? `<span>💳 ${o.paymentMethod}</span>` : ''}
                 </div>` : ''}
-              ${_orderActivity(o) === 'preparing' ? `
+              ${_orderActivity(o) === 'previous' ? `
+              <div class="cust-window-note" style="display:block;margin-top:.6rem">
+                📦 ده طلب من الدورة السابقة وجاري تحضيره / توصيله — مش هينفع تعديله هنا، ولو محتاج أي تغيير كلمنا. تقدر تعمل طلب جديد في الدورة الحالية من تحت.
+              </div>` : _orderActivity(o) === 'preparing' ? `
               <div class="cust-window-note" style="display:block;margin-top:.6rem">
                 ⛔ الطلب ده جاري تحضيره — مش هينفع تعديله أو تسجيل أوردر جديد دلوقتي. لو محتاج أي تغيير كلمنا.
               </div>` : `
@@ -4819,7 +4833,7 @@
           // hidden once it's already at the 4-round cap.
           // (Menu-first visitors who already have an order arrive here with a
           // finished basket: the same button then adds that basket to the order.)
-          const addRoundHtml = (o) => (_orderActivity(o) === 'preparing' || _parseOrderAsRounds(o).length >= SUBORDER_MAX) ? '' : `
+          const addRoundHtml = (o) => (_orderActivity(o) === 'preparing' || _orderActivity(o) === 'previous' || _parseOrderAsRounds(o).length >= SUBORDER_MAX) ? '' : `
             <button class="btn-add-round" id="add-round-${o.id}">
               <i class="fas fa-plus-circle"></i>&nbsp;${window._returnToCart && _cartHasItems() ? 'ضيف اختياراتي على الأوردر ده' : 'إضافة طلب جديد على نفس الأوردر'}
             </button>`;
@@ -4854,7 +4868,8 @@
           });
 
           _showStep('stepCurrentOrder', true);
-          _showStep('stepExisting', false);
+          // only older-cycle orders → she can still start a NEW order below them
+          _showStep('stepExisting', onlyPrevious);
         } else {
           // No active "New" orders → normal flow
           _showStep('stepExisting', true);
