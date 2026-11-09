@@ -3343,10 +3343,9 @@ async function downloadInvoiceImages() {
 }
 
 // ════════════════════════════════════════════════════════
-//  WHATSAPP SENDER — one row per customer (last collection, chosen vendors)
-//  • "واتساب": opens wa.me/<number> with the invoice message already typed
-//  • "صورة": copies the invoice picture (desktop: paste it with Ctrl+V in the chat)
-//            or shares picture + message straight to WhatsApp (phone)
+//  WHATSAPP — "your order is registered" message, one row per customer
+//  (current collection, chosen vendors). The message lists each store with the
+//  items, then the customer's SAVED location, and asks her to check it.
 //  Progress (opened / sent) is remembered for the day on this device.
 // ════════════════════════════════════════════════════════
 let WA_LIST = [];
@@ -3363,25 +3362,30 @@ function _waNumber(raw) {
   return /^05\d{8}$/.test(d) ? '971' + d.slice(1) : '';
 }
 
-function _waTotal(inv) { const t = parseFloat(String(_invParse(inv.invoice).total || '').replace(/,/g, '')); return isNaN(t) ? 0 : t; }
+// "عدد 2 كيلو — لحم محلي — (ملاحظة)"  →  "• لحم محلي × 2 كيلو (ملاحظة)"
+function _waFormatItems(text, noNotes) {
+  return String(text || '').split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+    let m;
+    if ((m = line.match(/^—\s*(.+?)\s*—$/))) return '▫️ ' + m[1] + ':';
+    if ((m = line.match(/^عدد\s+(.+?)\s+—\s+(.+?)(?:\s+—\s+\((.+)\))?$/))) {
+      return '• ' + m[2].trim() + ' × ' + m[1].trim() + (m[3] && !noNotes ? ' (' + m[3].trim() + ')' : '');
+    }
+    return '• ' + line;
+  }).join('\n');
+}
 
-function _waMessage(c, short) {
-  const date = _invToday();
-  const money = n => +n.toFixed(2);
-  const grand = money(c.invoices.reduce((a, i) => a + _waTotal(i), 0));
+function _waItemCount(text) { return String(text || '').split('\n').filter(l => /^\s*عدد\s/.test(l)).length || 1; }
+function _waItemsLabel(n) { return n === 1 ? 'صنف واحد' : n === 2 ? 'صنفين' : n <= 10 ? n + ' أصناف' : n + ' صنف'; }
+
+function _waMessage(c, noNotes) {
   // first name — but keep a title like ام / ابو together with the name after it
-  const nameParts = String(c.name || '').trim().split(/\s+/).filter(Boolean);
-  const first = (/^(ام|أم|ابو|أبو)$/.test(nameParts[0] || '') && nameParts[1]) ? nameParts[0] + ' ' + nameParts[1] : (nameParts[0] || '');
-  let msg = 'أهلاً ' + first + ' 👋\nفاتورة طلبك — ' + date + ':\n\n';
-  if (short) {
-    msg += c.invoices.map(i => (c.invoices.length > 1 ? i.vendorName + ': ' : '') + 'رقم ' + i.no + ' — ' + money(_waTotal(i)) + ' درهم').join('\n');
-    msg += '\n\n(صورة الفاتورة بالتفاصيل مرفقة)';
-  } else {
-    msg += c.invoices.map(i => (c.invoices.length > 1 ? '🏪 ' + i.vendorName + '\n' : '') + String(i.invoice).trim()).join('\n\n— — — — —\n\n');
-  }
-  if (c.invoices.length > 1) msg += '\n\n💰 الإجمالي الكلي: ' + grand + ' درهم';
-  else if (short) msg += '\n\n💰 الإجمالي: ' + grand + ' درهم';   // the full invoice text already ends with its own total
-  msg += '\n\nلو فيه أي استفسار كلمينا هنا. شكراً لثقتكم 💙';
+  const parts = String(c.name || '').trim().split(/\s+/).filter(Boolean);
+  const first = (/^(ام|أم|ابو|أبو)$/.test(parts[0] || '') && parts[1]) ? parts[0] + ' ' + parts[1] : (parts[0] || '');
+  let msg = 'أهلاً بك ' + first + ' 👋\nلقد تم تسجيل طلبك من:\n';
+  c.orders.forEach(o => { msg += '\n🏪 ' + o.vendorName + '\n' + _waFormatItems(o.items, noNotes) + '\n'; });
+  msg += '\n📍 اللوكيشن:\n' + (c.location || 'غير مسجّل — برجاء إرسال موقعك');
+  msg += '\n\nبرجاء التأكد من صحة اللوكيشن 🙏\nولو فيه أي غلط ابعتلنا الصح بطريقتك الحلوة 😊';
+  msg += '\n\nشكراً لثقتكم 💙';
   return msg;
 }
 
@@ -3389,33 +3393,8 @@ function _waLink(c) {
   const num = _waNumber(c.phone);
   if (!num) return '';
   let msg = _waMessage(c, false);
-  if (encodeURIComponent(msg).length > 4500) msg = _waMessage(c, true);   // very long invoices: totals only (+ the picture)
+  if (encodeURIComponent(msg).length > 6000) msg = _waMessage(c, true);   // very long orders: leave out the per-item notes
   return 'https://wa.me/' + num + '?text=' + encodeURIComponent(msg);
-}
-
-async function _waImageBlob(inv) {
-  try { await Promise.all([document.fonts.load('800 40px Cairo'), document.fonts.load('600 25px Cairo'), document.fonts.load('500 22px Cairo')]); } catch (e) {}
-  return await new Promise(r => _invDraw(inv).toBlob(r, 'image/png'));
-}
-
-async function waSendImage(ci, ii) {
-  const c = WA_LIST[ci], inv = c && c.invoices[ii];
-  if (!inv) return;
-  try {
-    const blob = await _waImageBlob(inv);
-    const file = new File([blob], 'فاتورة-' + inv.no + '.png', { type: 'image/png' });
-    const isTouch = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
-    if (isTouch && navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], text: _waMessage(c, true) });          // phone: pick WhatsApp + the chat
-      _waSetState(c.phone, 'opened'); renderWaSender();
-      return;
-    }
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);      // desktop: paste in the chat
-    toast('🖼 الصورة اتنسخت — افتحي الشات والصقيها (Ctrl+V)', 'success');
-  } catch (e) {
-    if (e && e.name === 'AbortError') return;
-    toast('تعذر نسخ الصورة: ' + (e.message || e) + ' — حمّليها من زرار الـ ZIP', 'error');
-  }
 }
 
 function waOpenChat(ci) {
@@ -3429,13 +3408,12 @@ function waOpenChat(ci) {
 
 function waMark(ci, st) { const c = WA_LIST[ci]; if (!c) return; _waSetState(c.phone, st); renderWaSender(); }
 
-// "next unsent": copies its picture, opens its chat
-async function waNext() {
+// first customer whose chat was not opened yet
+function waNext() {
   const st = _waState();
   const ci = WA_LIST.findIndex(c => st[c.phone] !== 'sent' && st[c.phone] !== 'opened' && _waNumber(c.phone));
   if (ci < 0) { toast('كل العملاء اتفتحلهم الشات ✓', 'success'); return; }
   waOpenChat(ci);
-  waSendImage(ci, 0);
 }
 
 function closeWaSender() { const m = document.getElementById('waSender'); if (m) m.remove(); }
@@ -3449,16 +3427,13 @@ function renderWaSender() {
   const shown = WA_LIST.map((c, i) => ({ c, i })).filter(x => !q || (x.c.name + ' ' + x.c.phone).toLowerCase().includes(q.toLowerCase()));
   document.getElementById('waRows').innerHTML = shown.map(({ c, i }) => {
     const s = st[c.phone] || '', num = _waNumber(c.phone);
-    const grand = +c.invoices.reduce((a, v) => a + _waTotal(v), 0).toFixed(2);
     const badge = s === 'sent' ? '<span class="wa-b ok">✓ اتبعت</span>' : s === 'opened' ? '<span class="wa-b mid">اتفتح</span>' : '';
-    const imgs = c.invoices.map((v, ii) => '<button class="wa-btn" onclick="waSendImage(' + i + ',' + ii + ')">🖼 صورة' + (c.invoices.length > 1 ? ' · ' + _mvEsc(v.vendorName) : '') + '</button>').join('');
+    const noLoc = c.location ? '' : '<span class="wa-b bad">مفيش لوكيشن</span>';
     return '<div class="wa-row' + (s === 'sent' ? ' done' : '') + '">' +
-      '<div class="wa-main"><div class="wa-name">' + _mvEsc(c.name || '—') + ' ' + badge + '</div>' +
-      '<div class="wa-sub"><span dir="ltr">' + _mvEsc(c.phone) + '</span> · ' + c.invoices.map(v => _mvEsc(v.vendorName) + ' #' + _mvEsc(v.no)).join(' + ') + '</div></div>' +
-      '<div class="wa-total">' + grand + ' <small>درهم</small></div>' +
+      '<div class="wa-main"><div class="wa-name">' + _mvEsc(c.name || '—') + ' ' + badge + ' ' + noLoc + '</div>' +
+      '<div class="wa-sub"><span dir="ltr">' + _mvEsc(c.phone) + '</span> · ' + c.orders.map(o => _mvEsc(o.vendorName) + ' (' + _waItemsLabel(_waItemCount(o.items)) + ')').join(' + ') + '</div></div>' +
       '<div class="wa-acts">' +
         (num ? '<button class="wa-btn go" onclick="waOpenChat(' + i + ')">💬 واتساب</button>' : '<span class="wa-b bad">رقم غير صحيح</span>') +
-        imgs +
         '<button class="wa-btn" onclick="waMark(' + i + ',\'' + (s === 'sent' ? '' : 'sent') + '\')">' + (s === 'sent' ? '↩︎ رجّعه' : '✓ تم') + '</button>' +
       '</div></div>';
   }).join('') || '<div style="text-align:center;color:rgba(255,255,255,.4);padding:2rem">مفيش نتائج</div>';
@@ -3470,15 +3445,18 @@ async function openWaSender() {
   const btn = document.getElementById('mv-wa-btn'), label = btn.textContent;
   btn.disabled = true; btn.textContent = '⏳ بجهّز القائمة...';
   try {
-    const res = await api('getVendorInvoices', { vendors: vendors.join(',') }, 90000);
-    if (!res.success) throw new Error(res.message || 'تعذر تحميل الفواتير');
-    const list = res.invoices || [];
-    if (!list.length) throw new Error('مفيش فواتير — اعملي التجميع الأول');
-    // one row per customer (a customer who ordered from two vendors gets ONE message with both invoices)
+    const res = await api('getOrderMessages', { vendors: vendors.join(',') }, 90000);
+    if (!res.success) throw new Error(/Unknown action/.test(res.message || '') ? 'الباك إند لسه ماتحدّثش — الصقي ملف HomiCart_Backend_ALL.txt الجديد في Apps Script واعملي Deploy.' : (res.message || 'تعذر تحميل الأوردرات'));
+    const list = res.orders || [];
+    if (!list.length) throw new Error('مفيش أوردرات في الدورة الحالية للتجار المختارين');
+    // one row per customer (an order in two stores → ONE message listing both)
     const byPhone = {};
-    list.forEach(inv => {
-      const key = _waNumber(inv.phone) || ('x' + inv.phone + '|' + inv.name);
-      (byPhone[key] = byPhone[key] || { name: inv.name, phone: inv.phone, invoices: [] }).invoices.push(inv);
+    list.forEach(o => {
+      const key = _waNumber(o.phone) || ('x' + o.phone + '|' + o.name);
+      const c = (byPhone[key] = byPhone[key] || { name: o.name, phone: o.phone, location: '', orders: [] });
+      c.orders.push(o);
+      if (!c.name && o.name) c.name = o.name;
+      if (!c.location && o.location) c.location = o.location;
     });
     WA_LIST = Object.values(byPhone);
     closeWaSender();
@@ -3497,8 +3475,6 @@ async function openWaSender() {
       '#waSender .wa-main{flex:1;min-width:180px}' +
       '#waSender .wa-name{font-weight:700;color:#fff;font-size:.92rem}' +
       '#waSender .wa-sub{font-size:.74rem;color:rgba(255,255,255,.5)}' +
-      '#waSender .wa-total{font-weight:800;color:#18bfef;font-size:1.05rem;min-width:70px;text-align:center}' +
-      '#waSender .wa-total small{font-size:.65rem;color:rgba(255,255,255,.45);font-weight:600}' +
       '#waSender .wa-acts{display:flex;flex-wrap:wrap;gap:.35rem}' +
       '#waSender .wa-btn{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;border-radius:8px;padding:.38rem .7rem;font-family:inherit;font-size:.78rem;font-weight:700;cursor:pointer}' +
       '#waSender .wa-btn.go{background:#25d366;border-color:#25d366;color:#04200f}' +
@@ -3509,13 +3485,12 @@ async function openWaSender() {
       '#waSender .wa-b.bad{background:rgba(239,68,68,.25);color:#ff9a9a}' +
       '</style>' +
       '<div class="wa-card">' +
-        '<div class="wa-top"><h3>📲 إرسال الفواتير للعملاء على واتساب</h3><span class="wa-count" id="waCount"></span>' +
+        '<div class="wa-top"><h3>📲 إرسال تفاصيل الطلب للعملاء على واتساب</h3><span class="wa-count" id="waCount"></span>' +
           '<input id="waSearch" placeholder="بحث بالاسم أو الرقم" oninput="renderWaSender()">' +
           '<button class="wa-btn go" onclick="waNext()">▶ التالي</button>' +
           '<button class="wa-btn" onclick="closeWaSender()">✕ إغلاق</button></div>' +
-        '<div class="wa-note">💬 <b>واتساب</b>: بيفتح الشات برسالة الفاتورة والإجمالي جاهزة — دوسي إرسال بس. ' +
-          '🖼 <b>صورة</b>: بتنسخ صورة الفاتورة، افتحي الشات واعملي Ctrl+V (من الموبايل بتتشارك مع الرسالة على طول). ' +
-          '✓ <b>تم</b> بتعلّم العميل إنه اتبعتله (الحالة بتتحفظ النهارده على الجهاز ده). ▶ <b>التالي</b> بيفتح أول عميل لسه ما اتفتحلوش.</div>' +
+        '<div class="wa-note">💬 <b>واتساب</b>: بيفتح الشات برسالة فيها تفاصيل الأوردر من كل متجر واللوكيشن المسجّل، وبتطلب من العميلة تتأكد منه — دوسي إرسال بس. ' +
+          '✓ <b>تم</b> بتعلّم العميلة إنها اتبعتلها (الحالة بتتحفظ النهارده على الجهاز ده). ▶ <b>التالي</b> بيفتح أول عميلة لسه ما اتفتحلهاش.</div>' +
         '<div id="waRows"></div></div>';
     document.body.appendChild(m);
     m.addEventListener('click', e => { if (e.target === m) closeWaSender(); });
@@ -3852,10 +3827,10 @@ function mvPrint(key) {
     <!-- WhatsApp: open each customer's chat with the invoice message ready -->
     <button id="mv-wa-btn" onclick="openWaSender()"
       style="width:100%;padding:11px;background:rgba(37,211,102,.12);color:#25d366;border:1.5px solid rgba(37,211,102,.5);border-radius:9px;cursor:pointer;font-size:13px;font-weight:800;font-family:'Cairo',sans-serif;margin-bottom:.4rem">
-      📲 إرسال الفواتير للعملاء على واتساب
+      📲 إرسال تفاصيل الطلب للعملاء على واتساب
     </button>
     <div style="font-size:.7rem;color:rgba(255,255,255,.35);margin-bottom:.8rem;text-align:center;line-height:1.6">
-      قائمة بكل عميل: ضغطة تفتح شات الواتس برسالة الفاتورة والإجمالي جاهزة، وضغطة تنسخ صورة الفاتورة
+      قائمة بكل عميل: ضغطة تفتح شات الواتس برسالة فيها تفاصيل الأوردر من كل متجر واللوكيشن جاهزة
     </div>
 
     <!-- Results -->
