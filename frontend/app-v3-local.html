@@ -2688,7 +2688,7 @@
           </label>
           <input type="tel" id="coWhatsapp" class="cust-input" placeholder="05XXXXXXXX"
             inputmode="numeric" maxlength="10" style="display:none"
-            oninput="this.value=this.value.replace(/\D/g,'').substring(0,10)" />
+            oninput="this.value=_normalizePhoneInput(this.value)" onkeydown="custBlockNonDigits(event)" onpaste="_phonePaste(event)" />
         </div>
         <div class="cust-field">
           <label class="cust-label">الإمارة <span class="req">*</span></label>
@@ -3465,7 +3465,10 @@
     if (!phone) return null;
     try {
       const sheet = SHEET_NAMES[folder] || folder;
-      const res = await _callScript('getOrdersByPhone', { phone, sheet }, 10000);
+      let res = null;
+      for (let attempt = 0; attempt < 2 && !(res && res.success !== false); attempt++) {
+        try { res = await _callScript('getOrdersByPhone', { phone, sheet }, 10000); } catch (e) { res = null; }
+      }
       if (!res || res.success === false) return null;
       // Whether an order counts depends on the cycle's phase/start — make sure
       // that answer has arrived before classifying (a slow reply used to make
@@ -3525,7 +3528,7 @@
   function _pgCancel() { _pgClose(null); }
   function _pgInput() {
     const el = document.getElementById('pgInput');
-    const clean = (el.value || '').replace(/\D/g, '').substring(0, 10);
+    const clean = _normalizePhoneInput(el.value);
     if (el.value !== clean) el.value = clean;
     const hint = document.getElementById('pgHint');
     const ok = _isCustPhoneValid(clean);
@@ -3536,11 +3539,7 @@
     else if (clean.length === 10) { hint.textContent = '❌ رقم غير صحيح — لازم يبدأ بـ 05'; hint.style.color = '#ff6b6b'; }
     else { hint.textContent = clean.length + ' / 10 رقم'; hint.style.color = 'rgba(255,255,255,.4)'; }
   }
-  function _pgPaste(e) {
-    e.preventDefault();
-    document.getElementById('pgInput').value = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').substring(0, 10);
-    _pgInput();
-  }
+  function _pgPaste(e) { _phonePaste(e); }
   function _pgNext() {
     const v = document.getElementById('pgInput').value;
     if (!_isCustPhoneValid(v)) return;
@@ -3724,21 +3723,22 @@
     window._batchPhase = null;
     window._batchNextStart = null;
     const windowP = updateCountdownForStore(folder);
+    // A returning customer who already has an order in this cycle must not be
+    // offered a blank menu (that is how a second order — and a second
+    // delivery fee — got placed). Her orders are looked up IN PARALLEL with the
+    // window check, while the menu loads behind the loading screen.
+    const activeP = _fetchActiveOrdersFor(folder, windowP);
     await Promise.race([windowP, new Promise(r => setTimeout(r, 2500))]);
 
     window._guestFlow = true;
     window._editingOrderId = null;
-    // A returning customer who already has an order in this cycle must not be
-    // offered a blank menu (that is how a second order — and a second
-    // delivery fee — got placed): look their orders up while the menu loads.
-    const activeP = _fetchActiveOrdersFor(folder, windowP);
     await selectStore(folder, name, tag);
     await new Promise(r => setTimeout(r, 150));
-    // While collection is open a slow lookup just lets her carry on (checkout
-    // re-checks). While it is CLOSED the only useful thing here is her order,
-    // so give the lookup all the time it needs.
     await Promise.race([windowP, new Promise(r => setTimeout(r, 6000))]);
-    const waitMs = isOrderWindowOpen() ? 4000 : 14000;
+    // Wait for the answer rather than guessing "no order" after 4 s (the sheet is
+    // sometimes slow, and she then never saw her order). Open: up to 9 s; closed
+    // (her order is all that is useful here): up to 20 s. Checkout re-checks anyway.
+    const waitMs = isOrderWindowOpen() ? 9000 : 20000;
     const active = await Promise.race([activeP, new Promise(r => setTimeout(() => r(null), waitMs))]);
     if (active && active.length) {
       window._guestFlow = false;
@@ -3939,12 +3939,7 @@
     document.getElementById('coWhatsapp').style.display = same ? 'none' : '';
   }
 
-  function coHandlePaste(e) {
-    e.preventDefault();
-    const digits = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').substring(0, 10);
-    e.target.value = digits;
-    onCoPhoneInput();
-  }
+  function coHandlePaste(e) { _phonePaste(e); }
 
   // Fill the form from stored details (or blank for a new number) and show
   // it with the map: saved pin if there is one, otherwise ask for GPS.
@@ -4118,7 +4113,7 @@
 
   function onCoPhoneInput() {
     const el    = document.getElementById('coPhone');
-    const clean = (el.value || '').replace(/\D/g, '').substring(0, 10);
+    const clean = _normalizePhoneInput(el.value);
     if (el.value !== clean) el.value = clean;
     const hint   = document.getElementById('coPhoneHint');
     const statEl = document.getElementById('coLookupStatus');
@@ -4610,7 +4605,7 @@
   // ── WhatsApp input filled → reveal rest of form ─────────
   function onWhatsappInput() {
     const inputEl = document.getElementById('custWhatsapp');
-    const clean   = (inputEl.value || '').replace(/\D/g, '').substring(0, 10);
+    const clean   = _normalizePhoneInput(inputEl.value);
     if (inputEl.value !== clean) inputEl.value = clean;
 
     const hintEl = document.getElementById('custWaHint');
@@ -4645,22 +4640,38 @@
   let _lookupTimer2 = null;
   // ── Helpers: block non-digits + paste strip ──────────────────
   function custBlockNonDigits(e) {
-    const allow = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter','Home','End'];
-    if (!allow.includes(e.key) && !/^\d$/.test(e.key)) e.preventDefault();
+    if (e.ctrlKey || e.metaKey || e.altKey) return;   // Ctrl+V / Ctrl+C / Ctrl+A … must keep working (paste was blocked here)
+    const allow = ['Backspace','Delete','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Tab','Enter','Home','End','Escape'];
+    if (!allow.includes(e.key) && !/^[\d٠-٩۰-۹]$/.test(e.key)) e.preventDefault();
   }
-  function custHandlePaste(e) {
+
+  // Whatever the customer types or pastes → a local 05XXXXXXXX number when possible:
+  // Arabic digits, spaces / dashes / brackets, +971 / 00971 / 971 prefixes, a missing leading 0.
+  function _normalizePhoneInput(raw) {
+    let t = String(raw == null ? '' : raw)
+      .replace(/[٠-٩]/g, x => String('٠١٢٣٤٥٦٧٨٩'.indexOf(x)))
+      .replace(/[۰-۹]/g, x => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(x)));
+    let d = t.replace(/\D/g, '');
+    if (d.startsWith('00971')) d = d.slice(5);
+    else if (d.startsWith('971')) d = d.slice(3);
+    if (/^5\d{8}$/.test(d)) d = '0' + d;
+    return d.substring(0, 10);
+  }
+
+  // Paste into any phone box: clean the text, then let that box's own input handler react.
+  function _phonePaste(e) {
     e.preventDefault();
-    const digits = (e.clipboardData || window.clipboardData).getData('text')
-                   .replace(/\D/g, '').substring(0, 10);
-    e.target.value = digits;
-    onPhoneInput();
+    const el = e.target;
+    el.value = _normalizePhoneInput((e.clipboardData || window.clipboardData).getData('text'));
+    el.dispatchEvent(new Event('input', { bubbles: true }));
   }
+  function custHandlePaste(e) { _phonePaste(e); }
   function _isCustPhoneValid(v) { return /^05\d{8}$/.test(v); }
 
   function onPhoneInput() {
     const rawEl  = document.getElementById('custPhone');
     // Strip any non-digit that slipped through
-    const clean  = (rawEl.value || '').replace(/\D/g, '').substring(0, 10);
+    const clean  = _normalizePhoneInput(rawEl.value);
     if (rawEl.value !== clean) rawEl.value = clean;
 
     const phone    = clean;
