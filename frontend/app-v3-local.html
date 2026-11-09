@@ -2489,7 +2489,7 @@
             <div id="editLocStatus" class="cust-loc-status detecting">
               <i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد الموقع...
             </div>
-            <button class="btn-retry-loc" onclick="retryEditLocation()">
+            <button class="btn-retry-loc" id="editRetryGps" onclick="retryEditLocation()">
               <i class="fas fa-crosshairs"></i>&nbsp;إعادة تحديد GPS
             </button>
           </div>
@@ -2716,7 +2716,7 @@
           <div id="coLocStatus" class="cust-loc-status detecting">
             <i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد الموقع...
           </div>
-          <button type="button" class="btn-retry-loc" onclick="_coRequestGPS()">
+          <button type="button" class="btn-retry-loc" id="coRetryGps" onclick="_coRequestGPS()">
             <i class="fas fa-crosshairs"></i>&nbsp;إعادة تحديد GPS
           </button>
         </div>
@@ -3566,6 +3566,7 @@
     _primeCustomer(phone);
   }
   function _primeCustomer(phone) {
+    window._primedFor = phone;
     const p = (async () => {
       try {
         const res = await _callScript('getCustomer', { phone }, 15000);
@@ -3709,6 +3710,10 @@
       if (!ph) return; // closed the box → stay on the stores list
       _applyPhone(ph);
     }
+    // Take the customer's details — above all her saved location — from the
+    // sheet once per visit, so a stale copy on this device (or a location the
+    // admin typed into the sheet) is never what gets used.
+    { const ph = _getSavedPhone(); if (ph && window._primedFor !== ph) _primeCustomer(ph); }
     window._pendingStore = { folder, name, tag };
     window._returnToCart = false;
     window._guestFlow    = false;
@@ -3839,7 +3844,7 @@
     el.innerHTML = html;
   }
 
-  function _coInitMap(lat, lng, confirmed) {
+  function _coInitMap(lat, lng, confirmed, locked) {
     if (!window.L) return;
     if (_coMap) { _coMap.remove(); _coMap = null; _coMarker = null; }
     _coMap = L.map('coMap', { zoomControl: true }).setView([lat, lng], confirmed ? 16 : 14);
@@ -3847,21 +3852,27 @@
       attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
       maxZoom: 19
     }).addTo(_coMap);
-    _coMarker = L.marker([lat, lng], { draggable: true }).addTo(_coMap);
+    _coMarker = L.marker([lat, lng], { draggable: !locked }).addTo(_coMap);
     window._coLoc = { lat, lng };
     window._coLocConfirmed = !!confirmed;
+    // A saved location is fixed: no dragging, no tapping the map, no GPS button
+    const retry = document.getElementById('coRetryGps');
+    if (retry) retry.style.display = locked ? 'none' : '';
     const moved = p => {
       window._coLoc = { lat: p.lat, lng: p.lng };
       window._coLocConfirmed = true;
       _coSetLocStatus('manual', '<i class="fas fa-map-marker-alt"></i>&nbsp;موقع مخصص — يمكنك ضبط الدبوس بدقة أكبر');
     };
-    _coMarker.on('dragend', e => moved(e.target.getLatLng()));
-    _coMap.on('click', e => { _coMarker.setLatLng(e.latlng); moved(e.latlng); });
+    if (!locked) {
+      _coMarker.on('dragend', e => moved(e.target.getLatLng()));
+      _coMap.on('click', e => { _coMarker.setLatLng(e.latlng); moved(e.latlng); });
+    }
     // the map is built inside a section that only just became visible
     [100, 400].forEach(ms => setTimeout(() => { if (_coMap) _coMap.invalidateSize(true); }, ms));
   }
 
   function _coRequestGPS() {
+    if (window._coLoc && window._coLocConfirmed && _coMarker && _coMarker.dragging && !_coMarker.dragging.enabled()) return; // saved pin is locked
     _coSetLocStatus('detecting', '<i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد موقعك تلقائياً...');
     if (!navigator.geolocation) {
       _coSetLocStatus('failed', '<i class="fas fa-exclamation-triangle"></i>&nbsp;المتصفح لا يدعم GPS — اضغط على الخريطة أو حرك الدبوس لتحديد موقعك');
@@ -3907,8 +3918,8 @@
     const loc = window._coLoc;
     requestAnimationFrame(() => setTimeout(() => {
       if (!loc) { _coInitMap(_UAE_CENTER[0], _UAE_CENTER[1], false); _coRequestGPS(); return; }
-      _coInitMap(loc.lat, loc.lng, true);
-      _coSetLocStatus('success', '<i class="fas fa-check-circle"></i>&nbsp;الموقع المحفوظ — اسحب الدبوس لو عايز تعدله');
+      _coInitMap(loc.lat, loc.lng, true, true);
+      _coSetLocStatus('success', '<i class="fas fa-lock"></i>&nbsp;موقعك محفوظ ومثبّت — مش بيتغير لو فتحت الموقع من مكان تاني. لو عايز تغيّره كلمنا');
     }, 60));
   }
 
@@ -3961,8 +3972,8 @@
     _coShowFields(true);
     requestAnimationFrame(() => setTimeout(() => {
       if (hasLoc) {
-        _coInitMap(lat, lng, true);
-        _coSetLocStatus('success', '<i class="fas fa-check-circle"></i>&nbsp;الموقع المحفوظ — اسحب الدبوس لو عايز تعدله');
+        _coInitMap(lat, lng, true, true);
+        _coSetLocStatus('success', '<i class="fas fa-lock"></i>&nbsp;موقعك محفوظ ومثبّت — مش بيتغير لو فتحت الموقع من مكان تاني. لو عايز تغيّره كلمنا');
       } else {
         _coInitMap(_UAE_CENTER[0], _UAE_CENTER[1], false);
         _coRequestGPS();
@@ -4053,7 +4064,7 @@
     {
       const hasAll = x => !!(x.name && x.area && x.address && !isNaN(parseFloat(x.latitude)) && !isNaN(parseFloat(x.longitude)));
       const pr = window._custPrime;
-      if (!hasAll(saved) && pr && pr.phone === saved.phone && !pr.done) {
+      if (pr && pr.phone === saved.phone && !pr.done) {
         document.getElementById('coOrders').innerHTML = '<div class="co-existing-msg" style="opacity:.7">⏳ بنجيب بياناتك...</div>';
         await Promise.race([pr.promise, new Promise(r => setTimeout(r, 5000))]);
         document.getElementById('coOrders').innerHTML = '';
@@ -4257,6 +4268,7 @@
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>&nbsp;جاري الحفظ...';
     let customerId = window._coCustomerId || '';
+    let keptLoc = null; // the pin the server kept (a saved pin is never replaced)
     try {
       if (!unchanged) {
         const res = await _callScript('createOrUpdateCustomer', {
@@ -4268,6 +4280,9 @@
         });
         if (!res.success) throw new Error(res.message || 'خطأ في الحفظ');
         customerId = res.customerId || customerId;
+        if (res.latitude && res.longitude && !isNaN(parseFloat(res.latitude)) && !isNaN(parseFloat(res.longitude))) {
+          keptLoc = { lat: parseFloat(res.latitude), lng: parseFloat(res.longitude) };
+        }
       }
     } catch(e) {
       btn.disabled = false; btn.innerHTML = prevLabel;
@@ -4277,7 +4292,7 @@
 
     _coPersist({
       phone, name, area, address, whatsapp, customerId,
-      latitude: loc.lat, longitude: loc.lng,
+      latitude: (keptLoc || loc).lat, longitude: (keptLoc || loc).lng,
     }, document.getElementById('coRemember').checked);
 
     // Hand over to the normal submit. Stay on THIS page while it runs (the
@@ -4395,7 +4410,7 @@
   let _editMarker = null;
   window._editLocation = null;
 
-  function _initEditMap(lat, lng, moveOnly) {
+  function _initEditMap(lat, lng, moveOnly, locked) {
     if (!window.L) return;
     if (_editMap && moveOnly) {
       _editMap.setView([lat, lng], 16);
@@ -4409,18 +4424,23 @@
       attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
       maxZoom: 19
     }).addTo(_editMap);
-    _editMarker = L.marker([lat, lng], { draggable: true }).addTo(_editMap);
+    _editMarker = L.marker([lat, lng], { draggable: !locked }).addTo(_editMap);
     window._editLocation = { lat, lng };
-    _editMarker.on('dragend', e => {
-      const p = e.target.getLatLng();
-      window._editLocation = { lat: p.lat, lng: p.lng };
-      _setEditLocStatus('manual', '<i class="fas fa-map-marker-alt"></i>&nbsp;موقع مخصص — يمكنك ضبط الدبوس');
-    });
-    _editMap.on('click', e => {
-      _editMarker.setLatLng(e.latlng);
-      window._editLocation = { lat: e.latlng.lat, lng: e.latlng.lng };
-      _setEditLocStatus('manual', '<i class="fas fa-map-marker-alt"></i>&nbsp;موقع مخصص — يمكنك ضبط الدبوس');
-    });
+    window._editLocked = !!locked;
+    const retryBtn = document.getElementById('editRetryGps');
+    if (retryBtn) retryBtn.style.display = locked ? 'none' : '';
+    if (!locked) {
+      _editMarker.on('dragend', e => {
+        const p = e.target.getLatLng();
+        window._editLocation = { lat: p.lat, lng: p.lng };
+        _setEditLocStatus('manual', '<i class="fas fa-map-marker-alt"></i>&nbsp;موقع مخصص — يمكنك ضبط الدبوس');
+      });
+      _editMap.on('click', e => {
+        _editMarker.setLatLng(e.latlng);
+        window._editLocation = { lat: e.latlng.lat, lng: e.latlng.lng };
+        _setEditLocStatus('manual', '<i class="fas fa-map-marker-alt"></i>&nbsp;موقع مخصص — يمكنك ضبط الدبوس');
+      });
+    }
     _editMap.invalidateSize();
   }
 
@@ -4433,6 +4453,7 @@
   }
 
   function _requestEditGPS() {
+    if (window._editLocked) return; // a saved location never changes by itself
     _setEditLocStatus('detecting', '<i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد موقعك...');
     if (!navigator.geolocation) {
       _setEditLocStatus('failed', '<i class="fas fa-exclamation-triangle"></i>&nbsp;GPS غير متاح — حرك الدبوس يدوياً');
@@ -4471,13 +4492,13 @@
       setTimeout(() => {
         const lat = parseFloat(c.latitude)  || _UAE_CENTER[0];
         const lng = parseFloat(c.longitude) || _UAE_CENTER[1];
-        _initEditMap(lat, lng, false);
+        _initEditMap(lat, lng, false, !!(c.latitude && c.longitude));
         // Force Leaflet to recalculate tile sizes after layout
         setTimeout(() => { if (_editMap) _editMap.invalidateSize(true); }, 100);
         setTimeout(() => { if (_editMap) _editMap.invalidateSize(true); }, 400);
         // If no saved location, request GPS
         if (!c.latitude || !c.longitude) _requestEditGPS();
-        else _setEditLocStatus('success', '<i class="fas fa-check-circle"></i>&nbsp;الموقع المحفوظ — يمكنك تعديله بسحب الدبوس');
+        else _setEditLocStatus('success', '<i class="fas fa-lock"></i>&nbsp;موقعك محفوظ ومثبّت — مش بيتغير لو فتحت الموقع من مكان تاني. لو عايز تغيّره كلمنا');
       }, 50);
     }));
 
@@ -4526,6 +4547,8 @@
         userTimezone: 'Asia/Dubai',
       });
       if (!result.success) throw new Error(result.message);
+      // the server keeps a saved pin as it is — mirror what it kept, not what was sent
+      const kept = (result.latitude && result.longitude) ? { lat: parseFloat(result.latitude), lng: parseFloat(result.longitude) } : loc;
 
       // Update info card display
       document.getElementById('eciName').textContent     = name;
@@ -4538,13 +4561,13 @@
       _persistSavedCustomer({
         ...saved, phone, name, area, address,
         whatsapp : whatsapp || phone,
-        latitude : loc?.lat || '',
-        longitude: loc?.lng || '',
+        latitude : kept?.lat || '',
+        longitude: kept?.lng || '',
       });
 
       // Update stored customer object
       if (window._existingCustomer) {
-        window._existingCustomer = { ...window._existingCustomer, name, area, address, whatsapp: whatsapp || phone, latitude: loc?.lat || '', longitude: loc?.lng || '' };
+        window._existingCustomer = { ...window._existingCustomer, name, area, address, whatsapp: whatsapp || phone, latitude: kept?.lat || '', longitude: kept?.lng || '' };
       }
 
       // Hide edit form + destroy edit map
