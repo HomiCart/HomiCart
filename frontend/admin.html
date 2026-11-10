@@ -3063,10 +3063,13 @@ async function runMultiVendorPipeline() {
   }, 1400);
 
   try {
+    var startNoEl = document.getElementById('mv-startno');
+    var startNo = Math.max(1, parseInt(startNoEl && startNoEl.value, 10) || 1);
     var data = await api('processMultiVendorFull', {
       vendors: checked.join(','),
       lat: lat,
-      lng: lng
+      lng: lng,
+      startNo: startNo
     }, 180000);
 
     clearInterval(tick);
@@ -3629,6 +3632,19 @@ function mvPrint(key) {
           style="padding:8px 13px;background:#17a2b8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;align-self:flex-end">
           📱 موقعي
         </button>
+      </div>
+    </div>
+
+    <!-- Step 3: where the delivery numbering starts -->
+    <div style="margin-bottom:1.2rem">
+      <div style="font-size:.8rem;color:rgba(255,255,255,.55);font-weight:700;margin-bottom:.6rem">
+        <i class="fas fa-hashtag" style="color:#f59e0b;margin-left:.4rem"></i>
+        يبدأ ترقيم التوصيل من رقم
+      </div>
+      <input type="number" id="mv-startno" min="1" step="1" value="1" placeholder="1"
+        style="width:140px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;color:#fff;font-size:13px;outline:none;box-sizing:border-box">
+      <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:.4rem;line-height:1.7">
+        مثلاً اكتبي 21 لو الأرقام 1–20 اتسلّموا: التجميع بياخد كل أوردرات "جاري التحضير" من كل الدورات، ويرقّمهم ورا بعض (عميل واحد = رقم واحد) بادئ من الرقم ده.
       </div>
     </div>
 
