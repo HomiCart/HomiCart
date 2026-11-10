@@ -2012,8 +2012,8 @@ function renderOrdersTable(storeKey, orders) {
       </thead>
       <tbody>
         ${orders.map(o => `
-          <tr${o.flag ? ' style="background:#d500f9;color:#fff;font-weight:700" title="🚩 رقم مميز"' : ''}>
-            <td class="td-id">${o.flag ? '🚩 ' : ''}${o.id||'—'}</td>
+          <tr${o.flag ? ' style="background:#d500f9;color:#fff;font-weight:700" title="🚫 رقم للحظر من الطلب"' : ''}>
+            <td class="td-id">${o.flag ? '🚫 ' : ''}${o.id||'—'}</td>
             <td>${o.name||'—'}</td>
             <td style="font-family:monospace;font-size:.8rem">${o.phone||'—'}</td>
             <td class="td-items" title="${o.items||''}">${o.items||'—'}</td>
