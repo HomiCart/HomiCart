@@ -832,7 +832,7 @@
     }
     /* Map */
     #custMap, #editMap, #coMap {
-      height: 240px; border-radius: 12px;
+      height: 320px; border-radius: 12px;
       border: 1.5px solid rgba(255,255,255,.1);
       overflow: hidden; position: relative; z-index: 0;
     }
@@ -846,6 +846,8 @@
     .cust-loc-status.success   { background: rgba(24,191,239,.08); color: #18bfef; }
     .cust-loc-status.failed    { background: rgba(255,100,100,.07); color: #ff8080; }
     .cust-loc-status.manual    { background: rgba(255,200,50,.06); color: #f5c842; }
+    .loc-tip { margin-top:.4rem; padding:.45rem .65rem; border-radius:8px; background:rgba(24,191,239,.07); color:rgba(255,255,255,.75); font-size:.8rem; line-height:1.6; }
+    .leaflet-control-layers { font-family: inherit; direction: rtl; font-size:.8rem; }
     .btn-retry-loc {
       background: transparent;
       border: 1px solid rgba(24,191,239,.3); border-radius: 8px;
@@ -2489,6 +2491,7 @@
             <div id="editLocStatus" class="cust-loc-status detecting">
               <i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد الموقع...
             </div>
+          <div class="loc-tip" id="editTip">💡 اتأكدي إن الدبوس فوق <b>مدخل بنايتك أو فيلتك</b> بالظبط. دوسي <b>«🛰 صورة جوية»</b> فوق الخريطة وكبّري عشان تشوفي بيتك.</div>
             <button class="btn-retry-loc" id="editRetryGps" onclick="retryEditLocation()">
               <i class="fas fa-crosshairs"></i>&nbsp;إعادة تحديد GPS
             </button>
@@ -2587,6 +2590,7 @@
           <div id="custLocStatus" class="cust-loc-status detecting">
             <i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد الموقع...
           </div>
+          <div class="loc-tip" id="custTip">💡 اتأكدي إن الدبوس فوق <b>مدخل بنايتك أو فيلتك</b> بالظبط. دوسي <b>«🛰 صورة جوية»</b> فوق الخريطة وكبّري عشان تشوفي بيتك.</div>
           <button class="btn-retry-loc" onclick="retryLocation()">
             <i class="fas fa-crosshairs"></i>&nbsp;إعادة تحديد GPS
           </button>
@@ -2716,6 +2720,7 @@
           <div id="coLocStatus" class="cust-loc-status detecting">
             <i class="fas fa-spinner fa-spin"></i>&nbsp;جاري تحديد الموقع...
           </div>
+          <div class="loc-tip" id="coTip">💡 اتأكدي إن الدبوس فوق <b>مدخل بنايتك أو فيلتك</b> بالظبط. دوسي <b>«🛰 صورة جوية»</b> فوق الخريطة وكبّري عشان تشوفي بيتك.</div>
           <button type="button" class="btn-retry-loc" id="coRetryGps" onclick="_coRequestGPS()">
             <i class="fas fa-crosshairs"></i>&nbsp;إعادة تحديد GPS
           </button>
@@ -3379,6 +3384,47 @@
   window._custLocation = null;
 
   const _UAE_CENTER = [24.4539, 54.3773]; // UAE default center
+  // The map opens on this point. A pin still sitting exactly here was never placed by the
+  // customer — it must not count as her location.
+  function _isDefaultPin(lat, lng) {
+    lat = parseFloat(lat); lng = parseFloat(lng);
+    return !isNaN(lat) && !isNaN(lng) && Math.abs(lat - _UAE_CENTER[0]) < 0.0008 && Math.abs(lng - _UAE_CENTER[1]) < 0.0008;
+  }
+  // Street map + satellite photo (a customer can find her own building on the photo)
+  function _addBaseLayers(map) {
+    const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>', maxZoom: 19 });
+    const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles © Esri', maxZoom: 19 });
+    street.addTo(map);
+    L.control.layers({ 'خريطة': street, '🛰 صورة جوية': sat }, null, { position: 'topright', collapsed: false }).addTo(map);
+  }
+  // Blue circle = how sure the phone is about where it is
+  function _showAcc(map, fix) {
+    if (!map || !window.L) return;
+    if (map._acc) { map.removeLayer(map._acc); map._acc = null; }
+    map._acc = L.circle([fix.lat, fix.lng], { radius: Math.min(Math.max(fix.acc, 5), 3000), color: '#18bfef', weight: 1, fillOpacity: .12, interactive: false }).addTo(map);
+  }
+  function _clearAcc(map) { if (map && map._acc) { map.removeLayer(map._acc); map._acc = null; } }
+  // A single GPS reading is often a rough Wi-Fi/cell guess. Listen for up to 10 s and keep the BEST one.
+  function _geoBest(onDone, onFail) {
+    let best = null, finished = false, wid = null, timer = null;
+    const finish = () => {
+      if (finished) return; finished = true;
+      try { if (wid != null) navigator.geolocation.clearWatch(wid); } catch (_) {}
+      clearTimeout(timer);
+      best ? onDone(best) : onFail();
+    };
+    wid = navigator.geolocation.watchPosition(pos => {
+      const c = pos.coords;
+      if (!best || c.accuracy < best.acc) best = { lat: c.latitude, lng: c.longitude, acc: Math.round(c.accuracy || 0) };
+      if (best.acc <= 25) finish();
+    }, () => finish(), { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+    timer = setTimeout(finish, 10000);
+  }
+  const _GPS_OK_M = 100;      // worse than this → not trusted, she must place the pin herself
+  const _gpsOkHtml  = acc => '<i class="fas fa-check-circle"></i>&nbsp;تم تحديد الموقع ✓ (دقة حوالي ' + acc + ' م) — اتأكدي إن الدبوس فوق بنايتك وحرّكيه لو محتاج';
+  const _gpsWeakHtml = acc => '<i class="fas fa-exclamation-triangle"></i>&nbsp;دقة الـ GPS ضعيفة (حوالي ' + acc + ' م) — <b>حرّكي الدبوس أو دوسي على الخريطة على مدخل بنايتك بالظبط</b> (مطلوب)';
 
   // ── Helper: show/hide a step section ───────────────────
   function _showStep(id, visible) {
@@ -3856,17 +3902,17 @@
     if (!window.L) return;
     if (_coMap) { _coMap.remove(); _coMap = null; _coMarker = null; }
     _coMap = L.map('coMap', { zoomControl: true }).setView([lat, lng], confirmed ? 16 : 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
-      maxZoom: 19
-    }).addTo(_coMap);
+    _addBaseLayers(_coMap);
     _coMarker = L.marker([lat, lng], { draggable: !locked }).addTo(_coMap);
     window._coLoc = { lat, lng };
     window._coLocConfirmed = !!confirmed;
     // A saved location is fixed: no dragging, no tapping the map, no GPS button
     const retry = document.getElementById('coRetryGps');
     if (retry) retry.style.display = locked ? 'none' : '';
+    const tip = document.getElementById('coTip');
+    if (tip) tip.style.display = locked ? 'none' : '';
     const moved = p => {
+      _clearAcc(_coMap);
       window._coLoc = { lat: p.lat, lng: p.lng };
       window._coLocConfirmed = true;
       _coSetLocStatus('manual', '<i class="fas fa-map-marker-alt"></i>&nbsp;موقع مخصص — يمكنك ضبط الدبوس بدقة أكبر');
@@ -3886,21 +3932,22 @@
       _coSetLocStatus('failed', '<i class="fas fa-exclamation-triangle"></i>&nbsp;المتصفح لا يدعم GPS — اضغط على الخريطة أو حرك الدبوس لتحديد موقعك');
       return;
     }
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const { latitude: lat, longitude: lng } = pos.coords;
+    _geoBest(
+      fix => {
+        const good = fix.acc <= _GPS_OK_M;
         if (_coMap && _coMarker) {
-          _coMarker.setLatLng([lat, lng]);
-          _coMap.setView([lat, lng], 16);
-          window._coLoc = { lat, lng };
-          window._coLocConfirmed = true;
+          _coMarker.setLatLng([fix.lat, fix.lng]);
+          _coMap.setView([fix.lat, fix.lng], good ? 17 : 15);
+          window._coLoc = { lat: fix.lat, lng: fix.lng };
         } else {
-          _coInitMap(lat, lng, true);
+          _coInitMap(fix.lat, fix.lng, good);
         }
-        _coSetLocStatus('success', '<i class="fas fa-check-circle"></i>&nbsp;تم تحديد الموقع ✓ — يمكنك سحب الدبوس لضبطه');
+        window._coLocConfirmed = good;           // a rough fix does not count until she places the pin herself
+        _showAcc(_coMap, fix);
+        if (!good && _coMap && _coMap._acc) _coMap.fitBounds(_coMap._acc.getBounds(), { maxZoom: 17 });
+        _coSetLocStatus(good ? 'success' : 'failed', good ? _gpsOkHtml(fix.acc) : _gpsWeakHtml(fix.acc));
       },
-      () => _coSetLocStatus('failed', '<i class="fas fa-exclamation-triangle"></i>&nbsp;لم يتم تحديد GPS — اضغط على الخريطة أو حرك الدبوس لتحديد موقعك (مطلوب)'),
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      () => _coSetLocStatus('failed', '<i class="fas fa-exclamation-triangle"></i>&nbsp;لم يتم تحديد GPS — اضغط على الخريطة أو حرك الدبوس لتحديد موقعك (مطلوب)')
     );
   }
 
@@ -3965,7 +4012,7 @@
     document.getElementById('coAddress').value = c.address || '';
 
     const lat = parseFloat(c.latitude), lng = parseFloat(c.longitude);
-    const hasLoc = !isNaN(lat) && !isNaN(lng);
+    const hasLoc = !isNaN(lat) && !isNaN(lng) && !_isDefaultPin(lat, lng);
     if (quiet && hasLoc) {
       // summary mode: fields stay filled but hidden, the saved pin counts as confirmed
       window._coLoc = { lat, lng };
@@ -4239,6 +4286,8 @@
     if (!address)                      return fail('العنوان التفصيلي مطلوب', 'coAddress');
     if (!window._coLocConfirmed || !window._coLoc)
       return fail('لازم تحدد موقعك على الخريطة — اسمح بالـ GPS أو اضغط على الخريطة / حرّك الدبوس');
+    if (_isDefaultPin(window._coLoc.lat, window._coLoc.lng))
+      return fail('الدبوس لسه على نقطة الخريطة الأساسية — حرّكيه لمدخل بنايتك بالظبط');
     errEl.textContent = '';
 
     // Last look before placing: has this phone got an order in the meantime
@@ -4350,16 +4399,14 @@
     if (_custMap) { _custMap.remove(); _custMap = null; _custMarker = null; }
 
     _custMap = L.map('custMap', { zoomControl: true }).setView([lat, lng], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
-      maxZoom: 19
-    }).addTo(_custMap);
+    _addBaseLayers(_custMap);
 
     _custMarker = L.marker([lat, lng], { draggable: true }).addTo(_custMap);
     window._custLocation = { lat, lng };
 
     // Drag pin → update location
     _custMarker.on('dragend', function(e) {
+      _clearAcc(_custMap);
       const p = e.target.getLatLng();
       window._custLocation = { lat: p.lat, lng: p.lng };
       setLocStatus('manual', '<i class="fas fa-map-marker-alt"></i>&nbsp;موقع مخصص — يمكنك ضبط الدبوس بدقة أكبر');
@@ -4367,6 +4414,7 @@
 
     // Click map → move pin
     _custMap.on('click', function(e) {
+      _clearAcc(_custMap);
       _custMarker.setLatLng(e.latlng);
       window._custLocation = { lat: e.latlng.lat, lng: e.latlng.lng };
       setLocStatus('manual', '<i class="fas fa-map-marker-alt"></i>&nbsp;موقع مخصص — يمكنك ضبط الدبوس بدقة أكبر');
@@ -4382,17 +4430,19 @@
       setLocStatus('failed', '<i class="fas fa-exclamation-triangle"></i>&nbsp;المتصفح لا يدعم GPS — حرك الدبوس لتحديد موقعك');
       return;
     }
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        window._custLocation = { lat, lng };
-        initLeafletMap(lat, lng, !!_custMap);
-        setLocStatus('success', '<i class="fas fa-check-circle"></i>&nbsp;تم تحديد الموقع ✓ — يمكنك سحب الدبوس لضبطه');
+    _geoBest(
+      fix => {
+        const good = fix.acc <= _GPS_OK_M;
+        window._custLocation = { lat: fix.lat, lng: fix.lng };
+        initLeafletMap(fix.lat, fix.lng, !!_custMap);
+        _showAcc(_custMap, fix);
+        if (!good && _custMap && _custMap._acc) _custMap.fitBounds(_custMap._acc.getBounds(), { maxZoom: 17 });
+        setLocStatus(good ? 'success' : 'failed', good ? _gpsOkHtml(fix.acc) : _gpsWeakHtml(fix.acc));
+        window._custLocConfirmed = good;
       },
       () => {
         setLocStatus('failed', '<i class="fas fa-exclamation-triangle"></i>&nbsp;لم يتم تحديد GPS — حرك الدبوس أو انقر على الخريطة لتحديد موقعك');
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      }
     );
   }
 
@@ -4423,22 +4473,23 @@
     }
     if (_editMap) { _editMap.remove(); _editMap = null; _editMarker = null; }
     _editMap = L.map('editMap', { zoomControl: true }).setView([lat, lng], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
-      maxZoom: 19
-    }).addTo(_editMap);
+    _addBaseLayers(_editMap);
     _editMarker = L.marker([lat, lng], { draggable: !locked }).addTo(_editMap);
     window._editLocation = { lat, lng };
     window._editLocked = !!locked;
     const retryBtn = document.getElementById('editRetryGps');
     if (retryBtn) retryBtn.style.display = locked ? 'none' : '';
+    const etip = document.getElementById('editTip');
+    if (etip) etip.style.display = locked ? 'none' : '';
     if (!locked) {
       _editMarker.on('dragend', e => {
+        _clearAcc(_editMap);
         const p = e.target.getLatLng();
         window._editLocation = { lat: p.lat, lng: p.lng };
         _setEditLocStatus('manual', '<i class="fas fa-map-marker-alt"></i>&nbsp;موقع مخصص — يمكنك ضبط الدبوس');
       });
       _editMap.on('click', e => {
+        _clearAcc(_editMap);
         _editMarker.setLatLng(e.latlng);
         window._editLocation = { lat: e.latlng.lat, lng: e.latlng.lng };
         _setEditLocStatus('manual', '<i class="fas fa-map-marker-alt"></i>&nbsp;موقع مخصص — يمكنك ضبط الدبوس');
@@ -4462,15 +4513,17 @@
       _setEditLocStatus('failed', '<i class="fas fa-exclamation-triangle"></i>&nbsp;GPS غير متاح — حرك الدبوس يدوياً');
       return;
     }
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        window._editLocation = { lat, lng };
-        _initEditMap(lat, lng, !!_editMap);
-        _setEditLocStatus('success', '<i class="fas fa-check-circle"></i>&nbsp;تم تحديد الموقع ✓ — يمكنك سحب الدبوس لضبطه');
+    _geoBest(
+      fix => {
+        const good = fix.acc <= _GPS_OK_M;
+        window._editLocation = { lat: fix.lat, lng: fix.lng };
+        _initEditMap(fix.lat, fix.lng, !!_editMap);
+        _showAcc(_editMap, fix);
+        if (!good && _editMap && _editMap._acc) _editMap.fitBounds(_editMap._acc.getBounds(), { maxZoom: 17 });
+        _setEditLocStatus(good ? 'success' : 'failed', good ? _gpsOkHtml(fix.acc) : _gpsWeakHtml(fix.acc));
+        window._editLocConfirmed = good;
       },
-      () => _setEditLocStatus('failed', '<i class="fas fa-exclamation-triangle"></i>&nbsp;تعذر تحديد GPS — حرك الدبوس يدوياً'),
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      () => _setEditLocStatus('failed', '<i class="fas fa-exclamation-triangle"></i>&nbsp;تعذر تحديد GPS — حرك الدبوس يدوياً')
     );
   }
 
@@ -4495,7 +4548,7 @@
       setTimeout(() => {
         const lat = parseFloat(c.latitude)  || _UAE_CENTER[0];
         const lng = parseFloat(c.longitude) || _UAE_CENTER[1];
-        _initEditMap(lat, lng, false, !!(c.latitude && c.longitude));
+        _initEditMap(lat, lng, false, !!(c.latitude && c.longitude) && !_isDefaultPin(lat, lng));
         // Force Leaflet to recalculate tile sizes after layout
         setTimeout(() => { if (_editMap) _editMap.invalidateSize(true); }, 100);
         setTimeout(() => { if (_editMap) _editMap.invalidateSize(true); }, 400);
@@ -4529,6 +4582,7 @@
     if (!areaName){ errEl.textContent = '⚠ المنطقة مطلوبة'; return; }
     if (!address) { errEl.textContent = '⚠ العنوان مطلوب'; return; }
     if (!window._editLocConfirmed) { errEl.textContent = '⚠ لازم تحدد موقعك على الخريطة — اسمح بالـ GPS أو اضغط على الخريطة / حرّك الدبوس'; return; }
+    if (window._editLocation && _isDefaultPin(window._editLocation.lat, window._editLocation.lng)) { errEl.textContent = '⚠ الدبوس لسه على نقطة الخريطة الأساسية — حرّكيه لمدخل بنايتك بالظبط'; return; }
     errEl.textContent = '';
 
     const btn = document.getElementById('editSaveBtn');
@@ -5024,6 +5078,7 @@
     if (!areaName){ errEl.textContent = '⚠ المنطقة مطلوبة'; document.getElementById('custArea').focus();    return; }
     if (!address) { errEl.textContent = '⚠ العنوان التفصيلي مطلوب';   document.getElementById('custAddress').focus(); return; }
     if (!window._custLocConfirmed) { errEl.textContent = '⚠ لازم تحدد موقعك على الخريطة — اسمح بالـ GPS أو اضغط على الخريطة / حرّك الدبوس'; return; }
+    if (window._custLocation && _isDefaultPin(window._custLocation.lat, window._custLocation.lng)) { errEl.textContent = '⚠ الدبوس لسه على نقطة الخريطة الأساسية — حرّكيه لمدخل بنايتك بالظبط'; return; }
     errEl.textContent = '';
 
     const btn = document.getElementById('custSubmitBtn');
