@@ -3589,6 +3589,9 @@
   // Only a clear "different area" answer interrupts her — if the check fails or is unsure, ordering goes on.
   // Resolves true = carry on, false = she wants to look at the pin again.
   const _areaChk = { ok: '' };
+  const _AREA_OK_KEY = 'hc_area_ok';
+  function _areaOkHas(sig) { try { return (JSON.parse(localStorage.getItem(_AREA_OK_KEY) || '[]') || []).indexOf(sig) >= 0; } catch (_) { return false; } }
+  function _areaOkAdd(sig) { try { const a = (JSON.parse(localStorage.getItem(_AREA_OK_KEY) || '[]') || []).filter(x => x !== sig); a.push(sig); localStorage.setItem(_AREA_OK_KEY, JSON.stringify(a.slice(-30))); } catch (_) {} }
   function _askAreaMismatch(typed, detected, locked) {
     return new Promise(resolve => {
       const esc = s => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -3626,14 +3629,14 @@
     try {
       if (!area || !loc) return true;
       const sig = area + '|' + Number(loc.lat).toFixed(5) + '|' + Number(loc.lng).toFixed(5);
-      if (_areaChk.ok === sig) return true;                 // she already confirmed this exact pin for this area
+      if (_areaChk.ok === sig || _areaOkHas(sig)) return true;   // she already confirmed this exact pin for this area
       const res = await Promise.race([
         _callScript('checkAreaMatch', { area, lat: String(loc.lat), lng: String(loc.lng) }, 9000),
         new Promise(r => setTimeout(() => r(null), 9000))
       ]);
       if (!res || res.success === false || res.match !== false) return true;   // fine, or can't tell → no interruption
       const sure = await _askAreaMismatch(res.typed || _stripAreaPrefix(area), res.detected || 'منطقة مختلفة', !!locked);
-      if (sure) _areaChk.ok = sig;
+      if (sure) { _areaChk.ok = sig; _areaOkAdd(sig); }
       return sure;
     } catch (_) { return true; }
   }
@@ -4533,9 +4536,10 @@
     const unchanged = !!(o && o.phone === phone && o.name === name && o.whatsapp === whatsapp
                          && o.area === area && o.address === address && sameLoc);
 
-    // The area she wrote vs where the pin is — checked whenever her details or pin changed
-    // (a saved, locked pin too: the area she types can still disagree with it).
-    if (!unchanged) {
+    // The area she wrote vs where the pin is — checked every time (an area saved earlier that never
+    // matched its pin must not slip through just because nothing changed). A pin+area she already
+    // confirmed on this device is remembered, so it only asks once.
+    {
       const lockedPin = !(_coMarker && _coMarker.dragging && _coMarker.dragging.enabled());
       const prevTxt2 = btn.innerHTML;
       btn.disabled = true;
