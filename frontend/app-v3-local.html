@@ -6504,6 +6504,14 @@
     return `${qty} ${u}`;
   }
 
+  // Offers whose description is only for the customer's screen: the vendor / export sheet gets
+  // quantity + offer name + the customer's note, without the bracketed description.
+  // Keyed by the item's stable id (survives renaming in admin). 'عرض البانيه' (AlFalaki).
+  const _ORDER_HIDE_OFFER_CONTENTS = ['mi_mw4vq66xvjb85q'];
+  // Items whose name is only a customer-facing description: the unit already says what it is, so the
+  // vendor line is just "عدد 1 <unit> — (note)". 'جوز حمام( عدد 2 حمامه)' (AlFalaki, unit "جوز حمام").
+  const _ORDER_OMIT_NAME = ['mi_msnm5ti63a7hkx'];
+
   function buildMenuOrderLines() {
     const items = window._opMenuItems || [];
     const lines = [];
@@ -6513,9 +6521,9 @@
       if (qty > 0) {
         // Offers include their bundle contents inline so the vendor/export
         // sheet shows exactly what's in the bundle, not just its title.
-        const contents = item.isOffer && item.offerItems?.length
+        const contents = item.isOffer && item.offerItems?.length && _ORDER_HIDE_OFFER_CONTENTS.indexOf(item.id) < 0
           ? ` (${item.offerItems.join('، ')})` : '';
-        let line = `عدد ${_formatQtyForOrder(qty, item.unit)} — ${item.name}${contents}`;
+        let line = `عدد ${_formatQtyForOrder(qty, item.unit)}` + (_ORDER_OMIT_NAME.indexOf(item.id) >= 0 ? '' : ` — ${item.name}${contents}`);
         if (note) line += ` — (${note})`;
         lines.push(line);
       }
